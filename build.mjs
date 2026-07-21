@@ -1,0 +1,30 @@
+// TXPPS VST CODE LAB — build script
+// Concatenates src/ modules into a single self-contained dist/index.html
+// (an HTML fragment suitable for publishing as a Claude Artifact page).
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+
+const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+
+const JS_ORDER = [
+  'data_zones.js',
+  'data_zone1_lessons.js',
+  'data_zone1_challenges.js',
+  'data_glossary.js',
+  'engine.js',
+  'store.js',
+  'audio.js',
+  'ui.js',
+  'views.js',
+  'app.js',
+];
+
+const js = JS_ORDER.map((f) => `/* ===== src/js/${f} ===== */\n` + read(`./src/js/${f}`)).join('\n;\n');
+const css = read('./src/styles.css');
+
+let html = read('./src/shell.html');
+html = html.replace('/*__CSS__*/', () => css);
+html = html.replace('//__JS__', () => js);
+
+mkdirSync(new URL('./dist/', import.meta.url), { recursive: true });
+writeFileSync(new URL('./dist/index.html', import.meta.url), html);
+console.log(`Built dist/index.html (${(html.length / 1024).toFixed(1)} KB)`);

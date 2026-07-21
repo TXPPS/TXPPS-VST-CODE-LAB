@@ -1,0 +1,304 @@
+/* ============================================================
+   Progress store — state, XP/levels/mastery/streak, persistence.
+   localStorage is wrapped defensively: if unavailable (private
+   browsing, sandbox), the app runs on an in-memory fallback.
+   ============================================================ */
+
+const Store = (() => {
+  const KEY = 'txpps_vst_code_lab_v1';
+  let memoryFallback = null;
+  let storageOk = true;
+
+  function defaults() {
+    return {
+      v: 1,
+      xp: 0,
+      nodes: {},          // nodeId -> {done, stars, attempts, firstTry, checks, step}
+      weak: {},           // qid -> {nodeId, concept, misses, ts}
+      streak: { count: 0, last: '' },
+      daily: {},          // dateStr -> {qid, done, correct}
+      dailyDone: 0,
+      achievements: [],
+      settings: { sound: true, motion: true, codeSize: 'm' },
+      practiceCleared: 0,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  /* ---- safe persistence ---- */
+  function rawLoad() {
+    try {
+      const s = window.localStorage.getItem(KEY);
+      return s ? JSON.parse(s) : null;
+    } catch (e) {
+      storageOk = false;
+      return memoryFallback ? JSON.parse(memoryFallback) : null;
+    }
+  }
+
+  function rawSave(obj) {
+    const json = JSON.stringify(obj);
+    try {
+      window.localStorage.setItem(KEY, json);
+      storageOk = true;
+    } catch (e) {
+      storageOk = false;
+      memoryFallback = json;
+    }
+  }
+
+  // Merge loaded data over defaults so missing/renamed fields never crash.
+  function sanitize(raw) {
+    const d = defaults();
+    if (!raw || typeof raw !== 'object') return d;
+    const s = { ...d, ...raw };
+    s.xp = Number.isFinite(s.xp) && s.xp >= 0 ? Math.floor(s.xp) : 0;
+    s.nodes = (s.nodes && typeof s.nodes === 'object') ? s.nodes : {};
+    s.weak = (s.weak && typeof s.weak === 'object') ? s.weak : {};
+    s.daily = (s.daily && typeof s.daily === 'object') ? s.daily : {};
+    s.streak = (s.streak && typeof s.streak === 'object') ? { count: s.streak.count | 0, last: String(s.streak.last || '') } : d.streak;
+    s.achievements = Array.isArray(s.achievements) ? s.achievements.filter((a) => typeof a === 'string') : [];
+    s.settings = { ...d.settings, ...(s.settings && typeof s.settings === 'object' ? s.settings : {}) };
+    s.dailyDone = s.dailyDone | 0;
+    s.practiceCleared = s.practiceCleared | 0;
+    return s;
+  }
+
+  let state = sanitize(rawLoad());
+
+  function save() { rawSave(state); }
+
+  /* ---- date helpers ---- */
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function touchStreak() {
+    const today = todayStr();
+    const last = state.streak.last;
+    if (last === today) return;
+    if (last) {
+      const diff = Math.round((new Date(today) - new Date(last)) / 86400000);
+      state.streak.count = (diff === 1) ? state.streak.count + 1 : 1;
+    } else {
+      state.streak.count = 1;
+    }
+    state.streak.last = today;
+    if (state.streak.count >= 3) grant('hot_streak');
+    if (state.streak.count >= 7) grant('studio_regular');
+  }
+
+  /* ---- XP & levels ---- */
+  function level() {
+    let lv = 1;
+    for (let i = 0; i < LEVELS.length; i++) if (state.xp >= LEVELS[i]) lv = i + 1;
+    return lv;
+  }
+
+  function levelTitle() { return LEVEL_TITLES[Math.min(level() - 1, LEVEL_TITLES.length - 1)]; }
+
+  function levelProgress() {
+    const lv = level();
+    const base = LEVELS[lv - 1];
+    const next = LEVELS[lv] !== undefined ? LEVELS[lv] : null;
+    if (next === null) return { pct: 100, into: 0, span: 0, next: null };
+    return { pct: Math.min(100, Math.round(((state.xp - base) / (next - base)) * 100)), into: state.xp - base, span: next - base, next };
+  }
+
+  function addXp(amount) {
+    const before = level();
+    state.xp += Math.max(0, Math.round(amount));
+    if (state.xp >= 100) grant('signal_present');
+    if (level() >= 5) grant('level_5');
+    touchStreak();
+    save();
+    return { leveledUp: level() > before, level: level() };
+  }
+
+  /* ---- nodes ---- */
+  function nodeState(id) {
+    if (!state.nodes[id]) state.nodes[id] = { done: false, stars: 0, attempts: 0, firstTry: 0, checks: 0, step: 0 };
+    return state.nodes[id];
+  }
+
+  function isDone(id) { return !!(state.nodes[id] && state.nodes[id].done); }
+
+  // Sequential unlock within a zone. Everything before the first
+  // incomplete node is replayable; the first incomplete node is next.
+  function isUnlocked(zoneId, nodeId) {
+    const order = (ZONES.find((z) => z.id === zoneId) || {}).nodeOrder || [];
+    for (const id of order) {
+      if (id === nodeId) return true;
+      if (!isDone(id)) return false;
+    }
+    return false;
+  }
+
+  function nextNode() {
+    const order = ZONES[0].nodeOrder;
+    for (const id of order) if (!isDone(id)) return id;
+    return null;
+  }
+
+  function starsFor(firstTry, checks) {
+    if (checks <= 0) return 1;
+    const f = firstTry / checks;
+    if (f >= 0.999) return 3;
+    if (f >= 0.66) return 2;
+    return 1;
+  }
+
+  function completeNode(id, firstTry, checks) {
+    const ns = nodeState(id);
+    const stars = starsFor(firstTry, checks);
+    const firstCompletion = !ns.done;
+    ns.done = true;
+    ns.attempts += 1;
+    ns.firstTry = firstTry;
+    ns.checks = checks;
+    ns.stars = Math.max(ns.stars, stars);
+    ns.step = 0;
+    const node = Engine.NODES[id];
+    if (node) {
+      if (node.kind === 'lesson') {
+        grant('power_on');
+        if (stars === 3) grant('clean_take');
+      }
+      if (id === 'p1') grant('gain_staged');
+      if (id === 'p2') grant('osc_online');
+      if (id === 'boss1') grant('zone1_clear');
+      if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
+      if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
+    }
+    save();
+    return { stars, firstCompletion };
+  }
+
+  function setProjectStep(id, step) {
+    nodeState(id).step = step;
+    save();
+  }
+
+  /* ---- weak topics / practice ---- */
+  function markWeak(qid, nodeId, concept) {
+    const w = state.weak[qid] || { nodeId, concept, misses: 0, ts: 0 };
+    w.misses += 1;
+    w.ts = Date.now();
+    w.concept = concept || w.concept;
+    state.weak[qid] = w;
+    save();
+  }
+
+  function clearWeak(qid) {
+    if (state.weak[qid]) {
+      delete state.weak[qid];
+      state.practiceCleared += 1;
+      save();
+    }
+  }
+
+  function weakList() {
+    return Object.entries(state.weak)
+      .map(([qid, w]) => ({ qid, ...w }))
+      .filter((w) => Engine.QINDEX[w.qid])
+      .sort((a, b) => b.misses - a.misses || b.ts - a.ts);
+  }
+
+  function weakConcepts() {
+    const counts = {};
+    for (const w of weakList()) counts[w.concept] = (counts[w.concept] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([c, n]) => ({ concept: c, n }));
+  }
+
+  /* ---- daily ---- */
+  function dailyToday() {
+    const t = todayStr();
+    if (!state.daily[t]) {
+      const qid = Engine.dailyQid(t);
+      state.daily[t] = { qid, done: false, correct: false };
+      save();
+    }
+    return { date: t, ...state.daily[t] };
+  }
+
+  function completeDaily(correct) {
+    const t = todayStr();
+    if (state.daily[t] && !state.daily[t].done) {
+      state.daily[t].done = true;
+      state.daily[t].correct = !!correct;
+      state.dailyDone += 1;
+      if (state.dailyDone >= 5) grant('daily_driver');
+      save();
+    }
+  }
+
+  /* ---- achievements ---- */
+  let achQueue = [];
+  function grant(id) {
+    if (!ACHIEVEMENTS.some((a) => a.id === id)) return;
+    if (state.achievements.includes(id)) return;
+    state.achievements.push(id);
+    achQueue.push(id);
+    save();
+  }
+  function drainAchievements() { const q = achQueue; achQueue = []; return q; }
+
+  /* ---- mastery ---- */
+  function zoneMastery() {
+    const lessons = ZONE1_LESSONS.map((l) => l.id);
+    const doneLessons = lessons.filter(isDone);
+    if (doneLessons.length === 0) return { pct: 0, avgStars: 0, doneLessons: 0, totalLessons: lessons.length };
+    const totalStars = doneLessons.reduce((s, id) => s + (state.nodes[id].stars || 0), 0);
+    const avg = totalStars / doneLessons.length;
+    return {
+      pct: Math.round((totalStars / (lessons.length * 3)) * 100),
+      avgStars: avg,
+      doneLessons: doneLessons.length,
+      totalLessons: lessons.length,
+    };
+  }
+
+  function bossReady() {
+    const m = zoneMastery();
+    const lessonsDone = m.doneLessons === m.totalLessons;
+    const projectsDone = isDone('p1') && isDone('p2');
+    return { ready: lessonsDone && projectsDone && m.avgStars >= 2, lessonsDone, projectsDone, avgStars: m.avgStars, need: 2 };
+  }
+
+  /* ---- settings / io ---- */
+  function setSetting(k, v) { state.settings[k] = v; save(); }
+
+  function exportJson() { return JSON.stringify(state, null, 2); }
+
+  function importJson(text) {
+    let obj;
+    try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: 'That isn\'t valid JSON — paste the exact text from Export Progress.' }; }
+    if (!obj || typeof obj !== 'object' || typeof obj.xp !== 'number') {
+      return { ok: false, error: 'That JSON doesn\'t look like TXPPS progress data (missing xp field).' };
+    }
+    state = sanitize(obj);
+    save();
+    return { ok: true };
+  }
+
+  function reset() {
+    state = defaults();
+    try { window.localStorage.removeItem(KEY); } catch (e) { /* fallback mode */ }
+    memoryFallback = null;
+    save();
+  }
+
+  return {
+    get state() { return state; },
+    get storageOk() { return storageOk; },
+    save, todayStr, touchStreak,
+    level, levelTitle, levelProgress, addXp,
+    nodeState, isDone, isUnlocked, nextNode, completeNode, setProjectStep, starsFor,
+    markWeak, clearWeak, weakList, weakConcepts,
+    dailyToday, completeDaily,
+    grant, drainAchievements,
+    zoneMastery, bossReady,
+    setSetting, exportJson, importJson, reset,
+  };
+})();
