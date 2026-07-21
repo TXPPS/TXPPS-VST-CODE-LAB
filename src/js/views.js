@@ -21,7 +21,7 @@ const Views = (() => {
     let resolved = false;
 
     const root = el('div', { class: 'col', style: 'gap:12px' });
-    const feedbackSlot = el('div');
+    const feedbackSlot = el('div', { 'aria-live': 'polite' });
     const controls = el('div', { class: 'col', style: 'gap:10px' });
 
     function resolve(correct, revealed) {
@@ -111,7 +111,8 @@ const Views = (() => {
           if (exhausted) {
             optBtns.forEach((b, j) => { b.disabled = true; if (j === q.answer) b.classList.add('right'); });
           } else {
-            setTimeout(() => optBtns[chosen] && optBtns[chosen].classList.remove('wrong'), 900);
+            const picked = chosen;
+            setTimeout(() => optBtns[picked] && optBtns[picked].classList.remove('wrong'), 900);
             chosen = -1;
             checkBtn.disabled = true;
           }
@@ -465,9 +466,7 @@ const Views = (() => {
           if (res.correct) {
             correctCount += 1;
             if (res.firstTry) firstTryCount += 1;
-            const xp = share > 0 ? (res.firstTry ? share : share / 2) : 0;
-            earned += xp;
-            if (xp > 0) App.awardXp(Math.round(xp));
+            earned += share > 0 ? (res.firstTry ? share : share / 2) : 0;
           }
           trackCells[idx].className = res.correct ? 'done' : 'fail';
           const isLast = idx === n - 1;
@@ -706,7 +705,7 @@ const Views = (() => {
           el('div', { class: 'zone-title' }, z.title),
           el('div', { class: 'zone-tag' }, z.tagline)),
         el('div', { class: 'zone-meta' }, live
-          ? ZONES[0].nodeOrder.filter(Store.isDone).length + '/' + z.nodeOrder.length
+          ? z.nodeOrder.filter(Store.isDone).length + '/' + z.nodeOrder.length
           : 'LOCKED'));
       rack.appendChild(headBtn);
 
@@ -820,11 +819,7 @@ const Views = (() => {
           onResolved: (res) => {
             if (res.correct) {
               if (res.firstTry) firstTryCount += 1;
-              if (!alreadyDone) {
-                const xp = Math.round(res.firstTry ? share : share / 2);
-                earned += xp;
-                App.awardXp(xp);
-              }
+              if (!alreadyDone) earned += res.firstTry ? share : share / 2;
             }
             holder.appendChild(el('div', { class: 'action-bar' },
               el('button', { class: 'btn primary block', onclick: () => { step += 1; renderStep(); } },
@@ -836,6 +831,8 @@ const Views = (() => {
         return;
       }
       // recap
+      earned = Math.round(earned);
+      if (earned > 0) App.awardXp(earned);
       const { stars: starCount } = Store.completeNode(node.id, firstTryCount, node.checks.length);
       App.flushAchievements();
       slot.replaceChildren(
@@ -874,6 +871,7 @@ const Views = (() => {
       baseXp: alreadyDone ? 0 : XP_RULES.challenge,
       nodeId: node.id,
       onFinish: (result) => {
+        if (result.earned > 0) App.awardXp(result.earned);
         Store.completeNode(node.id, result.firstTry, result.total);
         App.flushAchievements();
         completionSheet(node, result, null);
@@ -906,6 +904,7 @@ const Views = (() => {
       stepStart: alreadyDone ? 0 : savedStep,
       onStep: (i) => { if (!alreadyDone) Store.setProjectStep(node.id, i); },
       onFinish: (result) => {
+        if (result.earned > 0) App.awardXp(result.earned);
         Store.completeNode(node.id, result.firstTry, result.total);
         App.flushAchievements();
         completionSheet(node, result, null);
@@ -966,6 +965,7 @@ const Views = (() => {
         onFinish: (result) => {
           const passed = result.correct >= 4;
           if (passed) {
+            if (result.earned > 0) App.awardXp(result.earned);
             Store.completeNode(node.id, result.firstTry, result.total);
             App.flushAchievements();
             completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
@@ -974,7 +974,7 @@ const Views = (() => {
               el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
                 el('div', { class: 'eyebrow red', style: 'justify-content:center' }, 'SESSION FAILED'),
                 el('div', { class: 'h-display' }, result.correct + ' / ' + result.total + ' stages cleared'),
-                el('p', { class: 'small dim' }, 'You need 4. The plugin is still broken — but now you know exactly which concepts to sharpen. XP from cleared stages is yours to keep.')),
+                el('p', { class: 'small dim' }, 'You need 4. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
               el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
               el('button', { class: 'btn block', onclick: () => App.go('boss', { id: node.id }) }, 'Try again'),
               el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
@@ -1096,7 +1096,7 @@ const Views = (() => {
     holder.appendChild(questionView(q, {
       onWrongAttempt: () => Store.markWeak(q.qid, Engine.QINDEX[d.qid].nodeId, q.concept),
       onResolved: (res) => {
-        Store.completeDaily(res.correct);
+        Store.completeDaily(d.date, res.correct);
         if (res.correct) App.awardXp(res.firstTry ? XP_RULES.daily : XP_RULES.daily / 2);
         App.flushAchievements();
         holder.appendChild(el('div', { class: 'action-bar' },
@@ -1204,7 +1204,7 @@ const Views = (() => {
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
       el('div', { class: 'col mt-m', style: 'gap:2px' }, ZONE1_LESSONS.map((l) => {
         const ns = st.nodes[l.id];
-        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => App.openNode(l.id) },
+        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),
           ns && ns.done ? UI.stars(ns.stars) : el('span', { class: 'mono small faint' }, Store.isUnlocked('z1', l.id) ? 'NOT DONE' : 'LOCKED'));
       }))));

@@ -114,7 +114,9 @@ const UI = (() => {
     const box = el('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true' }, children);
     veil.appendChild(box);
     veil.addEventListener('click', (e) => { if (e.target === veil && !(opts && opts.sticky)) close(); });
-    function close() { veil.remove(); }
+    const onKey = (e) => { if (e.key === 'Escape' && !(opts && opts.sticky)) close(); };
+    document.addEventListener('keydown', onKey);
+    function close() { document.removeEventListener('keydown', onKey); veil.remove(); }
     document.body.appendChild(veil);
     return { close, box };
   }

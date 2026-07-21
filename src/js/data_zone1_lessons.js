@@ -289,6 +289,7 @@ const ZONE1_LESSONS = [
       {
         h: 'break, or fall through',
         body: 'Cases don\'t end themselves. Without `break`, execution **falls through** into the next case and keeps going. Occasionally that\'s used deliberately — but forgetting a `break` is one of the oldest bugs in C, and in a synth it sounds like "why does saw also trigger square?"',
+        mistake: { code: 'case 1: name = "saw";      // no break!\ncase 2: name = "square";   // runs too — saw is overwritten', text: 'If a fallthrough is ever intentional, say so loudly with a comment (or `[[fallthrough]];`) so no one "fixes" it.' },
         warn: 'Modern compilers can warn on unintentional fallthrough. In Zone 2 you\'ll upgrade raw ints to `enum class Waveform` so the compiler can also warn when a case is missing entirely.',
       },
     ],
@@ -360,7 +361,7 @@ const ZONE1_LESSONS = [
         type: 'fill', concept: 'loops',
         prompt: 'Complete the loop condition to visit every sample exactly once — and never step past the end.',
         code: 'for (int i = 0; ___; ++i)\n{\n    buffer[i] *= gain;\n}',
-        accept: ['i < numSamples', 'i<numSamples', 'numSamples > i', 'numSamples>i'],
+        accept: ['i < numSamples', 'i<numSamples', 'numSamples > i', 'numSamples>i', 'i != numSamples', 'i!=numSamples'],
         placeholder: 'condition',
         forbidden: ['<='],
         hint: 'Valid indexes are 0 up to numSamples - 1.',
@@ -368,7 +369,7 @@ const ZONE1_LESSONS = [
           { match: '<=', msg: '`<=` runs the loop one extra time and reads `buffer[numSamples]` — one past the end. That\'s undefined behavior. Use `<`.' },
           { match: '^i\\s*<\\s*numSamples\\s*-\\s*1$', msg: 'That stops one sample early — the last sample never gets processed. `i < numSamples` is exactly right.' },
         ],
-        explain: '`i < numSamples` visits indexes 0 … numSamples-1: every sample exactly once, never out of bounds.',
+        explain: '`i < numSamples` visits indexes 0 … numSamples-1: every sample exactly once, never out of bounds. (`i != numSamples` also works here, but `<` is the defensive habit — it still terminates if i ever skips past the boundary.)',
       },
       {
         type: 'predict', concept: 'loops',
@@ -427,6 +428,7 @@ const ZONE1_LESSONS = [
       {
         h: 'Stay in bounds',
         body: 'Neither arrays nor `operator[]` on vectors check your index. Reading `buffer[512]` on a 512-sample buffer reaches into memory you don\'t own — **undefined behavior**: maybe garbage audio, maybe a crash three minutes later in an unrelated function. The bounds live in your loop condition; write them carefully.',
+        mistake: { code: 'for (int i = 0; i <= buffer.size(); ++i) // one too far', text: '`<=` with size() walks one slot past the end. (Also: size() returns an unsigned type — comparing it with int draws a compiler warning worth heeding.)' },
       },
     ],
     checks: [
@@ -760,6 +762,7 @@ const ZONE1_LESSONS = [
       {
         h: 'Compiler errors vs linker errors',
         body: 'Two build stages, two error families. The **compiler** checks each .cpp against the declarations it can see — typos, type mismatches, missing semicolons. The **linker** then stitches the compiled pieces together — and fails with **"undefined reference"** when something was *declared* but never *defined* (or its .cpp isn\'t in the build). Reading order matters: fix the **first** error first — later errors are often echoes of it.',
+        mistake: { text: 'Chasing the *last* error in a wall of forty. Most are echoes of the first — one missing semicolon can confuse everything after it. Scroll to the top, fix error #1, rebuild.' },
         warn: 'The classic: you declared `nextSample()` in the header, forgot to write the body in the .cpp, and the compiler is perfectly happy — the *linker* is the one that catches the hole, in language that mentions no file or line. Now you know why.',
       },
     ],

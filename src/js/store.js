@@ -61,6 +61,41 @@ const Store = (() => {
     s.settings = { ...d.settings, ...(s.settings && typeof s.settings === 'object' ? s.settings : {}) };
     s.dailyDone = s.dailyDone | 0;
     s.practiceCleared = s.practiceCleared | 0;
+    if (!['s', 'm', 'l'].includes(s.settings.codeSize)) s.settings.codeSize = 'm';
+    // deep-clean per-entry shapes so a hand-edited import can't poison renders
+    const nodes = {};
+    for (const [k, v] of Object.entries(s.nodes)) {
+      if (v && typeof v === 'object') {
+        nodes[k] = {
+          done: !!v.done,
+          stars: Math.max(0, Math.min(3, v.stars | 0)),
+          attempts: Math.max(0, v.attempts | 0),
+          firstTry: Math.max(0, v.firstTry | 0),
+          checks: Math.max(0, v.checks | 0),
+          step: Math.max(0, v.step | 0),
+        };
+      }
+    }
+    s.nodes = nodes;
+    const weak = {};
+    for (const [k, v] of Object.entries(s.weak)) {
+      if (v && typeof v === 'object') {
+        weak[k] = {
+          nodeId: String(v.nodeId || ''),
+          concept: String(v.concept || ''),
+          misses: Math.max(0, v.misses | 0),
+          ts: Number.isFinite(v.ts) ? v.ts : 0,
+        };
+      }
+    }
+    s.weak = weak;
+    const daily = {};
+    for (const [k, v] of Object.entries(s.daily)) {
+      if (v && typeof v === 'object') {
+        daily[k] = { qid: typeof v.qid === 'string' ? v.qid : null, done: !!v.done, correct: !!v.correct };
+      }
+    }
+    s.daily = daily;
     return s;
   }
 
@@ -87,6 +122,7 @@ const Store = (() => {
     state.streak.last = today;
     if (state.streak.count >= 3) grant('hot_streak');
     if (state.streak.count >= 7) grant('studio_regular');
+    save();
   }
 
   /* ---- XP & levels ---- */
@@ -222,8 +258,8 @@ const Store = (() => {
     return { date: t, ...state.daily[t] };
   }
 
-  function completeDaily(correct) {
-    const t = todayStr();
+  function completeDaily(dateStr, correct) {
+    const t = dateStr || todayStr();
     if (state.daily[t] && !state.daily[t].done) {
       state.daily[t].done = true;
       state.daily[t].correct = !!correct;

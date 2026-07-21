@@ -12,7 +12,7 @@
   --line-soft: #20252d;
   --ink: #EAE4D4;      /* warm cream */
   --ink-dim: #A29D8F;  /* warm gray */
-  --ink-faint: #6E6A5F;
+  --ink-faint: #857F6E;
   --phos: #5DE894;     /* phosphor green — instrument light */
   --phos-dim: #2E8757;
   --phos-glow: rgba(93, 232, 148, 0.13);
@@ -234,6 +234,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .codeline.sel { background: var(--phos-glow); border-left-color: var(--phos); }
 .codeline.hit { background: var(--red-glow); border-left-color: var(--red); }
 .codeline.good { background: var(--phos-glow); border-left-color: var(--phos); }
+.codeline:focus-visible { outline-offset: -2px; }
 
 /* inline blank in fill challenges */
 .blank-input {
@@ -242,7 +243,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
   border: 1px solid var(--phos-dim);
   border-radius: var(--rad-sm);
   color: var(--phos);
-  font-family: var(--mono); font-size: 14px;
+  font-family: var(--mono); font-size: 16px; /* >=16px stops iOS focus zoom */
   padding: 12px;
   min-height: var(--tap);
 }
@@ -317,7 +318,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .order-row.wrong .order-line { border-color: var(--red); background: var(--red-glow); }
 .order-ctl { display: flex; flex-direction: column; gap: 4px; }
 .order-ctl button {
-  width: 40px; flex: 1; min-height: 22px;
+  width: 44px; flex: 1; min-height: 30px;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg3); border: 1px solid var(--line); border-radius: 5px;
   color: var(--ink-dim); font-size: 13px;
@@ -360,7 +361,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .feedback code { font-family: var(--mono); font-size: 0.9em; color: var(--phos); background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; }
 
 /* ---------- lesson content ---------- */
-.prose { font-size: 15px; line-height: 1.62; display: flex; flex-direction: column; gap: 12px; max-width: 62ch; }
+.prose { font-size: 15px; line-height: 1.62; max-width: 62ch; }
 .prose strong { color: var(--ink); }
 .prose code { font-family: var(--mono); font-size: 0.9em; color: var(--phos); background: rgba(93,232,148,0.08); padding: 1px 5px; border-radius: 3px; }
 .callout {
@@ -471,7 +472,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .search-row input {
   width: 100%; min-height: var(--tap);
   background: var(--bg1); border: 1px solid var(--line); border-radius: var(--rad-sm);
-  color: var(--ink); font-size: 15px; padding: 10px 13px;
+  color: var(--ink); font-size: 16px; padding: 10px 13px;
 }
 .gloss-item { border-bottom: 1px solid var(--line-soft); }
 .gloss-item:last-child { border-bottom: none; }
@@ -563,7 +564,14 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
   min-height: 40px; padding: 0 10px 0 4px;
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
   color: var(--ink-dim); border-radius: var(--rad-sm);
+  white-space: nowrap;
 }
+/* stroke-style inline icons outside the tab bar */
+.eyebrow svg, .back-btn svg, .icon-btn svg {
+  width: 14px; height: 14px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+}
+.icon-btn svg { width: 20px; height: 20px; }
 .back-btn:active { background: var(--bg2); }
 
 /* bottom action bar inside flows */
@@ -610,7 +618,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 textarea.io {
   width: 100%; min-height: 120px;
   background: #0B0E12; border: 1px solid var(--line); border-radius: var(--rad-sm);
-  color: var(--ink); font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  color: var(--ink); font-family: var(--mono); font-size: 16px; line-height: 1.45;
   padding: 10px;
 }
 
@@ -628,6 +636,12 @@ textarea.io {
 .stage-track i.done { background: var(--phos); border-color: var(--phos); }
 .stage-track i.fail { background: var(--red); border-color: var(--red); }
 .stage-track i.now { border-color: var(--amber); background: var(--amber-glow); }
+
+/* very narrow phones (<=359px): shed least-important topbar text */
+@media (max-width: 359px) {
+  .brand > span:nth-child(2) { display: none; }
+  .xp-chip .tnum { display: none; }
+}
 
 /* desktop refinements */
 @media (min-width: 700px) {

@@ -14,7 +14,7 @@
   --line-soft: #20252d;
   --ink: #EAE4D4;      /* warm cream */
   --ink-dim: #A29D8F;  /* warm gray */
-  --ink-faint: #6E6A5F;
+  --ink-faint: #857F6E;
   --phos: #5DE894;     /* phosphor green — instrument light */
   --phos-dim: #2E8757;
   --phos-glow: rgba(93, 232, 148, 0.13);
@@ -236,6 +236,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .codeline.sel { background: var(--phos-glow); border-left-color: var(--phos); }
 .codeline.hit { background: var(--red-glow); border-left-color: var(--red); }
 .codeline.good { background: var(--phos-glow); border-left-color: var(--phos); }
+.codeline:focus-visible { outline-offset: -2px; }
 
 /* inline blank in fill challenges */
 .blank-input {
@@ -244,7 +245,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
   border: 1px solid var(--phos-dim);
   border-radius: var(--rad-sm);
   color: var(--phos);
-  font-family: var(--mono); font-size: 14px;
+  font-family: var(--mono); font-size: 16px; /* >=16px stops iOS focus zoom */
   padding: 12px;
   min-height: var(--tap);
 }
@@ -319,7 +320,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .order-row.wrong .order-line { border-color: var(--red); background: var(--red-glow); }
 .order-ctl { display: flex; flex-direction: column; gap: 4px; }
 .order-ctl button {
-  width: 40px; flex: 1; min-height: 22px;
+  width: 44px; flex: 1; min-height: 30px;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg3); border: 1px solid var(--line); border-radius: 5px;
   color: var(--ink-dim); font-size: 13px;
@@ -362,7 +363,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .feedback code { font-family: var(--mono); font-size: 0.9em; color: var(--phos); background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; }
 
 /* ---------- lesson content ---------- */
-.prose { font-size: 15px; line-height: 1.62; display: flex; flex-direction: column; gap: 12px; max-width: 62ch; }
+.prose { font-size: 15px; line-height: 1.62; max-width: 62ch; }
 .prose strong { color: var(--ink); }
 .prose code { font-family: var(--mono); font-size: 0.9em; color: var(--phos); background: rgba(93,232,148,0.08); padding: 1px 5px; border-radius: 3px; }
 .callout {
@@ -473,7 +474,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .search-row input {
   width: 100%; min-height: var(--tap);
   background: var(--bg1); border: 1px solid var(--line); border-radius: var(--rad-sm);
-  color: var(--ink); font-size: 15px; padding: 10px 13px;
+  color: var(--ink); font-size: 16px; padding: 10px 13px;
 }
 .gloss-item { border-bottom: 1px solid var(--line-soft); }
 .gloss-item:last-child { border-bottom: none; }
@@ -565,7 +566,14 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
   min-height: 40px; padding: 0 10px 0 4px;
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
   color: var(--ink-dim); border-radius: var(--rad-sm);
+  white-space: nowrap;
 }
+/* stroke-style inline icons outside the tab bar */
+.eyebrow svg, .back-btn svg, .icon-btn svg {
+  width: 14px; height: 14px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+}
+.icon-btn svg { width: 20px; height: 20px; }
 .back-btn:active { background: var(--bg2); }
 
 /* bottom action bar inside flows */
@@ -612,7 +620,7 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 textarea.io {
   width: 100%; min-height: 120px;
   background: #0B0E12; border: 1px solid var(--line); border-radius: var(--rad-sm);
-  color: var(--ink); font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  color: var(--ink); font-family: var(--mono); font-size: 16px; line-height: 1.45;
   padding: 10px;
 }
 
@@ -630,6 +638,12 @@ textarea.io {
 .stage-track i.done { background: var(--phos); border-color: var(--phos); }
 .stage-track i.fail { background: var(--red); border-color: var(--red); }
 .stage-track i.now { border-color: var(--amber); background: var(--amber-glow); }
+
+/* very narrow phones (<=359px): shed least-important topbar text */
+@media (max-width: 359px) {
+  .brand > span:nth-child(2) { display: none; }
+  .xp-chip .tnum { display: none; }
+}
 
 /* desktop refinements */
 @media (min-width: 700px) {
@@ -1032,6 +1046,7 @@ const ZONE1_LESSONS = [
       {
         h: 'break, or fall through',
         body: 'Cases don\'t end themselves. Without `break`, execution **falls through** into the next case and keeps going. Occasionally that\'s used deliberately — but forgetting a `break` is one of the oldest bugs in C, and in a synth it sounds like "why does saw also trigger square?"',
+        mistake: { code: 'case 1: name = "saw";      // no break!\ncase 2: name = "square";   // runs too — saw is overwritten', text: 'If a fallthrough is ever intentional, say so loudly with a comment (or `[[fallthrough]];`) so no one "fixes" it.' },
         warn: 'Modern compilers can warn on unintentional fallthrough. In Zone 2 you\'ll upgrade raw ints to `enum class Waveform` so the compiler can also warn when a case is missing entirely.',
       },
     ],
@@ -1103,7 +1118,7 @@ const ZONE1_LESSONS = [
         type: 'fill', concept: 'loops',
         prompt: 'Complete the loop condition to visit every sample exactly once — and never step past the end.',
         code: 'for (int i = 0; ___; ++i)\n{\n    buffer[i] *= gain;\n}',
-        accept: ['i < numSamples', 'i<numSamples', 'numSamples > i', 'numSamples>i'],
+        accept: ['i < numSamples', 'i<numSamples', 'numSamples > i', 'numSamples>i', 'i != numSamples', 'i!=numSamples'],
         placeholder: 'condition',
         forbidden: ['<='],
         hint: 'Valid indexes are 0 up to numSamples - 1.',
@@ -1111,7 +1126,7 @@ const ZONE1_LESSONS = [
           { match: '<=', msg: '`<=` runs the loop one extra time and reads `buffer[numSamples]` — one past the end. That\'s undefined behavior. Use `<`.' },
           { match: '^i\\s*<\\s*numSamples\\s*-\\s*1$', msg: 'That stops one sample early — the last sample never gets processed. `i < numSamples` is exactly right.' },
         ],
-        explain: '`i < numSamples` visits indexes 0 … numSamples-1: every sample exactly once, never out of bounds.',
+        explain: '`i < numSamples` visits indexes 0 … numSamples-1: every sample exactly once, never out of bounds. (`i != numSamples` also works here, but `<` is the defensive habit — it still terminates if i ever skips past the boundary.)',
       },
       {
         type: 'predict', concept: 'loops',
@@ -1170,6 +1185,7 @@ const ZONE1_LESSONS = [
       {
         h: 'Stay in bounds',
         body: 'Neither arrays nor `operator[]` on vectors check your index. Reading `buffer[512]` on a 512-sample buffer reaches into memory you don\'t own — **undefined behavior**: maybe garbage audio, maybe a crash three minutes later in an unrelated function. The bounds live in your loop condition; write them carefully.',
+        mistake: { code: 'for (int i = 0; i <= buffer.size(); ++i) // one too far', text: '`<=` with size() walks one slot past the end. (Also: size() returns an unsigned type — comparing it with int draws a compiler warning worth heeding.)' },
       },
     ],
     checks: [
@@ -1503,6 +1519,7 @@ const ZONE1_LESSONS = [
       {
         h: 'Compiler errors vs linker errors',
         body: 'Two build stages, two error families. The **compiler** checks each .cpp against the declarations it can see — typos, type mismatches, missing semicolons. The **linker** then stitches the compiled pieces together — and fails with **"undefined reference"** when something was *declared* but never *defined* (or its .cpp isn\'t in the build). Reading order matters: fix the **first** error first — later errors are often echoes of it.',
+        mistake: { text: 'Chasing the *last* error in a wall of forty. Most are echoes of the first — one missing semicolon can confuse everything after it. Scroll to the top, fix error #1, rebuild.' },
         warn: 'The classic: you declared `nextSample()` in the header, forgot to write the body in the .cpp, and the compiler is perfectly happy — the *linker* is the one that catches the hole, in language that mentions no file or line. Now you know why.',
       },
     ],
@@ -1641,7 +1658,7 @@ const ZONE1_CHALLENGES = [
         options: [
           { t: '`Voice(float f, float l) : frequency(f), level(l) {}`', why: '' },
           { t: '`Voice(float f, float l) { f = frequency; l = level; }`', why: 'Backwards — this copies the *uninitialized members into the parameters*, leaving frequency and level as garbage.' },
-          { t: '`void Voice(float f, float l) : frequency(f), level(l) {}`', why: 'Constructors have no return type — not even void. Adding one makes this an ordinary (broken) function declaration.' },
+          { t: '`void Voice(float f, float l) : frequency(f), level(l) {}`', why: 'Constructors have no return type — not even void. This is a hard compile error (gcc: \"return type specification for constructor invalid\") — only a constructor may share the class\'s name and carry an initializer list.' },
           { t: '`Voice() : frequency, level {}`', why: 'Initializer list entries need values: `frequency(f)`. Bare names don\'t compile.' },
         ],
         answer: 0,
@@ -1953,13 +1970,14 @@ const ZONE1_CHALLENGES = [
           type: 'fill', concept: 'control-flow',
           prompt: 'Clamp the gain into the range 0.0 to 2.0 using std::clamp(value, low, high).',
           code: 'float safeGain = std::clamp(gain, ___);',
-          accept: ['0.0f, 2.0f', '0.0f,2.0f', '0.f, 2.f', '0.f,2.f', '0.0, 2.0', '0.0,2.0', '0, 2', '0,2', '0.0f, 2.f', '0.f, 2.0f'],
+          accept: ['0.0f, 2.0f', '0.0f,2.0f', '0.f, 2.f', '0.f,2.f', '0.0f, 2.f', '0.f, 2.0f'],
           placeholder: 'low, high',
           hint: 'Two arguments: the floor, then the ceiling.',
           mistakes: [
             { match: '^2.*0', msg: 'Order matters: std::clamp(value, low, high) — low first. Swapped bounds are undefined behavior.' },
+            { match: '^0(\\.0)?\\s*,\\s*2(\\.0)?$', msg: 'Close — but std::clamp is a template that deduces ONE type from all three arguments. gain is a float, so int or double bounds fail to compile ("deduced conflicting types"). Give the bounds the f suffix: 0.0f, 2.0f.' },
           ],
-          explain: 'std::clamp(gain, 0.0f, 2.0f) pins the value into [0, 2]. Defensive clamping at the edges of your DSP is a professional habit — hosts and automation can and do send out-of-range values.',
+          explain: 'std::clamp(gain, 0.0f, 2.0f) pins the value into [0, 2]. All three arguments must be the same type — std::clamp deduces one template type, so float value + int bounds refuses to compile (a famous gotcha). Defensive clamping at the edges of your DSP is a professional habit — hosts and automation send out-of-range values.',
         },
       },
       {
@@ -2095,7 +2113,7 @@ const ZONE1_CHALLENGES = [
         type: 'compiler', concept: 'compiler-errors',
         prompt: 'Stage 1 — It won\'t build. What\'s the fix?',
         code: 'class GainPlug {\npublic:\n    void setGain(float g);\nprivate:\n    float gain = 1.0f;\n}\n\nvoid GainPlug::setGain(float g)\n{\n    gain = g;\n}',
-        error: "GainPlug.h:9:1: error: expected ';' after class definition\n    9 | void GainPlug::setGain(float g)\n      | ^",
+        error: "GainPlug.h:6:2: error: expected ';' after class definition\n    6 | }\n      |  ^\n      |  ;",
         options: [
           { t: 'Add `;` after the class\'s closing brace: `};`', why: '' },
           { t: 'Remove the `GainPlug::` prefix from setGain', why: 'The prefix is required to define a member outside the class. The error names exactly what\'s missing: a semicolon after the class definition.' },
@@ -2473,6 +2491,41 @@ const Store = (() => {
     s.settings = { ...d.settings, ...(s.settings && typeof s.settings === 'object' ? s.settings : {}) };
     s.dailyDone = s.dailyDone | 0;
     s.practiceCleared = s.practiceCleared | 0;
+    if (!['s', 'm', 'l'].includes(s.settings.codeSize)) s.settings.codeSize = 'm';
+    // deep-clean per-entry shapes so a hand-edited import can't poison renders
+    const nodes = {};
+    for (const [k, v] of Object.entries(s.nodes)) {
+      if (v && typeof v === 'object') {
+        nodes[k] = {
+          done: !!v.done,
+          stars: Math.max(0, Math.min(3, v.stars | 0)),
+          attempts: Math.max(0, v.attempts | 0),
+          firstTry: Math.max(0, v.firstTry | 0),
+          checks: Math.max(0, v.checks | 0),
+          step: Math.max(0, v.step | 0),
+        };
+      }
+    }
+    s.nodes = nodes;
+    const weak = {};
+    for (const [k, v] of Object.entries(s.weak)) {
+      if (v && typeof v === 'object') {
+        weak[k] = {
+          nodeId: String(v.nodeId || ''),
+          concept: String(v.concept || ''),
+          misses: Math.max(0, v.misses | 0),
+          ts: Number.isFinite(v.ts) ? v.ts : 0,
+        };
+      }
+    }
+    s.weak = weak;
+    const daily = {};
+    for (const [k, v] of Object.entries(s.daily)) {
+      if (v && typeof v === 'object') {
+        daily[k] = { qid: typeof v.qid === 'string' ? v.qid : null, done: !!v.done, correct: !!v.correct };
+      }
+    }
+    s.daily = daily;
     return s;
   }
 
@@ -2499,6 +2552,7 @@ const Store = (() => {
     state.streak.last = today;
     if (state.streak.count >= 3) grant('hot_streak');
     if (state.streak.count >= 7) grant('studio_regular');
+    save();
   }
 
   /* ---- XP & levels ---- */
@@ -2634,8 +2688,8 @@ const Store = (() => {
     return { date: t, ...state.daily[t] };
   }
 
-  function completeDaily(correct) {
-    const t = todayStr();
+  function completeDaily(dateStr, correct) {
+    const t = dateStr || todayStr();
     if (state.daily[t] && !state.daily[t].done) {
       state.daily[t].done = true;
       state.daily[t].correct = !!correct;
@@ -2877,7 +2931,9 @@ const UI = (() => {
     const box = el('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true' }, children);
     veil.appendChild(box);
     veil.addEventListener('click', (e) => { if (e.target === veil && !(opts && opts.sticky)) close(); });
-    function close() { veil.remove(); }
+    const onKey = (e) => { if (e.key === 'Escape' && !(opts && opts.sticky)) close(); };
+    document.addEventListener('keydown', onKey);
+    function close() { document.removeEventListener('keydown', onKey); veil.remove(); }
     document.body.appendChild(veil);
     return { close, box };
   }
@@ -3004,7 +3060,7 @@ const Views = (() => {
     let resolved = false;
 
     const root = el('div', { class: 'col', style: 'gap:12px' });
-    const feedbackSlot = el('div');
+    const feedbackSlot = el('div', { 'aria-live': 'polite' });
     const controls = el('div', { class: 'col', style: 'gap:10px' });
 
     function resolve(correct, revealed) {
@@ -3094,7 +3150,8 @@ const Views = (() => {
           if (exhausted) {
             optBtns.forEach((b, j) => { b.disabled = true; if (j === q.answer) b.classList.add('right'); });
           } else {
-            setTimeout(() => optBtns[chosen] && optBtns[chosen].classList.remove('wrong'), 900);
+            const picked = chosen;
+            setTimeout(() => optBtns[picked] && optBtns[picked].classList.remove('wrong'), 900);
             chosen = -1;
             checkBtn.disabled = true;
           }
@@ -3448,9 +3505,7 @@ const Views = (() => {
           if (res.correct) {
             correctCount += 1;
             if (res.firstTry) firstTryCount += 1;
-            const xp = share > 0 ? (res.firstTry ? share : share / 2) : 0;
-            earned += xp;
-            if (xp > 0) App.awardXp(Math.round(xp));
+            earned += share > 0 ? (res.firstTry ? share : share / 2) : 0;
           }
           trackCells[idx].className = res.correct ? 'done' : 'fail';
           const isLast = idx === n - 1;
@@ -3689,7 +3744,7 @@ const Views = (() => {
           el('div', { class: 'zone-title' }, z.title),
           el('div', { class: 'zone-tag' }, z.tagline)),
         el('div', { class: 'zone-meta' }, live
-          ? ZONES[0].nodeOrder.filter(Store.isDone).length + '/' + z.nodeOrder.length
+          ? z.nodeOrder.filter(Store.isDone).length + '/' + z.nodeOrder.length
           : 'LOCKED'));
       rack.appendChild(headBtn);
 
@@ -3803,11 +3858,7 @@ const Views = (() => {
           onResolved: (res) => {
             if (res.correct) {
               if (res.firstTry) firstTryCount += 1;
-              if (!alreadyDone) {
-                const xp = Math.round(res.firstTry ? share : share / 2);
-                earned += xp;
-                App.awardXp(xp);
-              }
+              if (!alreadyDone) earned += res.firstTry ? share : share / 2;
             }
             holder.appendChild(el('div', { class: 'action-bar' },
               el('button', { class: 'btn primary block', onclick: () => { step += 1; renderStep(); } },
@@ -3819,6 +3870,8 @@ const Views = (() => {
         return;
       }
       // recap
+      earned = Math.round(earned);
+      if (earned > 0) App.awardXp(earned);
       const { stars: starCount } = Store.completeNode(node.id, firstTryCount, node.checks.length);
       App.flushAchievements();
       slot.replaceChildren(
@@ -3857,6 +3910,7 @@ const Views = (() => {
       baseXp: alreadyDone ? 0 : XP_RULES.challenge,
       nodeId: node.id,
       onFinish: (result) => {
+        if (result.earned > 0) App.awardXp(result.earned);
         Store.completeNode(node.id, result.firstTry, result.total);
         App.flushAchievements();
         completionSheet(node, result, null);
@@ -3889,6 +3943,7 @@ const Views = (() => {
       stepStart: alreadyDone ? 0 : savedStep,
       onStep: (i) => { if (!alreadyDone) Store.setProjectStep(node.id, i); },
       onFinish: (result) => {
+        if (result.earned > 0) App.awardXp(result.earned);
         Store.completeNode(node.id, result.firstTry, result.total);
         App.flushAchievements();
         completionSheet(node, result, null);
@@ -3949,6 +4004,7 @@ const Views = (() => {
         onFinish: (result) => {
           const passed = result.correct >= 4;
           if (passed) {
+            if (result.earned > 0) App.awardXp(result.earned);
             Store.completeNode(node.id, result.firstTry, result.total);
             App.flushAchievements();
             completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
@@ -3957,7 +4013,7 @@ const Views = (() => {
               el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
                 el('div', { class: 'eyebrow red', style: 'justify-content:center' }, 'SESSION FAILED'),
                 el('div', { class: 'h-display' }, result.correct + ' / ' + result.total + ' stages cleared'),
-                el('p', { class: 'small dim' }, 'You need 4. The plugin is still broken — but now you know exactly which concepts to sharpen. XP from cleared stages is yours to keep.')),
+                el('p', { class: 'small dim' }, 'You need 4. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
               el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
               el('button', { class: 'btn block', onclick: () => App.go('boss', { id: node.id }) }, 'Try again'),
               el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
@@ -4079,7 +4135,7 @@ const Views = (() => {
     holder.appendChild(questionView(q, {
       onWrongAttempt: () => Store.markWeak(q.qid, Engine.QINDEX[d.qid].nodeId, q.concept),
       onResolved: (res) => {
-        Store.completeDaily(res.correct);
+        Store.completeDaily(d.date, res.correct);
         if (res.correct) App.awardXp(res.firstTry ? XP_RULES.daily : XP_RULES.daily / 2);
         App.flushAchievements();
         holder.appendChild(el('div', { class: 'action-bar' },
@@ -4187,7 +4243,7 @@ const Views = (() => {
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
       el('div', { class: 'col mt-m', style: 'gap:2px' }, ZONE1_LESSONS.map((l) => {
         const ns = st.nodes[l.id];
-        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => App.openNode(l.id) },
+        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),
           ns && ns.done ? UI.stars(ns.stars) : el('span', { class: 'mono small faint' }, Store.isUnlocked('z1', l.id) ? 'NOT DONE' : 'LOCKED'));
       }))));

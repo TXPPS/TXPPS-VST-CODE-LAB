@@ -83,7 +83,7 @@ const ZONE1_CHALLENGES = [
         options: [
           { t: '`Voice(float f, float l) : frequency(f), level(l) {}`', why: '' },
           { t: '`Voice(float f, float l) { f = frequency; l = level; }`', why: 'Backwards — this copies the *uninitialized members into the parameters*, leaving frequency and level as garbage.' },
-          { t: '`void Voice(float f, float l) : frequency(f), level(l) {}`', why: 'Constructors have no return type — not even void. Adding one makes this an ordinary (broken) function declaration.' },
+          { t: '`void Voice(float f, float l) : frequency(f), level(l) {}`', why: 'Constructors have no return type — not even void. This is a hard compile error (gcc: \"return type specification for constructor invalid\") — only a constructor may share the class\'s name and carry an initializer list.' },
           { t: '`Voice() : frequency, level {}`', why: 'Initializer list entries need values: `frequency(f)`. Bare names don\'t compile.' },
         ],
         answer: 0,
@@ -395,13 +395,14 @@ const ZONE1_CHALLENGES = [
           type: 'fill', concept: 'control-flow',
           prompt: 'Clamp the gain into the range 0.0 to 2.0 using std::clamp(value, low, high).',
           code: 'float safeGain = std::clamp(gain, ___);',
-          accept: ['0.0f, 2.0f', '0.0f,2.0f', '0.f, 2.f', '0.f,2.f', '0.0, 2.0', '0.0,2.0', '0, 2', '0,2', '0.0f, 2.f', '0.f, 2.0f'],
+          accept: ['0.0f, 2.0f', '0.0f,2.0f', '0.f, 2.f', '0.f,2.f', '0.0f, 2.f', '0.f, 2.0f'],
           placeholder: 'low, high',
           hint: 'Two arguments: the floor, then the ceiling.',
           mistakes: [
             { match: '^2.*0', msg: 'Order matters: std::clamp(value, low, high) — low first. Swapped bounds are undefined behavior.' },
+            { match: '^0(\\.0)?\\s*,\\s*2(\\.0)?$', msg: 'Close — but std::clamp is a template that deduces ONE type from all three arguments. gain is a float, so int or double bounds fail to compile ("deduced conflicting types"). Give the bounds the f suffix: 0.0f, 2.0f.' },
           ],
-          explain: 'std::clamp(gain, 0.0f, 2.0f) pins the value into [0, 2]. Defensive clamping at the edges of your DSP is a professional habit — hosts and automation can and do send out-of-range values.',
+          explain: 'std::clamp(gain, 0.0f, 2.0f) pins the value into [0, 2]. All three arguments must be the same type — std::clamp deduces one template type, so float value + int bounds refuses to compile (a famous gotcha). Defensive clamping at the edges of your DSP is a professional habit — hosts and automation send out-of-range values.',
         },
       },
       {
@@ -537,7 +538,7 @@ const ZONE1_CHALLENGES = [
         type: 'compiler', concept: 'compiler-errors',
         prompt: 'Stage 1 — It won\'t build. What\'s the fix?',
         code: 'class GainPlug {\npublic:\n    void setGain(float g);\nprivate:\n    float gain = 1.0f;\n}\n\nvoid GainPlug::setGain(float g)\n{\n    gain = g;\n}',
-        error: "GainPlug.h:9:1: error: expected ';' after class definition\n    9 | void GainPlug::setGain(float g)\n      | ^",
+        error: "GainPlug.h:6:2: error: expected ';' after class definition\n    6 | }\n      |  ^\n      |  ;",
         options: [
           { t: 'Add `;` after the class\'s closing brace: `};`', why: '' },
           { t: 'Remove the `GainPlug::` prefix from setGain', why: 'The prefix is required to define a member outside the class. The error names exactly what\'s missing: a semicolon after the class definition.' },
