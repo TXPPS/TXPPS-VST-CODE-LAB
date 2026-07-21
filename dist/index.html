@@ -381,6 +381,62 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .callout.mistake .co-head { color: var(--red); }
 .callout.warn .co-head { color: var(--amber); }
 
+/* lesson hook — the familiar studio situation */
+.hook {
+  font-size: 16.5px; line-height: 1.55; color: var(--ink);
+  border-left: 3px solid var(--phos);
+  padding: 4px 2px 4px 14px;
+}
+
+/* diagram wrapper */
+.viz-wrap {
+  background: #07090B;
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  padding: 10px 8px 6px;
+}
+.viz-wrap svg { display: block; width: 100%; height: auto; }
+.viz-cap {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-faint);
+  padding: 6px 4px 2px;
+}
+
+/* piece-by-piece code breakdown (sits under a code panel) */
+.breakdown {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-sm);
+  background: #0B0E12;
+  padding: 10px 12px;
+  margin-top: -6px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.bd-head {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+  color: var(--ink-faint);
+}
+.bd-row { display: flex; gap: 10px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+.bd-code {
+  font-family: var(--mono); font-size: 11.5px; color: var(--phos);
+  flex: none; width: 118px; overflow-wrap: break-word;
+}
+.bd-what { color: var(--ink-dim); }
+
+/* end-of-lesson panels */
+.callout.remember {
+  border-left-color: var(--phos);
+  background: linear-gradient(90deg, rgba(93,232,148,0.09), var(--bg2));
+}
+.callout.remember .co-head { color: var(--phos); }
+.callout.remember .co-body { font-size: 15.5px; color: var(--ink); line-height: 1.5; }
+.plugin-use { display: flex; gap: 10px; align-items: baseline; }
+.pu-name {
+  flex: none; width: 92px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--phos);
+}
+.pu-desc { font-size: 13.5px; color: var(--ink-dim); line-height: 1.45; }
+
 /* progress dots inside lesson */
 .dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .dots i {
@@ -756,11 +812,17 @@ const DAILY_POOL = [
 ;
 /* ===== src/js/data_zone1_lessons.js ===== */
 /* ============================================================
-   ZONE 1 — C++ SIGNAL PATH: lesson content.
-   Shape: { id, kind:'lesson', title, short, concepts, objective,
-            sections:[{h, body, code?, codeTitle?, analogy?, mistake?, warn?}],
-            checks:[Question...], recap:[...] }
-   Question ids are assigned as `${nodeId}.q${n}` when indexed.
+   ZONE 1 — C++ SIGNAL PATH: lesson content (lessons 1–6).
+   Lessons 7–12 are appended in data_zone1_lessons_b.js.
+
+   Teaching structure per lesson (producer-first):
+     hook      — a familiar studio situation, before any jargon
+     sections  — one idea each: behind-the-scenes → the C++ →
+                 breakdown of every piece → where it shows up
+     checks    — interactive (ids `${nodeId}.q${n}`; stable!)
+     recap     — short bullets
+     inside    — 🎛 Inside a Real Plugin panel
+     analogyPanel / beginnerMistake / remember — end panels
    Text markup: `code`, **bold**.
    ============================================================ */
 
@@ -770,23 +832,33 @@ const ZONE1_LESSONS = [
   {
     id: 'l1', kind: 'lesson', title: 'Signals & Variables', short: 'Variables and types',
     concepts: ['variables', 'types'],
-    objective: 'Choose the right C++ type for audio data, MIDI data and on/off state — and understand why samples are floats.',
+    hook: 'You turn a knob in your favorite synth. You let go. The plugin still knows exactly where you left it — even after you save and reopen the session. Where does that number live?',
+    objective: 'Find out where every knob value actually lives — and pick the right kind of number for audio, MIDI and switches.',
     sections: [
       {
-        h: 'Every value needs a type',
-        body: 'In C++ every variable declares its **type** up front, and the type never changes. Audio code leans on four workhorses: `float` for signal values, `int` for counts and MIDI data, `bool` for on/off state, and `double` for high-precision math like phase accumulators.',
-        code: 'float gain = 0.5f;      // signal level\nint   midiNote = 60;    // middle C\nbool  bypassed = false; // on/off state\ndouble phase = 0.0;     // high-precision position',
-        codeTitle: 'four workhorse types',
-        analogy: 'A patch cable carries audio, a MIDI cable carries notes, a footswitch carries on/off. You never plug a MIDI cable into an audio input — C++ types are the same idea: each variable is a jack that only accepts one kind of value.',
+        h: 'Every knob is a remembered number',
+        body: 'Move the cutoff. Behind the panel, the plugin stores that position as a number, and the DSP reads it constantly. That remembered number is called a **variable** — your first real piece of plugin code.',
+        viz: { t: 'knobToVar', knob: 'CUTOFF', code: 'float cutoff = 1200.0f;' },
+        code: 'float cutoff = 1200.0f;',
+        codeTitle: 'a knob, in code',
+        breakdown: [
+          ['float', 'the kind of value: a number with a decimal point'],
+          ['cutoff', 'the name you chose for it'],
+          ['=', 'store what follows inside it'],
+          ['1200.0f', 'the value right now — the f says "this is a float"'],
+          [';', 'end of the instruction (every one ends with it)'],
+        ],
       },
       {
-        h: 'Samples are floats',
-        body: 'Inside a plugin, one audio **sample** is a `float`, usually between **-1.0 and +1.0** — the same range you see on a bipolar waveform display. The `f` suffix (`0.5f`) marks a float literal; without it, `0.5` is a `double` that gets converted, which is a silent extra step you don\'t want scattered through DSP code.',
-        mistake: { text: 'Writing `float gain = 0.5;` compiles, but the literal is a `double` first. Harmless once — noisy and sloppy across thousands of DSP lines. Get in the habit: `0.5f`.' },
+        h: 'Four kinds of values',
+        body: 'C++ asks what *kind* of value each variable holds — and you already know all four from your DAW: knob positions and samples are `float`, MIDI notes and counters are `int`, switches are `bool`, and extra-precise things like an oscillator\'s phase use `double`.',
+        code: 'float gain = 0.5f;      // knob position\nint   midiNote = 60;    // middle C\nbool  bypassed = false; // on/off switch\ndouble phase = 0.0;     // high-precision position',
+        codeTitle: 'the four workhorses',
       },
       {
-        h: 'Integer math truncates',
-        body: 'When both sides of a division are `int`, C++ performs **integer division** and throws away the remainder: `3 / 2` is `1`, not `1.5`. This is a top-five source of silent DSP bugs — a half-speed LFO or a detune that never detunes. If you want fractional results, make at least one side a float: `3 / 2.0f`.',
+        h: 'The audio itself is numbers too',
+        body: 'Zoom into any waveform: it\'s thousands of tiny measurements, each one a `float`, normally between **-1.0** and **+1.0**. One trap to learn on day one: when two whole numbers divide, C++ throws the remainder away — `3 / 2` gives `1`, not 1.5.',
+        viz: { t: 'wave', type: 'samples' },
       },
     ],
     checks: [
@@ -835,27 +907,43 @@ const ZONE1_LESSONS = [
       'Use the `f` suffix on float literals: `0.5f`.',
       'int / int truncates — a classic silent DSP bug.',
     ],
+    inside: [
+      { name: 'Synth', use: 'cutoff, resonance, osc mix — every panel control is a float underneath' },
+      { name: 'Sampler', use: 'start point and loop points are ints — counted in samples' },
+      { name: 'Delay', use: 'delay time and feedback amount live in floats' },
+      { name: 'Compressor', use: 'threshold and ratio: floats the DSP reads on every sample' },
+      { name: 'Any plugin', use: 'the bypass switch is a bool; MIDI notes arrive as ints (0–127)' },
+    ],
+    analogyPanel: 'A variable is the memory behind a knob. The knob is just the handle you grab — the number it stores is what the DSP actually reads, thousands of times a second.',
+    beginnerMistake: 'Expecting `3 / 2` to give 1.5. When both sides are whole numbers, C++ drops the remainder — the classic cause of a "50% mix" knob that outputs silence. Make one side a float: `3 / 2.0f`.',
+    remember: 'Every knob you have ever moved is just a number stored in a variable.',
   },
 
   /* ---------------------------------------------------------- L2 */
   {
     id: 'l2', kind: 'lesson', title: 'Locked Controls: const', short: 'const and constexpr',
     concepts: ['const'],
-    objective: 'Use const to make values read-only, so the compiler catches accidental modification for you.',
+    hook: 'Your session runs at 48 kHz. Imagine if any plugin could quietly change that mid-take. Some values must be set once — then locked.',
+    objective: 'Lock the values that should never change, so mistakes get caught before they can ever reach your speakers.',
     sections: [
       {
-        h: 'const means read-only',
-        body: 'Mark a variable `const` and the compiler **rejects any code that tries to change it**. That\'s not a runtime check — it\'s a compile-time guarantee, caught before the plugin ever runs. Values that are known at compile time can go further and use `constexpr`.',
-        code: 'const float maxGain = 2.0f;\nconstexpr float twoPi = 6.28318530718f;\n\nmaxGain = 3.0f; // ERROR: assignment of read-only variable',
-        codeTitle: 'const in action',
-        analogy: 'Once a session is rolling, the sample rate is locked — nobody flips a session from 44.1k to 96k mid-take. `const` puts that same lock on a value: anyone who reaches for it gets stopped at the door.',
+        h: 'Some numbers must not move',
+        body: 'A plugin learns the sample rate when the session starts, and from then on nothing should touch it. In C++ you write that rule into the code with one word: `const`. Any code that tries to change a locked value simply **refuses to build**. (Its stricter cousin `constexpr` locks a value even before the plugin runs.)',
+        code: 'const float sampleRate = 48000.0f;\n\nsampleRate = 44100.0f; // ✗ refuses to build',
+        codeTitle: 'a locked value',
+        breakdown: [
+          ['const', '"locked — read it, never rewrite it"'],
+          ['float', 'still an ordinary decimal number'],
+          ['sampleRate', 'the name'],
+          ['= 48000.0f', 'set once, right here — the only chance'],
+        ],
       },
       {
-        h: 'const parameters protect callers',
-        body: 'Big objects are expensive to copy, so C++ often passes them **by const reference**: `const Preset& p`. The reference avoids the copy, and the `const` promises the function will only *read* the object. The caller hands over the original, knowing it can\'t be modified.',
-        code: 'void printPresetName(const Preset& preset)\n{\n    // read-only access: fast, and provably safe\n}',
-        codeTitle: 'const reference parameter',
-        mistake: { text: 'Beginners default everything to mutable and hunt down "who changed this value?" bugs later. Professionals default to `const` and remove it only where mutation is genuinely needed.' },
+        h: 'Lending values without risk',
+        body: 'Plugins hand big things around constantly — a preset, a wavetable. Copying them every time would burn CPU. Instead, C++ *lends* the original marked read-only: like sharing your project file as **view-only**. The `&` means "the original, not a copy" — a full lesson on it is coming soon.',
+        viz: { t: 'chain', nodes: ['your Preset', 'view-only loan', 'showPreset()'], accent: 1, caption: 'no copy made — and it can\'t be modified' },
+        code: 'void showPreset(const Preset& preset)\n{\n    // look, don\'t touch\n}',
+        codeTitle: 'read-only lending',
       },
     ],
     checks: [
@@ -899,27 +987,42 @@ const ZONE1_LESSONS = [
       'Pass large read-only objects by `const&` to skip the copy.',
       'Default to const; remove it only where mutation is intended.',
     ],
+    inside: [
+      { name: 'Synth', use: 'twoPi and tuning constants inside every oscillator' },
+      { name: 'Delay', use: 'the maximum delay time — fixed when the buffer is sized' },
+      { name: 'Reverb', use: 'the room-model constants that define the algorithm' },
+      { name: 'Any plugin', use: 'reading parameter values in the audio path without modifying them' },
+    ],
+    analogyPanel: '`const` is the locked sample rate of a rolling session: everyone can read it, nobody flips it mid-take.',
+    beginnerMistake: 'Leaving everything changeable "to keep it simple" — then spending a night hunting whoever changed a value. Lock what shouldn\'t move and the compiler does the hunting for you, instantly.',
+    remember: 'If a value should never change, say so with const — and let the compiler stand guard.',
   },
 
   /* ---------------------------------------------------------- L3 */
   {
     id: 'l3', kind: 'lesson', title: 'Functions: Signal In, Signal Out', short: 'Functions, parameters, returns',
     concepts: ['functions'],
-    objective: 'Read and write function signatures: return type, name, parameters — and understand the flow of data through a call.',
+    hook: 'Every pedal on your board does one job: signal goes in, the circuit works, signal comes out. C++ has the exact same building block.',
+    objective: 'Build and read the "pedals" of C++ — named blocks of processing with inputs, a circuit, and an output.',
     sections: [
       {
-        h: 'Anatomy of a function',
-        body: 'A function is a named, reusable block of processing. Its **signature** tells you everything about how to use it: what comes out (**return type**), what it\'s called, and what goes in (**parameters**).',
-        code: '//  return   name       parameters\n//  ┌─┴──┐ ┌───┴───┐ ┌──────────┴──────────┐\n    float  applyGain (float sample, float gain)\n    {\n        return sample * gain;  // the output\n    }',
-        codeTitle: 'signature anatomy',
-        analogy: 'A function is a pedal on your board. Parameters are the input jack plus the knob settings you hand it; the body is the circuitry inside; the return value is the processed signal at the output jack. Calling the function is plugging a signal through the pedal.',
+        h: 'A function is a pedal',
+        body: 'A **function** is a named block of processing: feed it values, it does its one job, it hands the result back. Here\'s a one-knob gain pedal, in code:',
+        viz: { t: 'chain', nodes: ['sample in', 'applyGain()', 'sample out'], accent: 1 },
+        code: 'float applyGain(float sample, float gain)\n{\n    return sample * gain;\n}',
+        codeTitle: 'a gain pedal, in code',
+        breakdown: [
+          ['float (first)', 'what comes out: one processed sample'],
+          ['applyGain', 'the pedal\'s name'],
+          ['(float sample, float gain)', 'the inputs: the signal, plus the knob setting'],
+          ['return sample * gain;', 'do the job, send the result out the output jack'],
+        ],
       },
       {
-        h: 'Calling and using the result',
-        body: 'When you call `applyGain(0.8f, 0.5f)`, the arguments are copied into the parameters, the body runs, and `return` sends a value back to wherever the call happened. A function with return type `void` returns nothing — it acts, rather than answers.',
-        code: 'float out = applyGain(0.8f, 0.5f); // out == 0.4f\n\nvoid reset()   // returns nothing — it just acts\n{\n    // clear state here\n}',
+        h: 'Plugging in',
+        body: 'Calling the function runs a signal through the pedal: `applyGain(0.8f, 0.5f)` hands back `0.4f`. Store the result, or feed it straight into the next function — pedals into pedals, exactly like an FX chain. A function marked `void` returns nothing: it just *acts*, like tapping a footswitch.',
+        code: 'float out = applyGain(0.8f, 0.5f); // out == 0.4f\n\nvoid reset()   // acts — returns nothing\n{\n    // clear state here\n}',
         codeTitle: 'calling functions',
-        mistake: { text: 'Calling a non-void function and ignoring its return value — `applyGain(x, 0.5f);` on its own line — computes the result and throws it away. The signal was processed, but nothing was patched to the output.' },
       },
     ],
     checks: [
@@ -961,25 +1064,41 @@ const ZONE1_LESSONS = [
       '`void` functions act instead of answering.',
       'Don\'t discard a return value you needed.',
     ],
+    inside: [
+      { name: 'EQ', use: 'each band is a function: sample in, shaped sample out' },
+      { name: 'Distortion', use: 'the waveshaper is one function applied to every sample' },
+      { name: 'Synth', use: 'nextSample() on an oscillator — you\'ll write it in this zone' },
+      { name: 'Delay', use: 'read and write functions move audio through the delay line' },
+    ],
+    analogyPanel: 'Functions are pedals: parameters are the input jack plus knob settings, the body is the circuit, return is the output jack — and calling one is plugging your signal through it.',
+    beginnerMistake: 'Running a signal through the pedal and never patching the output: `applyGain(x, 0.5f);` on its own line computes the result and throws it away. Store it: `x = applyGain(x, 0.5f);`.',
+    remember: 'Signal in, processing inside, signal out — every function is a pedal.',
   },
 
   /* ---------------------------------------------------------- L4 */
   {
     id: 'l4', kind: 'lesson', title: 'Gates & Thresholds: if / else', short: 'Branching with if/else',
     concepts: ['control-flow'],
-    objective: 'Route program flow with if / else if / else, and dodge the = vs == trap.',
+    hook: 'Watch a noise gate on a vocal bus. Quiet room — closed. The singer leans in — open. The gate is making a decision, thousands of times a second.',
+    objective: 'Teach your code to make decisions — the same threshold logic behind every gate, compressor and limiter.',
     sections: [
       {
-        h: 'Branching on a condition',
-        body: 'An `if` statement runs code only when a condition is true. Chain alternatives with `else if`, and catch everything else with `else`. Exactly **one** branch of the chain runs.',
-        code: 'if (level > 0.9f)\n    state = "hot";\nelse if (level > 0.5f)\n    state = "healthy";\nelse\n    state = "quiet";',
-        codeTitle: 'level meter logic',
-        analogy: 'A noise gate is a living if-statement: **if** the input rises above the threshold, the gate opens and signal passes; **else**, it stays closed. Compressors, limiters and envelope followers are all built on threshold branches like this.',
+        h: 'Code that decides',
+        body: '`if` runs code only when a condition is true; `else` covers everything else. That\'s a gate: **if** the input rises above the threshold, let signal through — **else**, stay closed.',
+        viz: { t: 'gate' },
+        code: 'if (input > threshold)\n    open();    // signal passes\nelse\n    close();   // silence',
+        codeTitle: 'a noise gate, in code',
       },
       {
-        h: 'The = vs == trap',
-        body: 'One equals sign **assigns**; two equals signs **compare**. Writing `if (bypass = true)` doesn\'t test bypass — it *sets* it to true, and the condition then evaluates that assigned value. The branch always runs and your state is silently corrupted. Compilers warn about this; treat that warning as an error.',
-        mistake: { code: 'if (bypass = true)   // ASSIGNS true, always runs!\n    return;\n\nif (bypass == true)  // compares — what you meant\nif (bypass)          // cleanest for bools', text: 'For bools, skip the comparison entirely: `if (bypass)` reads best and can\'t fall into the trap.' },
+        h: 'Chains of decisions',
+        body: 'Stack alternatives with `else if`. The chain checks top to bottom and runs exactly **one** branch — like a meter deciding which LED to light. (In the checks you\'ll also meet `std::cout << "text"` — that\'s simply C++ for "print this to the screen.")',
+        code: 'if (level > 0.9f)\n    state = "hot";\nelse if (level > 0.5f)\n    state = "healthy";\nelse\n    state = "quiet";',
+        codeTitle: 'level meter logic',
+      },
+      {
+        h: 'The one-character disaster',
+        body: 'One equals sign **stores**; two equals signs **compare**. `if (bypass = true)` doesn\'t check your bypass switch — it *rewrites* it, and the branch always runs. For switches, skip the comparison entirely:',
+        mistake: { code: 'if (bypass = true)   // ✗ REWRITES bypass, always runs\nif (bypass == true)  // compares — what you meant\nif (bypass)          // cleanest for switches', text: 'Compilers warn about `=` inside a condition. Treat that warning like a clip light.' },
       },
     ],
     checks: [
@@ -1028,26 +1147,36 @@ const ZONE1_LESSONS = [
       '`=` assigns, `==` compares. For bools, just `if (flag)`.',
       'Treat compiler warnings on conditions as errors.',
     ],
+    inside: [
+      { name: 'Gate / Comp', use: 'threshold logic is literally if (level > threshold)' },
+      { name: 'Limiter', use: 'if the peak would clip, turn it down — a decision per sample' },
+      { name: 'Synth', use: 'if a voice has gone silent, it can be reused for the next note' },
+      { name: 'Any plugin', use: 'if bypassed, skip the processing entirely' },
+    ],
+    analogyPanel: 'if/else is a gate: above threshold the branch opens, otherwise the else path runs. Compressors, limiters and envelope followers are threshold decisions all the way down.',
+    beginnerMistake: 'Typing `=` when you mean `==`. One stores, two compare — and `if (x = 1)` silently rewrites x. Write `if (bypass)` for switches and the trap can\'t happen.',
+    remember: 'A gate is just an if statement with good marketing.',
   },
 
   /* ---------------------------------------------------------- L5 */
   {
     id: 'l5', kind: 'lesson', title: 'The Waveform Selector: switch', short: 'switch statements',
     concepts: ['control-flow'],
-    objective: 'Select between fixed modes with switch/case, and never forget what break does.',
+    hook: 'Reach for the OSC section on any synth: SINE / SAW / SQUARE / NOISE. One selector, a handful of fixed positions. C++ has a statement shaped exactly like that knob.',
+    objective: 'Handle fixed-position choices — waveforms, filter modes, algorithms — with the selector statement built for them.',
     sections: [
       {
-        h: 'One value, many modes',
-        body: 'When you branch on **one integer-like value with a fixed set of options** — a waveform selector, a filter mode, an FX slot — `switch` says it more clearly than a ladder of else-ifs. Each `case` is one position of the selector; `default` is the fallback.',
+        h: 'One knob, fixed positions',
+        body: 'When one integer-like value picks between **fixed options**, `switch` says it more clearly than a pile of if/elses. Each `case` is one click of the selector; `default` is the "anything else" position. It works on whole-number values (int, char, enums) — not floats.',
+        viz: { t: 'selector', options: ['SINE', 'SAW', 'SQUARE', 'NOISE'], active: 1 },
         code: 'switch (waveform) {\n    case 0:  name = "sine";   break;\n    case 1:  name = "saw";    break;\n    case 2:  name = "square"; break;\n    default: name = "noise";  break;\n}',
-        codeTitle: 'waveform selector',
-        analogy: 'This is a hardware rotary switch: one knob, discrete positions, each wired to a different circuit. `switch` works on integer-like values (int, char, enums) — not floats or strings.',
+        codeTitle: 'the waveform selector',
       },
       {
-        h: 'break, or fall through',
-        body: 'Cases don\'t end themselves. Without `break`, execution **falls through** into the next case and keeps going. Occasionally that\'s used deliberately — but forgetting a `break` is one of the oldest bugs in C, and in a synth it sounds like "why does saw also trigger square?"',
-        mistake: { code: 'case 1: name = "saw";      // no break!\ncase 2: name = "square";   // runs too — saw is overwritten', text: 'If a fallthrough is ever intentional, say so loudly with a comment (or `[[fallthrough]];`) so no one "fixes" it.' },
-        warn: 'Modern compilers can warn on unintentional fallthrough. In Zone 2 you\'ll upgrade raw ints to `enum class Waveform` so the compiler can also warn when a case is missing entirely.',
+        h: 'break — where a position ends',
+        body: 'Cases don\'t end themselves. Without `break`, the code **falls through** into the next case and keeps running — the selector "leaks" into the next position. In a synth, that bug sounds like *"why does saw also trigger square?"*',
+        mistake: { code: 'case 1: name = "saw";      // no break!\ncase 2: name = "square";   // runs too — saw is overwritten', text: 'If a fallthrough is ever intentional, say so loudly with a comment (or `[[fallthrough]];`) so nobody "fixes" it.' },
+        warn: 'In Zone 2 you\'ll upgrade raw numbers to `enum class Waveform` — then the compiler can even warn you when a selector position is missing.',
       },
     ],
     checks: [
@@ -1092,25 +1221,41 @@ const ZONE1_LESSONS = [
       'default catches unknown values.',
       'enum class (Zone 2) makes selectors type-safe.',
     ],
+    inside: [
+      { name: 'Synth', use: 'waveform selectors and filter-type switches (LP / HP / BP)' },
+      { name: 'Sampler', use: 'play mode: one-shot / loop / ping-pong' },
+      { name: 'Delay', use: 'sync mode: free / 1/4 / 1/8 dotted' },
+      { name: 'Reverb', use: 'algorithm choice: room / hall / plate' },
+    ],
+    analogyPanel: 'switch is a rotary selector: whole-number positions, each wired to its own circuit, with default as the "anything else" position.',
+    beginnerMistake: 'Forgetting `break`. Without it the selector leaks into the next position — saw also triggers square. Every case ends with break unless you loudly mean otherwise.',
+    remember: 'switch is a rotary selector; break is the click that stops it turning further.',
   },
 
   /* ---------------------------------------------------------- L6 */
   {
     id: 'l6', kind: 'lesson', title: 'The Block Loop', short: 'Loops over buffers',
     concepts: ['loops'],
-    objective: 'Write the loop at the heart of every plugin: visit each sample in a buffer exactly once.',
+    hook: 'Your DAW never asks a plugin for one sample. It hands over a block — say 512 samples — and says: process all of these, right now. The tool for "do this to every sample" is a loop.',
+    objective: 'Write the loop at the heart of every plugin: visit each sample in a block exactly once.',
     sections: [
       {
-        h: 'Audio arrives in blocks',
-        body: 'Your DAW doesn\'t hand a plugin one sample at a time — it delivers a **block** (say 512 samples), and the plugin loops over every sample, processes it, and returns the block. This `for` loop is the single most important pattern in audio programming: **start at 0, run while `i < numSamples`, step by one**.',
+        h: 'The block loop',
+        body: 'Audio arrives in **blocks**. Your code walks through the block one sample at a time with a `for` loop — a counter that starts at the first slot, moves one step per pass, and stops at the end. This is the single most important pattern in audio programming:',
+        viz: { t: 'buffer', n: 8, cursor: 2, highlight: 2, label: 'ONE BLOCK OF SAMPLES', caption: 'the counter i visits every slot exactly once' },
         code: 'for (int i = 0; i < numSamples; ++i)\n{\n    buffer[i] = buffer[i] * gain;\n}',
         codeTitle: 'the canonical block loop',
-        analogy: 'The DAW is a tape machine that hands you one reel (block) at a time. The loop is you rolling through that reel sample by sample. When the reel ends, the DAW immediately hands you the next — that repeated hand-off is the audio callback you\'ll meet in Zone 3.',
+        breakdown: [
+          ['int i = 0', 'start a counter at the first slot (slot zero!)'],
+          ['i < numSamples', 'keep going while samples remain'],
+          ['++i', 'step to the next sample after each pass'],
+          ['buffer[i]', 'the sample the counter is currently pointing at'],
+        ],
       },
       {
         h: 'Counting from zero, stopping before the end',
-        body: 'Arrays start at index **0**, so a 512-sample buffer has valid indexes 0 through **511**. That\'s why the condition is `i < numSamples`, never `i <= numSamples` — the `<=` version reads one slot past the end. `while` loops handle open-ended repetition, but for a known count, `for` is the tool.',
-        mistake: { code: 'for (int i = 0; i <= numSamples; ++i) // reads buffer[numSamples]\n                                       // one past the end!', text: 'Off-by-one on a buffer is undefined behavior: at best a click, at worst a crash in the DAW. The safe habit: `<` with a zero start.' },
+        body: 'Slots are numbered from **0**, so a 512-sample block has slots 0 through **511**. That\'s why the condition is `i < numSamples` — the `<=` version takes one step too many, into memory that isn\'t yours. (`for` when you know the count; `while` for open-ended repeats.)',
+        mistake: { code: 'for (int i = 0; i <= numSamples; ++i) // ✗ one step too far\n                                       // touches buffer[numSamples]', text: 'That one extra step is **undefined behavior**: maybe a click, maybe a crash in the DAW three minutes later. The safe habit: start at 0, compare with `<`.' },
       },
     ],
     checks: [
@@ -1160,32 +1305,59 @@ const ZONE1_LESSONS = [
       'Indexes run 0 … n-1: `<` not `<=`.',
       'Known count → for; open-ended → while.',
     ],
+    inside: [
+      { name: 'Every effect', use: 'processBlock is this exact loop wrapped around your DSP' },
+      { name: 'Synth', use: 'each voice renders its part of the block in a loop' },
+      { name: 'Delay', use: 'one loop moves audio through the delay line, sample by sample' },
+      { name: 'Meter', use: 'a loop finds the loudest sample in each block' },
+    ],
+    analogyPanel: 'The DAW is a tape machine handing you one reel (block) at a time; the loop is you rolling through that reel sample by sample. That repeated hand-off is the audio callback you\'ll meet in Zone 3.',
+    beginnerMistake: 'Writing `<=` and stepping one slot past the end of the block. That single extra pass is undefined behavior — the click-today, crash-tomorrow kind of bug.',
+    remember: 'for (int i = 0; i < numSamples; ++i) — the most important line in audio programming.',
   },
+];
+
+;
+/* ===== src/js/data_zone1_lessons_b.js ===== */
+/* ============================================================
+   ZONE 1 — lesson content, lessons 7–12 (appended to
+   ZONE1_LESSONS defined in data_zone1_lessons.js).
+   Same shape and teaching structure as part A.
+   ============================================================ */
+
+ZONE1_LESSONS.push(
 
   /* ---------------------------------------------------------- L7 */
   {
     id: 'l7', kind: 'lesson', title: 'Buffers: Arrays & std::vector', short: 'Arrays and std::vector',
     concepts: ['containers'],
-    objective: 'Store sequences of samples in fixed arrays and resizable vectors — and know when resizing is forbidden.',
+    hook: 'A delay pedal doesn\'t "slow down" audio — it remembers it. Inside is a memory bank holding the last second of sound, replayed a moment later. Time to build memory banks.',
+    objective: 'Store rows of samples — fixed banks and resizable ones — and learn when resizing is forbidden.',
     sections: [
       {
-        h: 'Fixed arrays',
-        body: 'An **array** is a fixed-length row of values of one type, sitting side by side in memory. Size is set at compile time and never changes. Indexing starts at **0**: a 4-slot array has slots 0, 1, 2, 3.',
-        code: 'float window[4] = { 0.1f, 0.4f, 0.4f, 0.1f };\nfloat first = window[0];  // 0.1f\nfloat last  = window[3];  // 0.1f — index 3, not 4',
-        codeTitle: 'fixed array',
-        analogy: 'A fixed array is a hardware step sequencer: 16 slots, wired in, forever. You can change what\'s *in* each slot, never how many slots exist.',
+        h: 'A row of slots',
+        body: 'An **array** is a fixed row of values, side by side, numbered from **0**. Like a hardware step sequencer: 16 slots, wired in forever. You can change what\'s *in* a slot — never how many slots exist.',
+        viz: { t: 'buffer', n: 4, values: ['0.1', '0.4', '0.4', '0.1'], highlight: 0, label: 'float window[4]', caption: 'first slot is window[0] — last of four is window[3]' },
+        code: 'float window[4] = { 0.1f, 0.4f, 0.4f, 0.1f };\nfloat first = window[0];  // 0.1f\nfloat last  = window[3];  // index 3, not 4',
+        codeTitle: 'a fixed array',
       },
       {
-        h: 'std::vector — the resizable buffer',
-        body: '`std::vector<float>` is the workhorse container of C++: an array that can **grow and shrink at runtime**. It knows its own size (`.size()`), you can `.resize()` it, and `.push_back()` appends. This is what you\'ll use for delay lines, wavetables and working buffers.',
-        code: 'std::vector<float> delayLine;\ndelayLine.resize(48000);      // one second at 48kHz\ndelayLine[0] = 0.25f;\nint n = (int) delayLine.size(); // 48000',
+        h: 'The resizable bank: std::vector',
+        body: '`std::vector<float>` is the workhorse: a row of floats that can **change size while the plugin runs**. It knows its own length (`.size()`), and `.resize()` sets how many slots it holds. Delay lines, wavetables, working buffers — this is what they\'re made of.',
+        code: 'std::vector<float> delayLine;\ndelayLine.resize(48000);   // one second at 48kHz\ndelayLine[0] = 0.25f;',
         codeTitle: 'a delay line',
-        warn: 'Growing a vector can **allocate heap memory**, and allocation can take an unpredictable amount of time. That\'s fine during setup — but inside the audio callback it can cause dropouts. Rule: **size your buffers in prepareToPlay, never in processBlock.** Zone 2 goes deep on why.',
+        breakdown: [
+          ['std::vector<float>', 'a resizable row of floats'],
+          ['delayLine', 'the name — this will remember audio'],
+          ['.resize(48000)', 'give it 48,000 slots, all starting at silence'],
+          ['delayLine[0]', 'read or write slot 0, like any array'],
+        ],
       },
       {
-        h: 'Stay in bounds',
-        body: 'Neither arrays nor `operator[]` on vectors check your index. Reading `buffer[512]` on a 512-sample buffer reaches into memory you don\'t own — **undefined behavior**: maybe garbage audio, maybe a crash three minutes later in an unrelated function. The bounds live in your loop condition; write them carefully.',
-        mistake: { code: 'for (int i = 0; i <= buffer.size(); ++i) // one too far', text: '`<=` with size() walks one slot past the end. (Also: size() returns an unsigned type — comparing it with int draws a compiler warning worth heeding.)' },
+        h: 'Size it backstage, never on stage',
+        body: 'Growing a vector can ask the system for **new memory**, and that can take an unpredictable amount of time. During setup: fine. While audio is running: that pause becomes a **glitch**. And one more rule: nothing stops you reading past the last slot — except your own loop bounds.',
+        mistake: { code: 'for (int i = 0; i <= buffer.size(); ++i) // ✗ one slot too far', text: '`<=` with size() walks one slot past the end — undefined behavior. (Also: size() is an unsigned number; comparing it with int draws a compiler warning worth heeding.)' },
+        warn: 'The rule that will follow you through this whole course: **size buffers in prepareToPlay, only read and write them in processBlock.** Zone 2 explains exactly why.',
       },
     ],
     checks: [
@@ -1233,27 +1405,42 @@ const ZONE1_LESSONS = [
       'Size buffers during setup (prepareToPlay), never in the audio callback.',
       'Out-of-bounds access is undefined behavior — bounds live in your loop conditions.',
     ],
+    inside: [
+      { name: 'Delay', use: 'the delay line is a vector sized to the maximum delay time' },
+      { name: 'Sampler', use: 'the loaded sample lives in one big vector of floats' },
+      { name: 'Synth', use: 'wavetables are arrays your oscillator reads its shapes from' },
+      { name: 'Chorus', use: 'a short delay line — same vector, smaller size' },
+    ],
+    analogyPanel: 'An array is a hardware step sequencer: slots wired in forever. A vector is a modular case you can re-rack between sessions — but never mid-performance.',
+    beginnerMistake: 'Growing a buffer while audio is running (push_back in the callback). Growth can allocate, allocation can stall, and a stalled audio thread is a glitch the whole room hears.',
+    remember: 'Buffers get their size backstage (prepare) — never on stage (processBlock).',
   },
 
   /* ---------------------------------------------------------- L8 */
   {
     id: 'l8', kind: 'lesson', title: 'References: One Signal, Two Labels', short: 'References',
     concepts: ['references'],
-    objective: 'Use references as aliases to existing values — the no-copy way to share and modify data.',
+    hook: 'On a patchbay, one mult puts the same signal on two jacks. Two labels, one wire: mute the source and it vanishes at both — because there was only ever one signal.',
+    objective: 'Give existing values a second name — the no-copy way plugins share and modify audio.',
     sections: [
       {
-        h: 'A reference is an alias',
-        body: 'A **reference** (`float&`) is a second name for an existing variable — not a copy, the *same* value. Write through either name and both see the change. A reference must be initialized when created and can never be re-pointed at something else.',
-        code: 'float sample = 0.8f;\nfloat& alias = sample;  // same value, second name\n\nalias = 0.2f;\n// sample is now 0.2f too — there is only one value',
-        codeTitle: 'reference basics',
-        analogy: 'A reference is a mult on your patchbay: the same channel appearing at two jack labels. Turn down the signal at either jack and it\'s down everywhere — because there was only ever one signal.',
+        h: 'Two names, one value',
+        body: 'A **reference** (`float&`) is a second name for a value that already exists. Not a copy — the *same* value. Write through either name and both see it, because there\'s only one thing being named.',
+        viz: { t: 'mult', a: 'sample', b: 'float& alias', value: '0.2f', caption: 'write through either name — there is only one value' },
+        code: 'float sample = 0.8f;\nfloat& alias = sample;  // same value, second name\n\nalias = 0.2f;\n// sample is now 0.2f too',
+        codeTitle: 'an alias',
+        breakdown: [
+          ['float&', '"another name for an existing float" — the & makes it an alias'],
+          ['alias', 'the second label'],
+          ['= sample', 'which value it names — locked in at birth, forever'],
+        ],
       },
       {
-        h: 'Why audio code loves references',
-        body: 'Passing by reference lets a function **modify the caller\'s data** (`float& sample` in a per-sample processor) or **read big objects without copying** (`const Preset& p`). Copying a full audio buffer every function call would wreck performance; handing out references costs nothing.',
-        code: 'void processSample(float& s)   // modifies the caller\'s sample\n{\n    s *= 0.5f;\n}\n\nvoid show(const Preset& p)     // reads without copying\n{\n    // look, don\'t touch\n}',
+        h: 'Why audio code runs on references',
+        body: 'Hand a function a reference and it works on **your actual audio**, not a private copy: `void processSample(float& s)` changes the caller\'s sample. Mark it `const&` and it\'s the view-only loan from the const lesson — read big things, copy nothing.',
+        code: 'void processSample(float& s)   // edits the real sample\n{\n    s *= 0.5f;\n}\n\nvoid show(const Preset& p)     // reads without copying\n{\n    // look, don\'t touch\n}',
         codeTitle: 'references as parameters',
-        mistake: { text: 'Forgetting the `&` — `void processSample(float s)` — silently processes a *copy*. The function runs, no error appears, and the caller\'s audio never changes. If your effect "does nothing", check for a missing &.' },
+        mistake: { text: 'Forget the `&` — `void processSample(float s)` — and the function silently processes a **copy**. No error, no warning: your effect simply "does nothing." If a processor seems dead, check for a missing &.' },
       },
     ],
     checks: [
@@ -1301,26 +1488,49 @@ const ZONE1_LESSONS = [
       '`float&` parameters modify the caller\'s data; `const&` reads without copying.',
       'A missing & is the classic "effect does nothing" bug.',
     ],
+    inside: [
+      { name: 'Every effect', use: 'processBlock hands you the host\'s buffer by reference — you edit the real audio' },
+      { name: 'Mixer', use: 'a channel strip processes its track through references, never copies' },
+      { name: 'Synth', use: 'voices receive the output buffer by reference and add their sound into it' },
+      { name: 'Presets', use: 'const Preset& lets the UI read a preset without duplicating it' },
+    ],
+    analogyPanel: 'A reference is a patchbay mult: one signal, two jack labels. There is no copy — both names carry the same audio.',
+    beginnerMistake: 'Forgetting the &. `void process(float s)` quietly processes a copy — the original never changes, and your "broken" effect is actually working perfectly… on the wrong signal.',
+    remember: 'A reference is a second label on the same signal — not a copy.',
   },
 
   /* ---------------------------------------------------------- L9 */
   {
     id: 'l9', kind: 'lesson', title: 'Pointers & Memory Safety', short: 'Pointers, nullptr, safety',
     concepts: ['pointers', 'memory'],
-    objective: 'Read pointer syntax, guard against null, and recognize the two classic pointer disasters.',
+    hook: '"The delay is in rack 2, slot 5." That sticky note isn\'t the delay — it\'s directions to it. C++ has written-down directions too: pointers. Handled well, they\'re everywhere in JUCE. Handled badly, they\'re why plugins crash DAWs.',
+    objective: 'Read pointer code, guard against "nothing patched here", and recognize the two classic pointer disasters.',
     sections: [
       {
-        h: 'A pointer holds an address',
-        body: 'A **pointer** (`float*`) doesn\'t hold a value — it holds the *memory address* where a value lives. `&x` takes the address of x; `*p` (**dereferencing**) follows the pointer to the value. Unlike references, pointers can be re-pointed, do arithmetic, and — crucially — can point at **nothing**: `nullptr`.',
-        code: 'float sample = 0.8f;\nfloat* p = &sample;   // p holds sample\'s address\n*p = 0.5f;            // write through the pointer\n\nfloat* q = nullptr;   // points at nothing (yet)',
-        codeTitle: 'pointer basics',
-        analogy: 'A pointer is a written-down patch location: "the delay is at rack 2, slot 5." Following the note is dereferencing. `nullptr` is a note that says "nothing is patched here" — and walking up to an empty slot expecting a delay (dereferencing null) is how you blow the monitors.',
+        h: 'A note with an address',
+        body: 'A **pointer** (`float*`) doesn\'t hold a value — it holds *where a value lives*. Following the directions to the actual value is called **dereferencing**. And a pointer can hold one special note: `nullptr` — "nothing patched here."',
+        viz: { t: 'rackPointer', code: 'float* p', note: '"rack 2, slot 5"', slot: 'OSC' },
+        code: 'float sample = 0.8f;\nfloat* p = &sample;   // write down sample\'s location\n*p = 0.5f;            // follow the note, change the value\n\nfloat* q = nullptr;   // note says: nothing patched',
+        codeTitle: 'pointers',
+        breakdown: [
+          ['float*', '"directions to a float" — the * makes it a pointer'],
+          ['&sample', '"the location of sample" — write the directions down'],
+          ['*p', 'follow the directions; touch the value that lives there'],
+          ['nullptr', 'directions that honestly say: nothing here'],
+        ],
       },
       {
-        h: 'The two classic disasters',
-        body: '**Null dereference:** using `*p` when p is nullptr — undefined behavior, usually an instant crash (and in a plugin, it takes the DAW down with it). Guard first: `if (p != nullptr)`. **Dangling pointer:** a pointer to memory that no longer exists, like the address of a local variable after its function returned. The note still names rack 2 slot 5 — but the gear was struck down after the show.',
-        mistake: { code: 'float* makeBuffer()\n{\n    float local[512];\n    return local;   // local dies when the function returns!\n}', text: 'Returning the address of a local: the array lives on the stack and is destroyed at return. The caller gets a dangling pointer to reclaimed memory.' },
-        warn: 'Where you *see* pointers in JUCE: `buffer.getWritePointer(channel)` hands you a float* into the audio buffer. Raw *owning* pointers (new/delete) are legacy style — Zone 2 replaces them with smart pointers.',
+        h: 'Check before you patch',
+        body: 'Follow a `nullptr` note — walk up to the empty slot expecting gear — and the program crashes. In a plugin, it takes the **whole DAW** down with it. The guard is one line, and it\'s a daily habit in real plugin code. (`osc->process()` means: follow the pointer, then use that object\'s controls — the pointer version of the dot.)',
+        viz: { t: 'rackPointer', code: 'float* osc', note: 'nullptr', empty: true },
+        code: 'if (osc != nullptr)\n    osc->process(buffer);   // safe: the gear exists',
+        codeTitle: 'the null check',
+      },
+      {
+        h: 'The vanished rack',
+        body: 'Second disaster: directions to gear that\'s been **struck down**. A local variable dies when its function ends — return its address and the caller holds a note pointing at an empty stage. That\'s a **dangling pointer**.',
+        mistake: { code: 'float* makeBuffer()\n{\n    float local[512];\n    return local;   // ✗ local dies right here\n}', text: 'The note still says "rack 2, slot 5" — but the show is over and the gear is gone. Whatever the caller reads is garbage.' },
+        warn: 'Where you\'ll *see* pointers in JUCE: `buffer.getWritePointer(channel)` hands you a float* straight into the audio. Owning things through raw pointers (new/delete) is old-school — Zone 2 replaces it with smart pointers.',
       },
     ],
     checks: [
@@ -1368,27 +1578,42 @@ const ZONE1_LESSONS = [
       'Dangling pointer = address of something already destroyed.',
       'JUCE hands you non-owning pointers (getWritePointer); owning raw pointers get replaced in Zone 2.',
     ],
+    inside: [
+      { name: 'JUCE buffers', use: 'getWritePointer(channel) is a float* straight into the audio block' },
+      { name: 'Editor', use: 'the UI may not exist yet — real plugins null-check it constantly' },
+      { name: 'Sampler', use: 'a playhead is effectively a pointer into the loaded sample data' },
+      { name: 'Crash logs', use: 'most DAW crash reports end at a null or dangling pointer' },
+    ],
+    analogyPanel: 'A pointer is a written-down patch location. nullptr is a note that says "nothing patched here" — and walking up to an empty slot expecting gear is how plugins take DAWs down.',
+    beginnerMistake: 'Following the directions without checking them. One `if (ptr != nullptr)` before the visit is the difference between a quiet skip and crashing the session.',
+    remember: 'A pointer is directions to a value — always check the directions before you follow them.',
   },
 
   /* ---------------------------------------------------------- L10 */
   {
     id: 'l10', kind: 'lesson', title: 'Classes: Your Synth Blueprint', short: 'Classes and objects',
     concepts: ['classes'],
-    objective: 'Define a class, create objects from it, and understand why each object carries its own independent state.',
+    hook: 'One Minimoog schematic. Thousands of Minimoogs built from it — each with its own knob positions. That one relationship is the most important idea in plugin code.',
+    objective: 'Design once, build many: create classes, make objects from them, and see why each object keeps its own settings.',
     sections: [
       {
-        h: 'Class = design, object = the unit on your desk',
-        body: 'A **class** bundles data (**member variables**) with the functions that operate on it (**member functions**). The class itself is just the design; an **object** is one built instance. From one class you can create many objects — and each holds its own copy of the member variables.',
-        code: 'class Filter {\npublic:\n    void setCutoff(float hz) { cutoff = hz; }\n    float getCutoff() const  { return cutoff; }\n\nprivate:\n    float cutoff = 1000.0f;   // each object gets its own\n};',
-        codeTitle: 'a minimal Filter class',
-        analogy: 'The class is the schematic for a filter module. Every unit built from that schematic — every **object** — has its own physical cutoff knob. Turning the knob on unit A does nothing to unit B, even though they share one design.',
+        h: 'Design vs. unit',
+        body: 'A **class** is the schematic: it bundles the knobs (**member variables**) with the behavior (**member functions**) into one design. An **object** is one unit built from it. One design — as many units as you want.',
+        viz: { t: 'blueprint', cls: 'class Filter', a: 'cutoff: 200', b: 'cutoff: 2000' },
+        code: 'class Filter {\npublic:\n    void setCutoff(float hz) { cutoff = hz; }\n    float getCutoff()        { return cutoff; }\n\nprivate:\n    float cutoff = 1000.0f;   // each unit gets its own\n};',
+        codeTitle: 'a filter design',
+        breakdown: [
+          ['class Filter', 'a new design, named Filter'],
+          ['public:', 'the front panel — what everyone may touch'],
+          ['private:', 'inside the case — only the unit itself'],
+          ['};', 'end of design — that semicolon is required!'],
+        ],
       },
       {
-        h: 'Creating and using objects',
-        body: 'Declaring `Filter a;` builds one object. The dot operator reaches its members: `a.setCutoff(200.0f)`. This per-object state is exactly how a synth runs one filter **per voice**: eight voices, eight Filter objects, eight independent cutoffs — one class.',
-        code: 'Filter a;\nFilter b;\na.setCutoff(200.0f);\nb.setCutoff(2000.0f);\n// a and b hold completely separate state',
-        codeTitle: 'independent instances',
-        mistake: { text: 'Thinking of a class as a container of globals. If two objects seem to share state, something is wrong (usually a `static` member or a shared pointer) — by default, every object\'s members are its own.' },
+        h: 'Every unit remembers its own settings',
+        body: '`Filter a;` builds one unit; the dot reaches its panel: `a.setCutoff(200.0f)`. Build a second and they\'re fully independent — same design, separate knobs. This is exactly how **polyphony** works: one Voice class, eight voice objects, eight independent sounds.',
+        code: 'Filter a;\nFilter b;\na.setCutoff(200.0f);\nb.setCutoff(2000.0f);\n// two units, two separate cutoffs',
+        codeTitle: 'independent units',
       },
     ],
     checks: [
@@ -1431,27 +1656,42 @@ const ZONE1_LESSONS = [
       'Dot operator reaches members: `a.setCutoff(200.0f)`.',
       'Polyphony = one Voice class, many voice objects.',
     ],
+    inside: [
+      { name: 'Synth', use: 'one Voice class → eight voice objects = polyphony' },
+      { name: 'Stereo FX', use: 'two identical filter objects — one per channel' },
+      { name: 'JUCE', use: 'your whole plugin is one class: the AudioProcessor' },
+      { name: 'Modulation', use: 'three LFO objects from one LFO class, each at its own rate' },
+    ],
+    analogyPanel: 'Class = schematic, object = the unit on your desk, member variables = its knob positions, member functions = its buttons.',
+    beginnerMistake: 'Thinking objects share their insides. Two filters from one class are as separate as two hardware units — if state ever *seems* shared, something is miswired (usually a static or a shared pointer).',
+    remember: 'A class is the design; every object built from it lives its own life.',
   },
 
   /* ---------------------------------------------------------- L11 */
   {
     id: 'l11', kind: 'lesson', title: 'Constructors & the Front Panel', short: 'Constructors, encapsulation',
     concepts: ['classes', 'encapsulation'],
-    objective: 'Initialize objects correctly with constructors, and use public/private to design a safe control surface.',
+    hook: 'Flip the power switch on good hardware: relays click, defaults load, the unit wakes in a known state. No serious gear boots with random values on every knob — and no serious code object should either.',
+    objective: 'Give objects a power-on sequence, and design a control surface that makes invalid settings impossible.',
     sections: [
       {
-        h: 'The constructor runs at power-on',
-        body: 'A **constructor** is a special function — same name as the class, no return type — that runs **exactly when an object is created**. Its job: make sure the object starts in a valid state. The **member initializer list** (after the `:`) sets members before the body even runs; modern C++ also allows **default member initializers** right at the declaration.',
-        code: 'class GainStage {\npublic:\n    GainStage(float initialGain)\n        : gain(initialGain)      // initializer list\n    {\n    }\n\nprivate:\n    float gain = 1.0f;           // default if no ctor sets it\n};',
-        codeTitle: 'constructor + initializer list',
-        analogy: 'The constructor is the power-on sequence of a hardware unit: relays click, defaults load, the unit comes up in a known state. No serious gear powers on with random values on every parameter — and no serious C++ object should either.',
+        h: 'The power-on sequence',
+        body: 'A **constructor** runs automatically the instant an object is built — its job is to wake the unit in a valid state. It shares the class\'s name and has no return type. The `: member(value)` list sets members first, before anything else happens.',
+        code: 'class GainStage {\npublic:\n    GainStage(float initialGain)\n        : gain(initialGain)      // set before anything runs\n    {\n    }\n\nprivate:\n    float gain = 1.0f;           // the default otherwise\n};',
+        codeTitle: 'power-on sequence',
+        breakdown: [
+          ['GainStage(float initialGain)', 'runs by itself the instant a GainStage is built'],
+          [': gain(initialGain)', 'the initializer list — members set first'],
+          ['{ }', 'the body — often empty when the list did the work'],
+          ['float gain = 1.0f;', 'the built-in default if nobody says otherwise'],
+        ],
       },
       {
-        h: 'public is the panel, private is the circuitry',
-        body: '`public:` members are the **front panel** — what outside code may touch. `private:` members are the **circuitry inside** — reachable only by the class\'s own functions. This is **encapsulation**: outside code can\'t put the object into an invalid state, because every change goes through a public function that can enforce the rules.',
+        h: 'Panel vs. circuitry',
+        body: '`public:` is the **front panel** — what outside code may touch. `private:` is the **circuitry** — reachable only from inside. Every change then flows through a panel control that can enforce the rules. This idea has a name: **encapsulation**.',
+        viz: { t: 'twoLayer', top: 'public: — the front panel', topSub: 'setGain(), getGain()', bottom: 'private: — the circuitry', bottomSub: 'float gain', caption: 'outside code turns knobs — it never resolders' },
         code: 'public:\n    void setGain(float g)\n    {\n        gain = std::clamp(g, 0.0f, 2.0f); // enforce limits\n    }\nprivate:\n    float gain = 1.0f;   // nobody sets this to 9000 directly',
-        codeTitle: 'a guarded setter',
-        mistake: { text: 'Making everything public "to keep it simple". It works — until any code anywhere can set `gain = 9000.0f` and you\'re hunting a blown-out mix bus across the entire codebase. Private members shrink the search space to one class.' },
+        codeTitle: 'a guarded knob',
       },
     ],
     checks: [
@@ -1495,32 +1735,47 @@ const ZONE1_LESSONS = [
       'public = panel controls; private = internal circuitry.',
       'Guarded setters make invalid states impossible.',
     ],
+    inside: [
+      { name: 'Synth', use: 'every voice constructs silent and ready — never random' },
+      { name: 'JUCE', use: 'your processor\'s constructor declares its parameters' },
+      { name: 'Effect', use: 'setters clamp values so host automation can\'t push DSP into chaos' },
+      { name: 'Presets', use: 'loading a preset calls guarded setters, not raw variables' },
+    ],
+    analogyPanel: 'The constructor is the power-on sequence; public members are the front panel; private members are the circuitry behind it. Users turn knobs — they don\'t resolder.',
+    beginnerMistake: 'Making everything public "for now." It works — until any code anywhere can set gain = 9000 and you\'re hunting a blown mix bus across the whole project. Private + a clamping setter ends that search before it starts.',
+    remember: 'Objects should power on valid — and only change through their panel controls.',
   },
 
   /* ---------------------------------------------------------- L12 */
   {
     id: 'l12', kind: 'lesson', title: 'Headers, Sources & Reading Errors', short: '.h/.cpp files, compiler errors',
     concepts: ['headers', 'compiler-errors'],
-    objective: 'Split code into header and implementation files, and diagnose the difference between compiler and linker errors.',
+    hook: 'You can patch a modular synth you\'ve never opened — because the front panel tells you everything: every jack, every knob, labeled. C++ files split the exact same way: panel on the outside, circuit inside.',
+    objective: 'Split a class into its panel (.h) and circuit (.cpp) — and learn to read the two kinds of build failure calmly.',
     sections: [
       {
-        h: 'The .h / .cpp split',
-        body: 'C++ projects split each class in two: the **header** (`.h`) holds the *declaration* — the class\'s shape, its public interface — and the **implementation** (`.cpp`) holds the *definitions* — the actual function bodies. Other files `#include` the header to use the class. `#pragma once` at the top of a header stops it being included twice. Every JUCE plugin you\'ve seen follows this: `PluginProcessor.h` / `PluginProcessor.cpp`.',
-        code: '// SineOsc.h — the interface\n#pragma once\n\nclass SineOsc {\npublic:\n    void  setFrequency(float hz);\n    float nextSample();\nprivate:\n    double phase = 0.0;\n    float  freq  = 440.0f;\n};',
+        h: 'The panel and the circuit',
+        body: 'Each class ships as two files. The **header** (`.h`) is the front panel: what the class offers, for other files to `#include`. The **implementation** (`.cpp`) is the circuit board: how it actually works. Every JUCE project you\'ve seen follows it: `PluginProcessor.h` / `PluginProcessor.cpp`.',
+        viz: { t: 'twoLayer', top: 'SineOsc.h — the front panel', topSub: 'what exists', bottom: 'SineOsc.cpp — the circuit board', bottomSub: 'how it works', caption: 'other files see only the panel' },
+        code: '// SineOsc.h — the panel\n#pragma once\n\nclass SineOsc {\npublic:\n    void  setFrequency(float hz);\n    float nextSample();\nprivate:\n    double phase = 0.0;\n    float  freq  = 440.0f;\n};',
         codeTitle: 'the header',
-        analogy: 'The header is the module\'s **front panel silkscreen** — every jack and knob labeled, so anyone can patch it without opening the case. The .cpp is the circuit board inside. Other modules only ever see the panel.',
+        breakdown: [
+          ['#pragma once', '"read this panel at most once" — every header starts with it'],
+          ['class SineOsc {', 'the design\'s name and jack list'],
+          ['void setFrequency(float);', 'a promise: this control exists (its body lives in the .cpp)'],
+          ['};', 'end of panel — that semicolon matters'],
+        ],
       },
       {
-        h: 'Definitions live in the .cpp',
-        body: 'The `.cpp` includes its own header first, then defines each function using the `ClassName::` prefix, which says "this body belongs to that class".',
-        code: '// SineOsc.cpp — the implementation\n#include "SineOsc.h"\n\nvoid SineOsc::setFrequency(float hz)\n{\n    freq = hz;\n}',
+        h: 'The circuit board',
+        body: 'The `.cpp` includes its own header first, then wires up each promised control. The `SineOsc::` prefix says "this body belongs to that design."',
+        code: '// SineOsc.cpp — the circuit\n#include "SineOsc.h"\n\nvoid SineOsc::setFrequency(float hz)\n{\n    freq = hz;\n}',
         codeTitle: 'the implementation',
       },
       {
-        h: 'Compiler errors vs linker errors',
-        body: 'Two build stages, two error families. The **compiler** checks each .cpp against the declarations it can see — typos, type mismatches, missing semicolons. The **linker** then stitches the compiled pieces together — and fails with **"undefined reference"** when something was *declared* but never *defined* (or its .cpp isn\'t in the build). Reading order matters: fix the **first** error first — later errors are often echoes of it.',
-        mistake: { text: 'Chasing the *last* error in a wall of forty. Most are echoes of the first — one missing semicolon can confuse everything after it. Scroll to the top, fix error #1, rebuild.' },
-        warn: 'The classic: you declared `nextSample()` in the header, forgot to write the body in the .cpp, and the compiler is perfectly happy — the *linker* is the one that catches the hole, in language that mentions no file or line. Now you know why.',
+        h: 'When the build fails (and it will)',
+        body: 'Builds fail in two ways, and telling them apart saves hours. The **compiler** is a proofreader: it checks each file for typos and wrong types, and names a file and line. The **linker** wires panels to circuits afterward — its error **"undefined reference"** means a control was promised on a panel but no circuit exists behind it.',
+        warn: 'The classic: you declared `nextSample()` in the header, forgot the body in the .cpp — and the *compiler* is perfectly happy. The linker catches the hole, in language that names no file or line. Now you can read it.',
       },
     ],
     checks: [
@@ -1568,8 +1823,17 @@ const ZONE1_LESSONS = [
       'Compiler errors: per-file syntax/type problems. Linker errors: missing definitions.',
       'Always fix the first error first.',
     ],
-  },
-];
+    inside: [
+      { name: 'JUCE', use: 'PluginProcessor.h / PluginProcessor.cpp — the split you\'ll live in' },
+      { name: 'CMake', use: 'a .cpp missing from the build = "undefined reference" at link time' },
+      { name: 'Any project', use: 'every class you write ships as panel (.h) + circuit (.cpp)' },
+      { name: 'Debugging', use: 'reading errors top-down, first error first, is a daily skill' },
+    ],
+    analogyPanel: 'The header is the front-panel silkscreen; the .cpp is the circuit board. Other modules patch to the panel — nobody opens the case.',
+    beginnerMistake: 'Panicking at a wall of forty errors and reading from the bottom. Most are echoes of the first one. Scroll to the top, fix error #1, rebuild — the wall usually collapses.',
+    remember: 'Panel in the .h, circuit in the .cpp — and always fix the first error first.',
+  }
+);
 
 ;
 /* ===== src/js/data_zone1_challenges.js ===== */
@@ -3036,6 +3300,267 @@ const UI = (() => {
 })();
 
 ;
+/* ===== src/js/viz.js ===== */
+/* ============================================================
+   Viz — tiny data-driven SVG diagrams for lessons.
+   Sections reference these by spec: { t: 'knobToVar', ... }.
+   Drawn in the app palette; decorative (aria-hidden) with the
+   teaching content carried by the surrounding text.
+   ============================================================ */
+
+const Viz = (() => {
+  const C = {
+    ink: '#EAE4D4', dim: '#A29D8F', faint: '#857F6E',
+    phos: '#5DE894', phosDim: '#2E8757', amber: '#F0B450', red: '#F07862',
+    line: '#2A313B', bg: '#0B0E12',
+  };
+  const MONO = 'ui-monospace,Menlo,Consolas,monospace';
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function txt(x, y, s, fill, size, anchor, spacing) {
+    return `<text x="${x}" y="${y}" fill="${fill || C.dim}" font-family="${MONO}" font-size="${size || 10}" text-anchor="${anchor || 'start'}" letter-spacing="${spacing || 0.5}">${esc(s)}</text>`;
+  }
+  function box(x, y, w, h, stroke, dash, fill) {
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${fill || 'none'}" stroke="${stroke || C.line}" stroke-width="1.2"${dash ? ' stroke-dasharray="4 3"' : ''}/>`;
+  }
+  function arrow(x1, y1, x2, y2, color) {
+    const c = color || C.phosDim;
+    const a = Math.atan2(y2 - y1, x2 - x1);
+    const hx = x2 - 7 * Math.cos(a), hy = y2 - 7 * Math.sin(a);
+    const p1x = hx + 4 * Math.cos(a + Math.PI / 2), p1y = hy + 4 * Math.sin(a + Math.PI / 2);
+    const p2x = hx + 4 * Math.cos(a - Math.PI / 2), p2y = hy + 4 * Math.sin(a - Math.PI / 2);
+    return `<line x1="${x1}" y1="${y1}" x2="${hx}" y2="${hy}" stroke="${c}" stroke-width="1.4"/>` +
+           `<polygon points="${x2},${y2} ${p1x},${p1y} ${p2x},${p2y}" fill="${c}"/>`;
+  }
+  function knob(cx, cy, r, angleDeg, color) {
+    const a = (angleDeg - 90) * Math.PI / 180;
+    const tx = cx + (r - 4) * Math.cos(a), ty = cy + (r - 4) * Math.sin(a);
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color || C.dim}" stroke-width="1.6"/>` +
+           `<line x1="${cx}" y1="${cy}" x2="${tx}" y2="${ty}" stroke="${color || C.ink}" stroke-width="1.8" stroke-linecap="round"/>`;
+  }
+
+  /* ---- generators: each returns { svg, h } ---- */
+  const GEN = {
+
+    // A knob feeding a memory slot: where the value actually lives.
+    knobToVar(o) {
+      const s = [];
+      s.push(knob(52, 44, 21, 40 + 250 * (o.amount !== undefined ? o.amount : 0.6), C.ink));
+      s.push(txt(52, 82, o.knob || 'CUTOFF', C.dim, 9.5, 'middle', 1.5));
+      s.push(txt(52, 20, 'you turn this…', C.faint, 9, 'middle'));
+      s.push(arrow(84, 44, 148, 44));
+      s.push(txt(116, 36, 'stored', C.faint, 8.5, 'middle'));
+      s.push(box(154, 24, 174, 40, C.phosDim, false, 'rgba(93,232,148,0.05)'));
+      s.push(txt(241, 48, o.code || 'float cutoff = 1200.0f;', C.phos, 10.5, 'middle'));
+      s.push(txt(241, 82, '…the plugin remembers it here', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 92 };
+    },
+
+    // Signal chain of boxes with arrows; accent highlights one stage.
+    chain(o) {
+      const nodes = o.nodes || [];
+      const n = nodes.length;
+      const gap = 26, W = 340;
+      const bw = Math.min(110, (W - 16 - gap * (n - 1)) / n);
+      const total = bw * n + gap * (n - 1);
+      let x = (W - total) / 2;
+      const s = [];
+      nodes.forEach((label, i) => {
+        const hot = i === o.accent;
+        s.push(box(x, 26, bw, 34, hot ? C.phosDim : C.line, false, hot ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(x + bw / 2, 47, label, hot ? C.phos : C.dim, 9.5, 'middle'));
+        if (i < n - 1) s.push(arrow(x + bw + 3, 43, x + bw + gap - 3, 43));
+        x += bw + gap;
+      });
+      if (o.caption) s.push(txt(170, 82, o.caption, C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: o.caption ? 92 : 74 };
+    },
+
+    // Mini oscilloscope: sine/saw/square/noise, or 'samples' (dots on a sine).
+    wave(o) {
+      const s = [box(8, 8, 324, 74, C.line, false, '#07090B')];
+      for (let gx = 30; gx < 330; gx += 30) s.push(`<line x1="${gx}" y1="8" x2="${gx}" y2="82" stroke="rgba(93,232,148,0.06)"/>`);
+      s.push(`<line x1="8" y1="45" x2="332" y2="45" stroke="rgba(93,232,148,0.12)"/>`);
+      const pts = [];
+      for (let x = 0; x <= 300; x += 3) {
+        const ph = (x / 300) * Math.PI * 4;
+        let v = 0;
+        if (o.type === 'saw') v = 2 * ((ph / (2 * Math.PI)) % 1) - 1;
+        else if (o.type === 'square') v = Math.sin(ph) >= 0 ? 0.9 : -0.9;
+        else v = Math.sin(ph);
+        pts.push(`${16 + x},${45 - v * 28}`);
+      }
+      s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${C.phos}" stroke-width="1.5"/>`);
+      if (o.type === 'samples') {
+        for (let x = 0; x <= 300; x += 25) {
+          const v = Math.sin((x / 300) * Math.PI * 4);
+          const y = 45 - v * 28;
+          s.push(`<line x1="${16 + x}" y1="45" x2="${16 + x}" y2="${y}" stroke="${C.amber}" stroke-width="1"/>`);
+          s.push(`<circle cx="${16 + x}" cy="${y}" r="2.6" fill="${C.amber}"/>`);
+        }
+        s.push(txt(170, 100, 'each dot = one sample = one float number', C.faint, 9, 'middle'));
+        return { svg: s.join(''), h: 108 };
+      }
+      if (o.caption) { s.push(txt(170, 100, o.caption, C.faint, 9, 'middle')); return { svg: s.join(''), h: 108 }; }
+      return { svg: s.join(''), h: 92 };
+    },
+
+    // A row of memory cells (buffer / delay line / block), 0-indexed.
+    buffer(o) {
+      const n = o.n || 8;
+      const cw = Math.min(36, 300 / (n + (o.overflow ? 1 : 0)));
+      const x0 = (340 - cw * (n + (o.overflow ? 1 : 0))) / 2;
+      const s = [];
+      if (o.label) s.push(txt(170, 16, o.label, C.dim, 9.5, 'middle', 1.5));
+      for (let i = 0; i < n; i++) {
+        const x = x0 + i * cw;
+        const hot = i === o.highlight;
+        s.push(box(x, 24, cw - 3, 30, hot ? C.phosDim : C.line, false, hot ? 'rgba(93,232,148,0.07)' : 'none'));
+        if (o.values && o.values[i] !== undefined) s.push(txt(x + (cw - 3) / 2, 43, String(o.values[i]), hot ? C.phos : C.dim, 8.5, 'middle'));
+        s.push(txt(x + (cw - 3) / 2, 66, String(i), C.faint, 8.5, 'middle'));
+      }
+      if (o.overflow) {
+        const x = x0 + n * cw;
+        s.push(box(x, 24, cw - 3, 30, C.red, true));
+        s.push(txt(x + (cw - 3) / 2, 43, '✗', C.red, 11, 'middle'));
+        s.push(txt(x + (cw - 3) / 2, 66, String(n), C.red, 8.5, 'middle'));
+      }
+      if (o.cursor !== undefined) {
+        const x = x0 + o.cursor * cw + (cw - 3) / 2;
+        s.push(`<polygon points="${x},76 ${x - 4},84 ${x + 4},84" fill="${C.amber}"/>`);
+        s.push(txt(x, 96, o.cursorLabel || 'i', C.amber, 9, 'middle'));
+      }
+      const cap = o.caption ? txt(170, (o.cursor !== undefined ? 112 : 84), o.caption, C.faint, 9, 'middle') : '';
+      return { svg: s.join('') + cap, h: o.cursor !== undefined ? (o.caption ? 118 : 102) : (o.caption ? 92 : 76) };
+    },
+
+    // Noise gate: signal bursts against a threshold line.
+    gate() {
+      const s = [box(8, 8, 324, 80, C.line, false, '#07090B')];
+      const pts = [];
+      for (let x = 0; x <= 316; x += 2) {
+        const loud = (x > 60 && x < 130) || (x > 210 && x < 280);
+        const amp = loud ? 26 : 5;
+        pts.push(`${12 + x},${50 - Math.sin(x * 0.9) * amp}`);
+      }
+      s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${C.phos}" stroke-width="1.2"/>`);
+      s.push(`<line x1="12" y1="30" x2="328" y2="30" stroke="${C.amber}" stroke-width="1.2" stroke-dasharray="5 4"/>`);
+      s.push(txt(322, 24, 'threshold', C.amber, 8.5, 'end'));
+      s.push(txt(95, 20, 'OPEN', C.phos, 9, 'middle', 1.5));
+      s.push(txt(245, 20, 'OPEN', C.phos, 9, 'middle', 1.5));
+      s.push(txt(170, 102, 'if (input > threshold) → the gate opens', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 110 };
+    },
+
+    // Waveform selector: one knob, discrete positions = switch cases.
+    selector(o) {
+      const opts = o.options || ['SINE', 'SAW', 'SQUARE', 'NOISE'];
+      const act = o.active !== undefined ? o.active : 1;
+      const s = [];
+      s.push(knob(70, 52, 26, 15 + act * 60, C.ink));
+      s.push(txt(70, 96, o.label || 'WAVE', C.dim, 9.5, 'middle', 1.5));
+      opts.forEach((op, i) => {
+        const y = 22 + i * 22;
+        const hot = i === act;
+        s.push(`<circle cx="150" cy="${y - 3}" r="3" fill="${hot ? C.phos : 'none'}" stroke="${hot ? C.phos : C.line}" stroke-width="1.2"/>`);
+        s.push(txt(162, y, op, hot ? C.phos : C.dim, 9.5));
+        s.push(txt(240, y, `case ${i}:`, hot ? C.phos : C.faint, 9.5));
+      });
+      s.push(txt(170, 116, 'one selector, fixed positions — that is a switch', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 124 };
+    },
+
+    // Patchbay mult: two labels wired to ONE value (references).
+    mult(o) {
+      const s = [];
+      s.push(box(16, 14, 120, 30, C.line));
+      s.push(txt(76, 33, o.a || 'buffer[0]', C.dim, 10, 'middle'));
+      s.push(box(16, 60, 120, 30, C.phosDim));
+      s.push(txt(76, 79, o.b || 'float& current', C.phos, 10, 'middle'));
+      s.push(`<path d="M 136 29 C 190 29, 190 52, 232 52" fill="none" stroke="${C.phosDim}" stroke-width="1.4"/>`);
+      s.push(`<path d="M 136 75 C 190 75, 190 52, 232 52" fill="none" stroke="${C.phosDim}" stroke-width="1.4"/>`);
+      s.push(arrow(232, 52, 240, 52));
+      s.push(box(242, 34, 84, 36, C.phosDim, false, 'rgba(93,232,148,0.05)'));
+      s.push(txt(284, 56, o.value || '0.80f', C.phos, 11, 'middle'));
+      s.push(txt(170, 110, o.caption || 'two names on the patchbay — one actual signal', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 118 };
+    },
+
+    // A written-down patch location pointing at a rack slot (pointer / nullptr).
+    rackPointer(o) {
+      const s = [];
+      s.push(box(14, 20, 128, 52, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(78, 40, o.code || 'float* osc', C.amber, 10.5, 'middle'));
+      s.push(txt(78, 58, o.note || '"rack 2, slot 5"', C.dim, 9, 'middle'));
+      s.push(txt(78, 88, 'the pointer: just directions', C.faint, 8.5, 'middle'));
+      s.push(arrow(146, 46, 196, 46, C.amber));
+      for (let i = 0; i < 3; i++) {
+        const x = 200 + i * 44;
+        const target = i === 1;
+        if (target && o.empty) {
+          s.push(box(x, 26, 40, 40, C.red, true));
+          s.push(txt(x + 20, 50, '—', C.red, 12, 'middle'));
+        } else {
+          s.push(box(x, 26, 40, 40, target ? C.phosDim : C.line, false, target ? 'rgba(93,232,148,0.07)' : 'none'));
+          s.push(txt(x + 20, 50, target ? (o.slot || 'OSC') : '·', target ? C.phos : C.faint, 9.5, 'middle'));
+        }
+      }
+      s.push(txt(266, 88, o.empty ? 'nullptr — nothing patched' : 'the actual gear lives here', o.empty ? C.red : C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 98 };
+    },
+
+    // One schematic, two independent hardware units (class → objects).
+    blueprint(o) {
+      const s = [];
+      s.push(box(108, 10, 124, 30, C.dim, true));
+      s.push(txt(170, 29, o.cls || 'class Filter', C.ink, 10.5, 'middle'));
+      s.push(txt(170, 50, 'the schematic', C.faint, 8.5, 'middle'));
+      s.push(arrow(140, 44, 84, 66));
+      s.push(arrow(200, 44, 256, 66));
+      [[24, o.aName || 'Filter a', o.a || 'cutoff: 200', 0.25], [216, o.bName || 'Filter b', o.b || 'cutoff: 2000', 0.85]].forEach(([x, name, val, amt]) => {
+        s.push(box(x, 70, 100, 46, C.phosDim, false, 'rgba(93,232,148,0.04)'));
+        s.push(knob(x + 22, 93, 12, 40 + 250 * amt, C.ink));
+        s.push(txt(x + 64, 88, name, C.phos, 9.5, 'middle'));
+        s.push(txt(x + 64, 104, val, C.dim, 8.5, 'middle'));
+      });
+      s.push(txt(170, 132, 'one design — every unit keeps its own knob positions', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 140 };
+    },
+
+    // Two layers: front panel (public / header) over circuitry (private / cpp).
+    twoLayer(o) {
+      const s = [];
+      s.push(box(20, 12, 300, 40, C.phosDim, false, 'rgba(93,232,148,0.04)'));
+      [56, 84, 112].forEach((x) => s.push(`<circle cx="${x}" cy="32" r="6" fill="none" stroke="${C.phos}" stroke-width="1.4"/>`));
+      s.push(txt(305, 30, o.top || 'front panel — what everyone sees', C.phos, 9.5, 'end'));
+      s.push(txt(305, 44, o.topSub || '', C.dim, 8.5, 'end'));
+      s.push(box(20, 60, 300, 40, C.line));
+      s.push(`<path d="M 40 80 h 24 v -8 h 20 v 16 h 22 v -8 h 18" fill="none" stroke="${C.faint}" stroke-width="1.2"/>`);
+      s.push(txt(305, 78, o.bottom || 'circuitry inside — hidden', C.dim, 9.5, 'end'));
+      s.push(txt(305, 92, o.bottomSub || '', C.faint, 8.5, 'end'));
+      if (o.caption) s.push(txt(170, 118, o.caption, C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: o.caption ? 124 : 108 };
+    },
+  };
+
+  function render(spec) {
+    const gen = GEN[spec.t];
+    const wrap = document.createElement('div');
+    wrap.className = 'viz-wrap';
+    wrap.setAttribute('aria-hidden', 'true');
+    if (!gen) return wrap;
+    try {
+      const { svg, h } = gen(spec);
+      wrap.innerHTML = `<svg viewBox="0 0 340 ${h}" preserveAspectRatio="xMidYMid meet">${svg}</svg>` +
+        (spec.cap ? `<div class="viz-cap">${esc(spec.cap)}</div>` : '');
+    } catch (e) { /* a broken diagram must never break a lesson */ }
+    return wrap;
+  }
+
+  return { render };
+})();
+
+;
 /* ===== src/js/views.js ===== */
 /* ============================================================
    Views — every screen + the shared question runner.
@@ -3052,6 +3577,9 @@ const Views = (() => {
              onWrongAttempt(), maxAttempts (default: unlimited w/ reveal
              offered after 2 wrong), allowReveal (default true) }
      ===================================================================== */
+  const PRAISE = ['Correct — clean take', 'Correct — nailed it', 'Correct — that\'s the one', 'Correct — locked in', 'Correct — right on'];
+  function praiseFor(q) { return PRAISE[Engine.seedFrom(q.qid || q.prompt || 'x') % PRAISE.length]; }
+
   function questionView(q, opts) {
     opts = opts || {};
     const maxAttempts = opts.maxAttempts || Infinity;
@@ -3140,7 +3668,7 @@ const Views = (() => {
           optBtns[chosen].classList.add('right');
           optBtns.forEach((b) => { b.disabled = true; });
           attempts += 1;
-          showFeedback('ok', 'Correct', q.explain);
+          showFeedback('ok', praiseFor(q), q.explain);
           resolve(true);
         } else {
           optBtns[chosen].classList.remove('sel');
@@ -3328,7 +3856,7 @@ const Views = (() => {
           Sfx.correct();
           attempts += 1;
           lineBtns.forEach((b, j) => { b.disabled = true; b.classList.remove('sel'); if (j === q.buggy) b.classList.add('hit'); });
-          showFeedback('ok', 'Bug found', q.explain + (q.fix ? ' **Fix:** `' + q.fix + '`' : ''));
+          showFeedback('ok', 'Bug found — nice ears', q.explain + (q.fix ? ' **Fix:** `' + q.fix + '`' : ''));
           resolve(true);
         } else {
           lineBtns[selected].classList.remove('sel');
@@ -3418,7 +3946,7 @@ const Views = (() => {
           refresh();
           leftBtns.forEach((b) => { b.disabled = true; });
           rightBtns.forEach(({ b }) => { b.disabled = true; });
-          showFeedback('ok', 'All connected', q.explain);
+          showFeedback('ok', 'All connected — clean patch', q.explain);
           resolve(true);
         } else {
           const exhausted = wrongFlow(r.wrongLeft.length + (r.wrongLeft.length === 1 ? ' pair is' : ' pairs are') + ' mismatched (marked red). Unpair and rewire them.');
@@ -3814,6 +4342,7 @@ const Views = (() => {
       if (step === 0) {
         slot.replaceChildren(
           el('div', { class: 'card raised' },
+            node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook) }) : null,
             el('div', { class: 'eyebrow phos' }, 'OBJECTIVE'),
             el('p', { class: 'prose mt-s', html: fmt(node.objective) }),
             el('div', { class: 'mt-m row wrap' },
@@ -3829,7 +4358,15 @@ const Views = (() => {
         const s = node.sections[sIdx];
         const bits = [el('h2', { class: 'h-display', style: 'font-size:16px' }, s.h),
           el('div', { class: 'prose', html: fmt(s.body) })];
-        if (s.code) bits.push(UI.codePanel(s.code, s.codeTitle));
+        if (s.viz) bits.push(Viz.render(s.viz));
+        if (s.code) {
+          bits.push(UI.codePanel(s.code, s.codeTitle));
+          if (s.breakdown) bits.push(el('div', { class: 'breakdown' },
+            el('div', { class: 'bd-head' }, 'PIECE BY PIECE'),
+            s.breakdown.map(([piece, what]) => el('div', { class: 'bd-row' },
+              el('span', { class: 'bd-code' }, piece),
+              el('span', { class: 'bd-what', html: fmt(what) })))));
+        }
         if (s.analogy) bits.push(el('div', { class: 'callout analogy' },
           el('div', { class: 'co-head' }, '⌁ Studio analogy'),
           el('div', { html: fmt(s.analogy) })));
@@ -3874,11 +4411,27 @@ const Views = (() => {
       if (earned > 0) App.awardXp(earned);
       const { stars: starCount } = Store.completeNode(node.id, firstTryCount, node.checks.length);
       App.flushAchievements();
+      const endPanels = [];
+      if (node.inside && node.inside.length) endPanels.push(el('div', { class: 'card col', style: 'gap:10px' },
+        el('div', { class: 'eyebrow phos' }, '\uD83C\uDF9B INSIDE A REAL PLUGIN'),
+        el('div', { class: 'col gap-s' }, node.inside.map((x) => el('div', { class: 'plugin-use' },
+          el('span', { class: 'pu-name' }, x.name),
+          el('span', { class: 'pu-desc', html: fmt(x.use) }))))));
+      if (node.analogyPanel) endPanels.push(el('div', { class: 'callout analogy' },
+        el('div', { class: 'co-head' }, '\uD83C\uDFB9 STUDIO ANALOGY'),
+        el('div', { html: fmt(node.analogyPanel) })));
+      if (node.beginnerMistake) endPanels.push(el('div', { class: 'callout mistake' },
+        el('div', { class: 'co-head' }, '\u26A0 COMMON BEGINNER MISTAKE'),
+        el('div', { html: fmt(node.beginnerMistake) })));
+      if (node.remember) endPanels.push(el('div', { class: 'callout remember' },
+        el('div', { class: 'co-head' }, '\uD83D\uDCA1 REMEMBER THIS'),
+        el('div', { class: 'co-body', html: fmt(node.remember) })));
       slot.replaceChildren(
         el('div', { class: 'card raised col', style: 'gap:12px' },
           el('div', { class: 'eyebrow phos' }, 'RECAP'),
           el('ul', { style: 'padding-left:20px; display:flex; flex-direction:column; gap:8px; font-size:14.5px' },
             node.recap.map((r) => el('li', { html: fmt(r) })))),
+        ...endPanels,
         el('button', { class: 'btn primary block', onclick: () => completionSheet(node, { earned, firstTry: firstTryCount, total: node.checks.length }, starCount) }, 'Collect results'));
     }
 

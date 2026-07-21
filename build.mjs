@@ -8,12 +8,14 @@ const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const JS_ORDER = [
   'data_zones.js',
   'data_zone1_lessons.js',
+  'data_zone1_lessons_b.js',
   'data_zone1_challenges.js',
   'data_glossary.js',
   'engine.js',
   'store.js',
   'audio.js',
   'ui.js',
+  'viz.js',
   'views.js',
   'app.js',
 ];

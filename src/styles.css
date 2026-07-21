@@ -379,6 +379,62 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .callout.mistake .co-head { color: var(--red); }
 .callout.warn .co-head { color: var(--amber); }
 
+/* lesson hook — the familiar studio situation */
+.hook {
+  font-size: 16.5px; line-height: 1.55; color: var(--ink);
+  border-left: 3px solid var(--phos);
+  padding: 4px 2px 4px 14px;
+}
+
+/* diagram wrapper */
+.viz-wrap {
+  background: #07090B;
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  padding: 10px 8px 6px;
+}
+.viz-wrap svg { display: block; width: 100%; height: auto; }
+.viz-cap {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-faint);
+  padding: 6px 4px 2px;
+}
+
+/* piece-by-piece code breakdown (sits under a code panel) */
+.breakdown {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--rad-sm);
+  background: #0B0E12;
+  padding: 10px 12px;
+  margin-top: -6px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.bd-head {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+  color: var(--ink-faint);
+}
+.bd-row { display: flex; gap: 10px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+.bd-code {
+  font-family: var(--mono); font-size: 11.5px; color: var(--phos);
+  flex: none; width: 118px; overflow-wrap: break-word;
+}
+.bd-what { color: var(--ink-dim); }
+
+/* end-of-lesson panels */
+.callout.remember {
+  border-left-color: var(--phos);
+  background: linear-gradient(90deg, rgba(93,232,148,0.09), var(--bg2));
+}
+.callout.remember .co-head { color: var(--phos); }
+.callout.remember .co-body { font-size: 15.5px; color: var(--ink); line-height: 1.5; }
+.plugin-use { display: flex; gap: 10px; align-items: baseline; }
+.pu-name {
+  flex: none; width: 92px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--phos);
+}
+.pu-desc { font-size: 13.5px; color: var(--ink-dim); line-height: 1.45; }
+
 /* progress dots inside lesson */
 .dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .dots i {

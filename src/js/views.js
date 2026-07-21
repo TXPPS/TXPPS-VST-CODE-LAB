@@ -13,6 +13,9 @@ const Views = (() => {
              onWrongAttempt(), maxAttempts (default: unlimited w/ reveal
              offered after 2 wrong), allowReveal (default true) }
      ===================================================================== */
+  const PRAISE = ['Correct — clean take', 'Correct — nailed it', 'Correct — that\'s the one', 'Correct — locked in', 'Correct — right on'];
+  function praiseFor(q) { return PRAISE[Engine.seedFrom(q.qid || q.prompt || 'x') % PRAISE.length]; }
+
   function questionView(q, opts) {
     opts = opts || {};
     const maxAttempts = opts.maxAttempts || Infinity;
@@ -101,7 +104,7 @@ const Views = (() => {
           optBtns[chosen].classList.add('right');
           optBtns.forEach((b) => { b.disabled = true; });
           attempts += 1;
-          showFeedback('ok', 'Correct', q.explain);
+          showFeedback('ok', praiseFor(q), q.explain);
           resolve(true);
         } else {
           optBtns[chosen].classList.remove('sel');
@@ -289,7 +292,7 @@ const Views = (() => {
           Sfx.correct();
           attempts += 1;
           lineBtns.forEach((b, j) => { b.disabled = true; b.classList.remove('sel'); if (j === q.buggy) b.classList.add('hit'); });
-          showFeedback('ok', 'Bug found', q.explain + (q.fix ? ' **Fix:** `' + q.fix + '`' : ''));
+          showFeedback('ok', 'Bug found — nice ears', q.explain + (q.fix ? ' **Fix:** `' + q.fix + '`' : ''));
           resolve(true);
         } else {
           lineBtns[selected].classList.remove('sel');
@@ -379,7 +382,7 @@ const Views = (() => {
           refresh();
           leftBtns.forEach((b) => { b.disabled = true; });
           rightBtns.forEach(({ b }) => { b.disabled = true; });
-          showFeedback('ok', 'All connected', q.explain);
+          showFeedback('ok', 'All connected — clean patch', q.explain);
           resolve(true);
         } else {
           const exhausted = wrongFlow(r.wrongLeft.length + (r.wrongLeft.length === 1 ? ' pair is' : ' pairs are') + ' mismatched (marked red). Unpair and rewire them.');
@@ -775,6 +778,7 @@ const Views = (() => {
       if (step === 0) {
         slot.replaceChildren(
           el('div', { class: 'card raised' },
+            node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook) }) : null,
             el('div', { class: 'eyebrow phos' }, 'OBJECTIVE'),
             el('p', { class: 'prose mt-s', html: fmt(node.objective) }),
             el('div', { class: 'mt-m row wrap' },
@@ -790,7 +794,15 @@ const Views = (() => {
         const s = node.sections[sIdx];
         const bits = [el('h2', { class: 'h-display', style: 'font-size:16px' }, s.h),
           el('div', { class: 'prose', html: fmt(s.body) })];
-        if (s.code) bits.push(UI.codePanel(s.code, s.codeTitle));
+        if (s.viz) bits.push(Viz.render(s.viz));
+        if (s.code) {
+          bits.push(UI.codePanel(s.code, s.codeTitle));
+          if (s.breakdown) bits.push(el('div', { class: 'breakdown' },
+            el('div', { class: 'bd-head' }, 'PIECE BY PIECE'),
+            s.breakdown.map(([piece, what]) => el('div', { class: 'bd-row' },
+              el('span', { class: 'bd-code' }, piece),
+              el('span', { class: 'bd-what', html: fmt(what) })))));
+        }
         if (s.analogy) bits.push(el('div', { class: 'callout analogy' },
           el('div', { class: 'co-head' }, '⌁ Studio analogy'),
           el('div', { html: fmt(s.analogy) })));
@@ -835,11 +847,27 @@ const Views = (() => {
       if (earned > 0) App.awardXp(earned);
       const { stars: starCount } = Store.completeNode(node.id, firstTryCount, node.checks.length);
       App.flushAchievements();
+      const endPanels = [];
+      if (node.inside && node.inside.length) endPanels.push(el('div', { class: 'card col', style: 'gap:10px' },
+        el('div', { class: 'eyebrow phos' }, '\uD83C\uDF9B INSIDE A REAL PLUGIN'),
+        el('div', { class: 'col gap-s' }, node.inside.map((x) => el('div', { class: 'plugin-use' },
+          el('span', { class: 'pu-name' }, x.name),
+          el('span', { class: 'pu-desc', html: fmt(x.use) }))))));
+      if (node.analogyPanel) endPanels.push(el('div', { class: 'callout analogy' },
+        el('div', { class: 'co-head' }, '\uD83C\uDFB9 STUDIO ANALOGY'),
+        el('div', { html: fmt(node.analogyPanel) })));
+      if (node.beginnerMistake) endPanels.push(el('div', { class: 'callout mistake' },
+        el('div', { class: 'co-head' }, '\u26A0 COMMON BEGINNER MISTAKE'),
+        el('div', { html: fmt(node.beginnerMistake) })));
+      if (node.remember) endPanels.push(el('div', { class: 'callout remember' },
+        el('div', { class: 'co-head' }, '\uD83D\uDCA1 REMEMBER THIS'),
+        el('div', { class: 'co-body', html: fmt(node.remember) })));
       slot.replaceChildren(
         el('div', { class: 'card raised col', style: 'gap:12px' },
           el('div', { class: 'eyebrow phos' }, 'RECAP'),
           el('ul', { style: 'padding-left:20px; display:flex; flex-direction:column; gap:8px; font-size:14.5px' },
             node.recap.map((r) => el('li', { html: fmt(r) })))),
+        ...endPanels,
         el('button', { class: 'btn primary block', onclick: () => completionSheet(node, { earned, firstTry: firstTryCount, total: node.checks.length }, starCount) }, 'Collect results'));
     }
 
