@@ -296,7 +296,7 @@ ZONE5_LESSONS.push(
       },
       {
         h: 'Program change: the patch switcher',
-        body: '**Program change** is a one-byte message meaning “switch to preset N” — how players flip sounds from the controller without touching the screen. Your Zone 3 state system is the machinery it drives: program change N ↦ load preset N. One message type, and suddenly set-lists work.',
+        body: '**Program change** is the smallest channel message — a single data byte meaning “switch to preset N” — how players flip sounds from the controller without touching the screen. Your Zone 3 state system is the machinery it drives: program change N ↦ load preset N. One message type, and suddenly set-lists work.',
         warn: 'All these controls are *channel-wide* state (like n11\'s bend), stored on the synth and read by voices at render. The pattern never changes: message → normalized value → stored → live multiplier somewhere in the voice math. Learn it once, wire anything.',
       },
     ],
@@ -448,7 +448,7 @@ ZONE5_LESSONS.push(
     sections: [
       {
         h: 'Detune: near-misses on purpose',
-        body: 'Stack copies of one note at slightly different pitches — offsets measured in **cents** (hundredths of a semitone, ratio 2^(cents/1200)) — and their waves drift in and out of phase: d5\'s interference as slow, animated *beating*. A few cents apart = lush chorus shimmer; the copies are wrong together in a way that sounds rich, the same physics as a 12-string guitar or a string section\'s slightly-human tuning.',
+        body: 'Stack copies of one note at slightly different pitches — offsets measured in **cents** (hundredths of a semitone, ratio 2^(cents/1200)) — and their waves drift in and out of phase: d11\'s summed signals interfering as slow, animated *beating*. A few cents apart = lush chorus shimmer; the copies are wrong together in a way that sounds rich, the same physics as a 12-string guitar or a string section\'s slightly-human tuning.',
         viz: { t: 'unisonviz', caption: 'one key → 5 copies: detuned in cents around center, panned across the field — the shimmer is their interference' },
         code: 'const int unisonCount = 5;\nfor (int u = 0; u < unisonCount; ++u)\n{\n    float spread = (u - 2) / 2.0f;                 // −1 .. +1 across copies\n    float cents  = spread * detuneAmount;          // e.g. ±12 cents\n    double ratio = std::pow(2.0, cents / 1200.0);  // cents → ratio\n    startUnisonVoice(note, vel,\n                     baseIncrement * ratio,        // detuned pitch\n                     spread);                      // doubles as pan position!\n}',
         codeTitle: 'the choir, hired',
@@ -510,7 +510,7 @@ ZONE5_LESSONS.push(
     ],
     recap: [
       'Unison = N copies per note, detuned in cents (2^(cents/1200)), panned by spread.',
-      'The shimmer is interference — d5\'s physics as slow beating.',
+      'The shimmer is interference — d11\'s summing physics as slow beating.',
       'Spread positions feed d12\'s constant-power pan: detune becomes width.',
       'Unison multiplies voice demand and re-scales the gain plan — budget for both.',
     ],

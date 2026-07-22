@@ -8560,18 +8560,18 @@ const ZONE5_LESSONS = [
       },
       {
         type: 'bugspot', concept: 'voices-poly',
-        prompt: 'Chords play wrong pitches that change with what else is held. Tap the shared-state bug.',
+        prompt: 'Every note renders as one frozen sample — a click, then nothing moves. Each voice\'s bookmark never advances. Tap why.',
         code: [
           'float renderVoice(Voice& v)',
           '{',
-          '    float raw = oscSample(waveform, phase);',
+          '    float raw = oscSample(waveform, v.phase);',
           '    phase += v.increment;',
           '    return raw * v.adsr.getNextSample();',
           '}',
         ],
-        buggy: 2,
-        explain: 'It reads the PROCESSOR\'s old global phase, not v.phase — every voice advances one shared bookmark by its own increment. Each voice must read and advance its OWN phase: oscSample(waveform, v.phase), then v.phase += v.increment.',
-        fix: 'float raw = oscSample(waveform, v.phase);  // and advance v.phase',
+        buggy: 3,
+        explain: 'The advance writes the PROCESSOR\'s leftover global phase — each voice\'s own v.phase stays wherever it started, so oscSample reads the same spot forever: a constant value, i.e. a click and then near-silence. Per-voice state means per-voice reads AND writes: v.phase += v.increment.',
+        fix: 'v.phase += v.increment;',
       },
       {
         type: 'predict', concept: 'voices-poly',
@@ -8698,7 +8698,7 @@ const ZONE5_LESSONS = [
       {
         h: 'Somebody has to go',
         body: 'Dropping the newest note is almost always wrong: it\'s the one the player just asked for, so its absence is *instantly* heard. Stealing works because the victim, done well, is the note ears have already filed away. The classic priority ladder: steal a voice already in **release** first (it\'s dying anyway) — otherwise steal the **oldest** sounding voice.',
-        viz: { t: 'voicecards', cards: [{ note: 'C2', state: 'steal' }, { note: 'E3', state: 'busy' }, { note: 'G3', state: 'rel' }, { note: 'B3', state: 'busy' }], caption: '9th note arrives: the releasing G3 would go first — here, with no releases, the oldest (C2) pays' },
+        viz: { t: 'voicecards', cards: [{ note: 'C2', state: 'steal' }, { note: 'E3', state: 'busy' }, { note: 'G3', state: 'busy' }, { note: 'B3', state: 'busy' }], caption: 'new note, nobody releasing: the oldest (C2) pays — a releasing card would have gone first' },
         code: 'Voice* findVictim()\n{\n    Voice* oldest = nullptr;\n    for (auto& v : voices)\n    {\n        if (! v.adsr.isActive()) return &v;        // free — not a steal at all\n        if (isReleasing(v))       return &v;        // dying anyway: perfect victim\n        if (oldest == nullptr || v.age < oldest->age)\n            oldest = &v;                            // track the elder\n    }\n    return oldest;                                  // full pool: the oldest pays\n}',
         codeTitle: 'the priority ladder',
         breakdown: [
@@ -9073,7 +9073,7 @@ ZONE5_LESSONS.push(
       },
       {
         h: 'Program change: the patch switcher',
-        body: '**Program change** is a one-byte message meaning “switch to preset N” — how players flip sounds from the controller without touching the screen. Your Zone 3 state system is the machinery it drives: program change N ↦ load preset N. One message type, and suddenly set-lists work.',
+        body: '**Program change** is the smallest channel message — a single data byte meaning “switch to preset N” — how players flip sounds from the controller without touching the screen. Your Zone 3 state system is the machinery it drives: program change N ↦ load preset N. One message type, and suddenly set-lists work.',
         warn: 'All these controls are *channel-wide* state (like n11\'s bend), stored on the synth and read by voices at render. The pattern never changes: message → normalized value → stored → live multiplier somewhere in the voice math. Learn it once, wire anything.',
       },
     ],
@@ -9225,7 +9225,7 @@ ZONE5_LESSONS.push(
     sections: [
       {
         h: 'Detune: near-misses on purpose',
-        body: 'Stack copies of one note at slightly different pitches — offsets measured in **cents** (hundredths of a semitone, ratio 2^(cents/1200)) — and their waves drift in and out of phase: d5\'s interference as slow, animated *beating*. A few cents apart = lush chorus shimmer; the copies are wrong together in a way that sounds rich, the same physics as a 12-string guitar or a string section\'s slightly-human tuning.',
+        body: 'Stack copies of one note at slightly different pitches — offsets measured in **cents** (hundredths of a semitone, ratio 2^(cents/1200)) — and their waves drift in and out of phase: d11\'s summed signals interfering as slow, animated *beating*. A few cents apart = lush chorus shimmer; the copies are wrong together in a way that sounds rich, the same physics as a 12-string guitar or a string section\'s slightly-human tuning.',
         viz: { t: 'unisonviz', caption: 'one key → 5 copies: detuned in cents around center, panned across the field — the shimmer is their interference' },
         code: 'const int unisonCount = 5;\nfor (int u = 0; u < unisonCount; ++u)\n{\n    float spread = (u - 2) / 2.0f;                 // −1 .. +1 across copies\n    float cents  = spread * detuneAmount;          // e.g. ±12 cents\n    double ratio = std::pow(2.0, cents / 1200.0);  // cents → ratio\n    startUnisonVoice(note, vel,\n                     baseIncrement * ratio,        // detuned pitch\n                     spread);                      // doubles as pan position!\n}',
         codeTitle: 'the choir, hired',
@@ -9287,7 +9287,7 @@ ZONE5_LESSONS.push(
     ],
     recap: [
       'Unison = N copies per note, detuned in cents (2^(cents/1200)), panned by spread.',
-      'The shimmer is interference — d5\'s physics as slow beating.',
+      'The shimmer is interference — d11\'s summing physics as slow beating.',
       'Spread positions feed d12\'s constant-power pan: detune becomes width.',
       'Unison multiplies voice demand and re-scales the gain plan — budget for both.',
     ],
@@ -9570,7 +9570,7 @@ const ZONE5_CHALLENGES = [
         type: 'fill', concept: 'performance',
         prompt: 'Center the 14-bit value so the wheel\'s rest position means zero.',
         code: 'int raw = msg.getPitchWheelValue();          // 0..16383\nfloat centered = (raw - ___) / 8192.0f;      // −1..+1',
-        accept: ['8192'],
+        accept: ['8192', '8192.0', '8192.0f', '8192.f'],
         placeholder: 'center',
         hint: 'The midpoint of 0..16383.',
         explain: '8192 is home: subtract it and rest reads as 0.0, full down −1.0, full up ≈ +1.0. Forget the centering and the wheel\'s REST position bends you sharp.',
@@ -10034,10 +10034,10 @@ const ZONE5_CHALLENGES = [
         type: 'fill', concept: 'performance',
         prompt: 'Stage 4 — Every note plays exactly 2 semitones sharp until the wheel is yanked fully down. Complete the missing decode step.',
         code: 'int raw = msg.getPitchWheelValue();          // 0..16383, rest = 8192\nfloat centered  = (raw - ___) / 8192.0f;\nfloat semitones = centered * 2.0f;\nbendRatio = std::pow(2.0f, semitones / 12.0f);',
-        accept: ['8192'],
+        accept: ['8192', '8192.0', '8192.0f', '8192.f'],
         placeholder: 'center',
         hint: 'Rest position must decode to zero semitones.',
-        explain: 'Uncentered, rest reads 8192/8192 = +1.0 → a permanent +2 st bend — the synth is “broken sharp” with a healthy oscillator. Subtract the midpoint and home means home. (14 cents of n8… no: two full semitones. The tuner never lies.)',
+        explain: 'Uncentered, rest reads 8192/8192 = +1.0 → a permanent +2 st bend — the synth is “broken sharp” with a healthy oscillator. Subtract the midpoint and home means home. (Not a subtle detune — two full semitones. The tuner never lies.)',
       },
       {
         type: 'bugspot', concept: 'performance',
@@ -10071,7 +10071,7 @@ const ZONE5_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'voices-poly',
-        prompt: 'Stage 7 — When the pool is full, stolen voices go SILENT instead of playing their new note. Tap the wrong envelope call.',
+        prompt: 'Stage 7 — Last fault: everything else repaired, yet the synth is STILL totally silent — every claimed voice is a dead card. claimVoice is the only place the envelope gets started. Tap the wrong call.',
         code: [
           'void claimVoice(Voice& v, int note, float vel)',
           '{',
@@ -10082,7 +10082,7 @@ const ZONE5_CHALLENGES = [
           '}',
         ],
         buggy: 5,
-        explain: 'reset() drops the envelope to idle and STOPS — isActive() goes false, the render loop skips the voice, and the “new note” is a silent card. The claim must START a life: v.adsr.noteOn(). (A quick pre-fade before the restart is the polish; the attack is the fix.)',
+        explain: 'reset() parks the envelope at idle and never starts it — isActive() stays false, the render loop skips the voice, and every claimed note (fresh or stolen) is a silent card. The claim must START a life: v.adsr.noteOn(). (A quick pre-fade before restarting a stolen voice is the polish; the attack is the fix.)',
         fix: 'v.adsr.noteOn();',
       },
     ],

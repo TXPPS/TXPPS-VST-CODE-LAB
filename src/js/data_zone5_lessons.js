@@ -464,18 +464,18 @@ const ZONE5_LESSONS = [
       },
       {
         type: 'bugspot', concept: 'voices-poly',
-        prompt: 'Chords play wrong pitches that change with what else is held. Tap the shared-state bug.',
+        prompt: 'Every note renders as one frozen sample — a click, then nothing moves. Each voice\'s bookmark never advances. Tap why.',
         code: [
           'float renderVoice(Voice& v)',
           '{',
-          '    float raw = oscSample(waveform, phase);',
+          '    float raw = oscSample(waveform, v.phase);',
           '    phase += v.increment;',
           '    return raw * v.adsr.getNextSample();',
           '}',
         ],
-        buggy: 2,
-        explain: 'It reads the PROCESSOR\'s old global phase, not v.phase — every voice advances one shared bookmark by its own increment. Each voice must read and advance its OWN phase: oscSample(waveform, v.phase), then v.phase += v.increment.',
-        fix: 'float raw = oscSample(waveform, v.phase);  // and advance v.phase',
+        buggy: 3,
+        explain: 'The advance writes the PROCESSOR\'s leftover global phase — each voice\'s own v.phase stays wherever it started, so oscSample reads the same spot forever: a constant value, i.e. a click and then near-silence. Per-voice state means per-voice reads AND writes: v.phase += v.increment.',
+        fix: 'v.phase += v.increment;',
       },
       {
         type: 'predict', concept: 'voices-poly',
@@ -602,7 +602,7 @@ const ZONE5_LESSONS = [
       {
         h: 'Somebody has to go',
         body: 'Dropping the newest note is almost always wrong: it\'s the one the player just asked for, so its absence is *instantly* heard. Stealing works because the victim, done well, is the note ears have already filed away. The classic priority ladder: steal a voice already in **release** first (it\'s dying anyway) — otherwise steal the **oldest** sounding voice.',
-        viz: { t: 'voicecards', cards: [{ note: 'C2', state: 'steal' }, { note: 'E3', state: 'busy' }, { note: 'G3', state: 'rel' }, { note: 'B3', state: 'busy' }], caption: '9th note arrives: the releasing G3 would go first — here, with no releases, the oldest (C2) pays' },
+        viz: { t: 'voicecards', cards: [{ note: 'C2', state: 'steal' }, { note: 'E3', state: 'busy' }, { note: 'G3', state: 'busy' }, { note: 'B3', state: 'busy' }], caption: 'new note, nobody releasing: the oldest (C2) pays — a releasing card would have gone first' },
         code: 'Voice* findVictim()\n{\n    Voice* oldest = nullptr;\n    for (auto& v : voices)\n    {\n        if (! v.adsr.isActive()) return &v;        // free — not a steal at all\n        if (isReleasing(v))       return &v;        // dying anyway: perfect victim\n        if (oldest == nullptr || v.age < oldest->age)\n            oldest = &v;                            // track the elder\n    }\n    return oldest;                                  // full pool: the oldest pays\n}',
         codeTitle: 'the priority ladder',
         breakdown: [
