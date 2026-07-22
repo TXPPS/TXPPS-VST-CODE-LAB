@@ -6492,7 +6492,7 @@ const ZONE4_LESSONS = [
         prompt: 'Why is the division written `/ 12.0f` and not `/ 12`?',
         options: [
           { t: '(note - 69) is an int — int ÷ int would truncate the semitone fraction to whole octaves', why: '' },
-          { t: 'Style preference only', why: 'It\'s functional: integer division here quantizes every pitch to the nearest octave below. Every note becomes an A.' },
+          { t: 'Style preference only', why: 'It\'s functional: integer division quantizes every pitch to a whole octave (truncating toward the anchor). Every note becomes an A.' },
           { t: '12.0f is faster', why: 'Speed is identical — correctness is the issue: Zone 1\'s truncation trap, hiding in a synth formula.' },
           { t: 'pow requires it', why: 'pow accepts either — the truncation happens before pow ever sees the value.' },
         ],
@@ -6602,7 +6602,7 @@ const ZONE4_LESSONS = [
         code: '// First Signal\'s new members (PluginProcessor.h):\ndouble phase = 0.0;            // the bookmark (double!)\ndouble phaseIncrement = 0.0;   // set when freq changes\n\nvoid updateIncrement(float freqHz)\n{\n    phaseIncrement = juce::MathConstants<double>::twoPi\n                   * freqHz / getSampleRate();\n}',
         codeTitle: 'the bookmark, installed',
         breakdown: [
-          ['double phase', 'double, not float: it accumulates for hours (Zone 1\'s precision lesson)'],
+          ['double phase', 'double, not float: a tiny step repeated 48,000× a second — Zone 1\'s precision habits'],
           ['twoPi * freq', 'full cycles per second, in radians'],
           ['/ getSampleRate()', 'per second → per sample'],
           ['≈0.0576 @ 440Hz/48k', 'the step that IS the pitch'],
@@ -6610,8 +6610,8 @@ const ZONE4_LESSONS = [
       },
       {
         h: 'Wrap by subtraction',
-        body: 'Past 2π, subtract 2π — **never reset to zero**. The overshoot fraction is real phase; discarding it detunes the oscillator by a tiny lie every single cycle, and tiny lies at 440 per second add up to audible drift. (You fixed exactly this in p2 — now you know its name: phase error.)',
-        mistake: { code: 'if (phase >= twoPi)\n    phase = 0.0;        // ✗ throws away the overshoot\n\nif (phase >= twoPi)\n    phase -= twoPi;     // ✓ keeps the fraction', text: 'Subtract, don\'t reset. The waveform looks identical on a scope for one cycle — and drifts flat over minutes.' },
+        body: 'Past 2π, subtract 2π — **never reset to zero**. The overshoot fraction is real phase; discarding it stretches every cycle to a whole number of samples — at 48 kHz, a “440 Hz” oscillator actually plays ≈436 Hz, about 14 cents flat, immediately and permanently. (You fixed exactly this in p2 — now you know what it costs.)',
+        mistake: { code: 'if (phase >= twoPi)\n    phase = 0.0;        // ✗ throws away the overshoot\n\nif (phase >= twoPi)\n    phase -= twoPi;     // ✓ keeps the fraction', text: 'Subtract, don\'t reset. One cycle looks identical on a scope — but every cycle gets stretched to a whole sample count, and the note sits audibly flat, constantly.' },
       },
     ],
     checks: [
@@ -6641,13 +6641,13 @@ const ZONE4_LESSONS = [
         type: 'mcq', concept: 'oscillators',
         prompt: 'Why is the phase accumulator a double while samples stay float?',
         options: [
-          { t: 'Phase accumulates tiny steps for hours — float\'s precision drifts audibly; each output sample is used once', why: '' },
+          { t: 'The increment is tiny and reused forever — float\'s coarse steps quantize tuning, and a slow LFO\'s step can even vanish; double is free insurance', why: '' },
           { t: 'double sounds warmer', why: 'The output is converted to float anyway — precision matters in the *accumulator*, not the copy.' },
           { t: 'JUCE requires it', why: 'JUCE doesn\'t care — numerics do. Long-running sums are exactly double\'s job (Zone 1, l1).' },
-          { t: 'No reason; float is fine', why: 'Hours of accumulated float rounding = slow pitch drift. Real synths use double phase for real reasons.' },
+          { t: 'No reason; float is fine', why: 'A wrapped audio-rate phase mostly survives float — but float quantizes the tiny increment, and a very slow LFO\'s step can be swallowed entirely near 2π. Double costs nothing; real synths use it.' },
         ],
         answer: 0,
-        explain: 'Accumulators compound their errors; outputs don\'t. Double where errors accumulate, float where they don\'t — a rule you\'ll reuse constantly.',
+        explain: 'Precision matters where values are tiny and reused — the increment, the running phase. Outputs are used once and shipped as float. Double for accumulators, float for samples: a habit that never bites.',
       },
     ],
     recap: [
@@ -6660,7 +6660,7 @@ const ZONE4_LESSONS = [
       { name: 'First Signal', use: 'phase + increment members just landed in its processor' },
       { name: 'Wavetable synths', use: 'the same bookmark, reading a table instead of sin()' },
     ],
-    analogyPanel: 'Phase is a tape loop\'s playhead position; the increment is the tape speed. Splice the loop badly (reset to zero) and every pass loses a millimeter — the pitch of the loop slowly lies.',
+    analogyPanel: 'Phase is a tape loop\'s playhead position; the increment is the tape speed. Splice the loop badly (reset to zero) and every pass silently pastes in an extra millimeter — the loop plays flat, permanently.',
     beginnerMistake: 'Recomputing the increment every sample from scratch "to be safe." Compute it when frequency *changes*; the audio loop just adds. Cheap and correct beats busy.',
     remember: 'The increment is the pitch; the wrap keeps the fraction; the accumulator is a double.',
     builds: ['phase', 'double', 'sample-rate'],
@@ -6688,7 +6688,7 @@ const ZONE4_LESSONS = [
       },
       {
         h: 'Why one sample loop outside, channels inside',
-        body: 'The phase must advance once per *sample*, not once per channel — so the sample loop owns the advance, and the channel loop just copies the computed value. Swap the nesting carelessly and stereo runs the oscillator twice per sample: an octave up and wrong. Loop structure IS correctness here.',
+        body: 'The phase must advance once per *sample*, not once per channel — so the sample loop owns the advance, and the channel loop just copies the computed value. Let the advance slip inside the channel loop and stereo steps the clock twice per sample: an octave up and wrong. Loop structure IS correctness here.',
       },
     ],
     checks: [
@@ -6696,19 +6696,19 @@ const ZONE4_LESSONS = [
         type: 'bugspot', concept: 'oscillators',
         prompt: 'This "stereo" version plays an octave too high. Tap the structural mistake.',
         code: [
-          'for (int ch = 0; ch < buffer.getNumChannels(); ++ch)',
+          'for (int i = 0; i < buffer.getNumSamples(); ++i)',
           '{',
-          '    float* data = buffer.getWritePointer(ch);',
-          '    for (int i = 0; i < buffer.getNumSamples(); ++i)',
+          '    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)',
           '    {',
-          '        data[i] = (float) std::sin(phase) * 0.25f;',
+          '        buffer.getWritePointer(ch)[i] =',
+          '            (float) std::sin(phase) * 0.25f;',
           '        phase += phaseIncrement;',
           '    }',
           '}',
         ],
         buggy: 6,
-        explain: 'With channels outside, the phase advances once per channel per sample — twice per sample in stereo, doubling the effective pitch (and desyncing channels). Generators put the sample loop outside and advance exactly once inside it.',
-        fix: 'Sample loop outside; compute once; copy to every channel; advance once',
+        explain: 'The advance sits inside the channel loop: stereo steps the phase twice per sample, doubling the effective pitch (and offsetting the two channels by one step). Compute once per sample, copy to every channel, advance exactly once — outside the channel loop.',
+        fix: 'Move phase += phaseIncrement out of the channel loop — one advance per sample',
       },
       {
         type: 'fill', concept: 'oscillators',
@@ -6887,7 +6887,7 @@ const ZONE4_LESSONS = [
       { name: 'Commercial synths', use: 'the "HQ/oversample" switch is exactly this tradeoff' },
     ],
     analogyPanel: 'The wagon wheel in old films spinning backwards: motion too fast for the frame rate doesn\'t vanish, it lies about its direction. Harmonics too fast for the sample rate do the same — in pitch.',
-    beginnerMistake: 'Reaching for 192 kHz sessions to "fix" aliasing from naive shapes. The shape still implies infinite harmonics — you moved the ceiling, not the problem. Band-limit the source.',
+    beginnerMistake: 'Reaching for 192 kHz sessions to "fix" aliasing from naive shapes. A higher ceiling does soften the fizz — at 4× the CPU, everywhere, forever — and the shape still implies infinite harmonics. Band-limit the source instead.',
     remember: 'What can\'t fit under Nyquist doesn\'t vanish — it folds back and lies.',
     builds: ['aliasing', 'nyquist', 'harmonics'],
     leads: ['oversampling', 'waveform'],
@@ -6980,7 +6980,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'the p11 mission wires an ADSR into the voice' },
-      { name: 'Every synth ever', use: 'at least one ADSR on amplitude; usually a second on the filter' },
+      { name: 'Nearly every synth', use: 'an amplitude envelope (usually ADSR); often a second one on the filter' },
     ],
     analogyPanel: 'An envelope is an automated fader ride recorded into every note. Attack: how fast you push it up. Decay: easing back. Sustain: the level you hold. Release: pulling to −∞ when the note ends.',
     beginnerMistake: 'Reading Sustain as "how long the note sustains." It has no duration. A patch that dies while you hold the key is Decay reaching a Sustain level of *zero* — not a short Sustain time.',
@@ -7047,11 +7047,12 @@ ZONE4_LESSONS.push(
         type: 'fill', concept: 'levels',
         prompt: 'Clamp the finished sample to full scale — floor first.',
         code: 's = juce::jlimit(___, 1.0f, s);',
-        accept: ['-1.0f', '-1.f', '-1', '-1.0'],
+        accept: ['-1.0f', '-1.f'],
         placeholder: 'floor',
         hint: 'Audio swings both ways.',
         mistakes: [
           { match: '^0(\\.0f?|\\.f)?$', msg: 'A floor of zero deletes the bottom half of every wave — total distortion. The floor mirrors the ceiling: −1.0f.' },
+          { match: '^-1(\\.0)?$', msg: 'Right value, wrong type: jlimit deduces ONE shared type — int or double bounds against float arguments won\'t compile. Write the float: -1.0f.' },
         ],
         explain: 'jlimit(−1, +1): the seatbelt engages only when something upstream went wrong. If it engages *constantly*, the bug is your gain staging.',
       },
@@ -7100,7 +7101,7 @@ ZONE4_LESSONS.push(
       },
       {
         h: 'Why real mixes survive',
-        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistics is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — d5\'s constructive interference on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
+        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistics is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — constructive interference, arriving on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
       },
     ],
     checks: [
@@ -7182,7 +7183,7 @@ ZONE4_LESSONS.push(
       },
       {
         h: 'The mono button: L + R',
-        body: 'Clubs, phones and many Bluetooth speakers play **left + right, summed**. Identical lanes sum fine. But if the lanes carry *opposite-polarity* versions of a sound, the mono sum cancels toward silence — d5\'s destructive interference eating your mix exactly where the crowd is. Some "wideners" work precisely this way: huge in headphones, gone in mono. Now you know the tradeoff by mechanism.',
+        body: 'Clubs, phones and many Bluetooth speakers play **left + right, summed**. Identical lanes sum fine. But if the lanes carry *opposite-polarity* versions of a sound, the mono sum cancels toward silence — destructive interference eating your mix exactly where the crowd is. Some "wideners" work precisely this way: huge in headphones, gone in mono. Now you know the tradeoff by mechanism.',
       },
     ],
     checks: [
@@ -7319,7 +7320,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'its Zone 3 gain smoother, now understood from the waveform side' },
-      { name: 'DAW automation', use: 'your drawn curves are interpolated to per-sample resolution before plugins see them' },
+      { name: 'DAW automation', use: 'hosts deliver your curves as sparse points — your smoother turns those steps into per-sample glides' },
     ],
     analogyPanel: 'An unsmoothed parameter is a lighting desk where every fader has ten hard notches — each scene change strobes. Smoothing is the motorized fader sliding through every level between.',
     beginnerMistake: 'Smoothing *everything*, then filing a bug that the waveform selector "sounds mushy between positions." The rule is not "smooth all parameters" — it\'s "smooth the continuous ones."',
@@ -7343,7 +7344,7 @@ ZONE4_LESSONS.push(
       {
         h: 'You already wrote this oscillator',
         body: 'An LFO is the d5 phase accumulator with a tiny frequency. Ask for 5 Hz instead of 440 and the same `std::sin(phase)` circles five times a second. The only new moves: **re-range** the −1..+1 output (a negative gain would flip polarity!) and scale by **depth**:',
-        code: 'lfoPhase += twoPi * 5.0 / sampleRate;          // 5 Hz — d5\'s formula\nfloat lfo  = (float) std::sin(lfoPhase);       // −1..+1, slowly\nfloat trem = 1.0f - depth * (0.5f + 0.5f * lfo);\nfloat s    = raw * env * trem * gain;          // tremolo, installed',
+        code: 'lfoPhase += twoPi * 5.0 / sampleRate;          // 5 Hz — d5\'s formula\nif (lfoPhase >= twoPi) lfoPhase -= twoPi;      // same wrap discipline\nfloat lfo  = (float) std::sin(lfoPhase);       // −1..+1, slowly\nfloat trem = 1.0f - depth * (0.5f + 0.5f * lfo);\nfloat s    = raw * env * trem * gain;          // tremolo, installed',
         codeTitle: 'a tremolo in four lines',
         breakdown: [
           ['5.0 / sampleRate', 'the accumulator doesn\'t know it\'s an LFO — only the increment shrank'],
@@ -7414,13 +7415,13 @@ ZONE4_LESSONS.push(
     sections: [
       {
         h: 'The chain has an order',
-        body: 'Chains order stages for the same reason pedalboards do. The oscillator makes the tone; the envelope shapes the note; the LFO adds motion; the smoothed gain sets level; the clamp guards the exit. Swap carelessly and it breaks: a clamp mid-chain guards nothing, gain before the envelope makes the knob fight the note\'s shape.',
+        body: 'Chains order stages for the same reason pedalboards do. The oscillator makes the tone; the envelope shapes the note; the LFO adds motion; the smoothed gain sets level; the clamp guards the exit. Swap carelessly and it breaks: a clamp mid-chain guards nothing, and math placed after the buffer write never reaches the listener at all. The multiplies commute with each other — the guard and the write do not.',
         viz: { t: 'chain', nodes: ['OSC', 'ENV', 'LFO', 'GAIN', 'CLAMP'], accent: 4, caption: 'tone → shape → motion → level → safety. every block is a lesson you\'ve done' },
       },
       {
         h: 'The whole loop, annotated',
         body: 'The heart of First Signal v3 — every line traceable to a lesson:',
-        code: 'gainSmoothed.setTargetValue(\n    juce::Decibels::decibelsToGain(gainDb));      // d4: ears speak dB\n\nfor (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float raw  = oscSample(waveform, phase);      // d6, d7\n    float env  = adsr.getNextSample();            // d9\n    lfoPhase  += lfoIncrement;                    // d14 (d5 math)\n    float trem = 1.0f - depth\n               * (0.5f + 0.5f * (float) std::sin(lfoPhase));\n    float g    = gainSmoothed.getNextValue();     // d13\n    float s    = raw * env * trem * g;            // the voice\n    s = juce::jlimit(-1.0f, 1.0f, s);             // d10 — LAST\n\n    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n        buffer.getWritePointer(ch)[i] = s;        // d12\n\n    phase += phaseIncrement;                      // d5\n    if (phase >= juce::MathConstants<double>::twoPi)\n        phase -= juce::MathConstants<double>::twoPi;\n}',
+        code: 'gainSmoothed.setTargetValue(\n    juce::Decibels::decibelsToGain(gainDb));      // d4: ears speak dB\n\nfor (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float raw  = oscSample(waveform, phase);      // d6, d7\n    float env  = adsr.getNextSample();            // d9\n    lfoPhase  += lfoIncrement;                    // d14 (d5 math)\n    if (lfoPhase >= juce::MathConstants<double>::twoPi)\n        lfoPhase -= juce::MathConstants<double>::twoPi;\n    float trem = 1.0f - depth\n               * (0.5f + 0.5f * (float) std::sin(lfoPhase));\n    float g    = gainSmoothed.getNextValue();     // d13\n    float s    = raw * env * trem * g;            // the voice\n    s = juce::jlimit(-1.0f, 1.0f, s);             // d10 — LAST\n\n    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n        buffer.getWritePointer(ch)[i] = s;        // d12\n\n    phase += phaseIncrement;                      // d5\n    if (phase >= juce::MathConstants<double>::twoPi)\n        phase -= juce::MathConstants<double>::twoPi;\n}',
         codeTitle: 'First Signal v3 — the sounding synth',
         breakdown: [
           ['raw * env * trem * g', 'tone × shape × motion × level — four multiplies, four lessons'],
@@ -7567,7 +7568,7 @@ const ZONE4_CHALLENGES = [
         type: 'fill', concept: 'dsp-basics',
         prompt: 'The MIDI map: which note number is the anchor A440?',
         code: 'float hz = 440.0f * std::pow(2.0f, (note - ___) / 12.0f);',
-        accept: ['69', '69.0f', '69.0'],
+        accept: ['69', '69.0f', '69.0', '69.f'],
         placeholder: 'note #',
         hint: 'The A above middle C.',
         explain: 'MIDI 69 = A440. Each semitone away multiplies by 2^(1/12) — twelve of them doubles the frequency: one octave. Every synth contains this line.',
@@ -7604,11 +7605,12 @@ const ZONE4_CHALLENGES = [
         type: 'fill', concept: 'levels',
         prompt: 'Bolt on the output seatbelt — the floor of the clamp.',
         code: 's = juce::jlimit(___, 1.0f, s);',
-        accept: ['-1.0f', '-1.f', '-1', '-1.0'],
+        accept: ['-1.0f', '-1.f'],
         placeholder: 'floor',
         hint: 'The ceiling has a mirror.',
         mistakes: [
           { match: '^0(\\.0f?|\\.f)?$', msg: 'Floor at zero deletes the bottom half of every waveform — total distortion, not protection. The floor mirrors the ceiling: −1.0f.' },
+          { match: '^-1(\\.0)?$', msg: 'Right value, wrong type: jlimit deduces ONE shared type, and an int or double bound against float arguments won\'t compile. Write it as a float: -1.0f.' },
         ],
         explain: 'jlimit(−1, +1) engages only when upstream staging failed. If it engages constantly, it IS the distortion — fix the gain plan, not the clamp.',
       },
@@ -7682,9 +7684,9 @@ const ZONE4_CHALLENGES = [
     ],
   },
   {
-    id: 'db2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Drifting Pitch', short: 'Find the bug',
+    id: 'db2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Flat Oscillator', short: 'Find the bug',
     concepts: ['oscillators'],
-    intro: 'Fresh from the tuner the synth is perfect; ten minutes into the set it\'s audibly flat. Nothing overheats in software — tap the line that lies.',
+    intro: 'The tuner says this synth never quite hits pitch — every note sits about 14 cents flat, always, on every key. Tap the line that lies.',
     questions: [
       {
         type: 'bugspot', concept: 'oscillators',
@@ -7695,7 +7697,7 @@ const ZONE4_CHALLENGES = [
           '    phase = 0.0;',
         ],
         buggy: 2,
-        explain: 'Reset-to-zero throws away the overshoot fraction — real phase, stolen once per cycle, 440 times a second. Each theft detunes a hair; ten minutes compounds into audible flat. Subtract twoPi instead: the fraction survives.',
+        explain: 'Reset-to-zero throws away the overshoot fraction, stretching every cycle to a whole number of samples — a “440 Hz” note at 48 kHz actually plays ≈436 Hz, about 14 cents flat, constantly. Subtract twoPi: the fraction survives and pitch stays honest.',
         fix: 'phase -= juce::MathConstants<double>::twoPi;',
       },
     ],
@@ -7770,7 +7772,7 @@ const ZONE4_CHALLENGES = [
     questions: [
       {
         type: 'order', concept: 'oscillators',
-        prompt: 'Arrange the loop body, top to bottom.',
+        prompt: 'Arrange the loop body top to bottom, exactly as d6 teaches it: generate → copy → advance → wrap.',
         lines: [
           'float s = (float) std::sin(phase) * 0.25f;',
           'for (int ch = 0; ch < buffer.getNumChannels(); ++ch)',
@@ -7779,7 +7781,7 @@ const ZONE4_CHALLENGES = [
           'if (phase >= juce::MathConstants<double>::twoPi)',
           '    phase -= juce::MathConstants<double>::twoPi;',
         ],
-        explain: 'Generate → copy to every lane → advance → wrap. Advance before the copy and the first sample is wrong; wrap before the advance and the check tests stale phase. Order IS the algorithm.',
+        explain: 'Generate → copy to every lane → advance → wrap. Advance before the *generate* and every sample reads a bookmark that already moved; wrap before the advance and the check tests stale phase. d6 keeps all the clockwork last — signal first, bookkeeping after.',
       },
     ],
   },
@@ -7797,7 +7799,7 @@ const ZONE4_CHALLENGES = [
           prompt: 'Which declarations are correct for the phase machinery?',
           options: [
             { t: 'double phase = 0.0; double phaseIncrement = 0.0;', why: '' },
-            { t: 'float phase = 0.0f; float phaseIncrement = 0.0f;', why: 'Floats drift audibly over hours of accumulated micro-steps — accumulators are double (d5).' },
+            { t: 'float phase = 0.0f; float phaseIncrement = 0.0f;', why: 'A wrapped phase mostly survives float — but float quantizes the tiny increment. Double costs nothing: make it the accumulator habit (d5).' },
             { t: 'static double phase;', why: 'static would SHARE one phase across every instance of the plugin — two tracks, one interleaved mess. Each processor owns its own.' },
             { t: 'double phase; (no initializer)', why: 'Uninitialized memory as your first sample: a click, or worse, garbage. = 0.0 starts at the zero crossing, silently.' },
           ],
@@ -7921,7 +7923,7 @@ const ZONE4_CHALLENGES = [
           type: 'fill', concept: 'envelopes',
           prompt: 'Tell the ADSR the session\'s time grid.',
           code: 'void prepareToPlay(double sampleRate, int samplesPerBlock)\n{\n    adsr.setSampleRate(___);\n    adsr.setParameters({ 0.01f, 0.10f, 0.8f, 0.30f });\n}',
-          accept: ['sampleRate'],
+          accept: ['sampleRate', 'getSampleRate()'],
           placeholder: 'argument',
           hint: 'Its A/D/R times are in seconds — seconds need a rate.',
           explain: 'Attack 10 ms, Decay 100 ms, Sustain LEVEL 0.8, Release 300 ms — but those times only mean something once the envelope knows the rate. Rate-dependent setup lives in prepareToPlay, always.',
@@ -7945,13 +7947,13 @@ const ZONE4_CHALLENGES = [
           type: 'order', concept: 'modulation',
           prompt: 'Arrange: generate, shape, guard, deliver.',
           lines: [
-            'float raw  = oscSample(waveform, phase);',
-            'float env  = adsr.getNextSample();',
-            'float s    = raw * env * trem * gainSmoothed.getNextValue();',
+            'float raw    = oscSample(waveform, phase);',
+            'float shaped = raw * adsr.getNextSample();',
+            'float s      = shaped * trem * gainSmoothed.getNextValue();',
             's = juce::jlimit(-1.0f, 1.0f, s);',
             'buffer.getWritePointer(ch)[i] = s;',
           ],
-          explain: 'Tone × shape × motion × level, THEN the clamp, THEN the write. Math after a clamp is unguarded — the seatbelt goes on last.',
+          explain: 'Each line feeds the next: tone → shaped → leveled, THEN the clamp, THEN the write. Math after a clamp is unguarded — the seatbelt goes on last, and only the write comes after it.',
         },
       },
       {
@@ -7976,7 +7978,7 @@ const ZONE4_CHALLENGES = [
   {
     id: 'boss4', kind: 'boss', title: 'BOSS: The Broken Synth', short: 'Zone 4 boss', passNeed: 5,
     concepts: ['oscillators', 'envelopes', 'mixing', 'levels', 'modulation'],
-    brief: 'A producer friend bought a "finished" synth plugin from a flea-market code sale. It won\'t build; when patched it drifts flat mid-set, drones forever, distorts on two oscillators, zippers on the gain knob and fizzes up high. Seven faults across the whole voice. Repair 5 of 7 and the synth plays.',
+    brief: 'A producer friend bought a "finished" synth plugin from a flea-market code sale. It won\'t build; when patched it plays flat on every note, drones forever, distorts on two oscillators, zippers on the gain knob and fizzes up high. Seven faults across the whole voice. Repair 5 of 7 and the synth plays.',
     stages: [
       {
         type: 'compiler', concept: 'dsp-basics',
@@ -7994,14 +7996,14 @@ const ZONE4_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'oscillators',
-        prompt: 'Stage 2 — Tuned at soundcheck, flat by the encore. Tap the lie.',
+        prompt: 'Stage 2 — It builds and plays — but the tuner reads ≈14 cents flat on every single note. Tap the lie.',
         code: [
           'phase += phaseIncrement;',
           'if (phase >= juce::MathConstants<double>::twoPi)',
           '    phase = 0.0;',
         ],
         buggy: 2,
-        explain: 'Reset-to-zero steals the overshoot fraction every cycle — 440 micro-thefts per second, compounding into audible flat over a set. Subtract twoPi: the fraction is real phase and it survives.',
+        explain: 'Reset-to-zero steals the overshoot fraction, so every cycle stretches to a whole number of samples — a constant flat detune from the very first cycle. Subtract twoPi: the fraction is real phase and it survives.',
         fix: 'phase -= juce::MathConstants<double>::twoPi;',
       },
       {
@@ -8056,7 +8058,7 @@ const ZONE4_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'levels',
-        prompt: 'Stage 7 — Last fault: the "protected" output still clips when the envelope spikes. The clamp is present — tap why it guards nothing.',
+        prompt: 'Stage 7 — Last fault: the output still clips when the envelope spikes. The ×1.8 is deliberate makeup drive, and a clamp IS present — tap why it guards nothing.',
         code: [
           'float raw = oscSample(waveform, phase);',
           'raw = juce::jlimit(-1.0f, 1.0f, raw);',
@@ -9896,26 +9898,26 @@ DICT.push(
     remember: 'Half the sample rate is the ceiling — and what can\'t fit doesn\'t vanish, it folds.',
     related: ['sample-rate', 'aliasing', 'oversampling', 'harmonics'],
     appears: [{ z: 4, node: 'd2' }, { z: 4, node: 'd8' }],
-    aka: ['nyquist limit', 'nyquist rate'],
-    search: ['half sample rate', 'frequency ceiling', 'fold back', 'highest pitch'],
+    aka: ['nyquist limit', 'folding frequency'],
+    search: ['half sample rate', 'frequency ceiling', 'fold back', 'highest pitch', 'nyquist rate'],
   },
   {
     id: 'harmonics', t: 'harmonics', c: 'DSP',
-    plain: 'The whole-number multiples of a note\'s fundamental frequency that sound along with it: 440 Hz brings friends at 880, 1320, 1760… Their relative strengths are the recipe that makes a saw bright, a square hollow, a sine pure.',
+    plain: 'The whole-number multiples of a note\'s fundamental frequency — counting the fundamental itself as the 1st: play 440 Hz and the 2nd harmonic sits at 880, the 3rd at 1320, the 4th at 1760… Their relative strengths are the recipe that makes a saw bright, a square hollow, a sine pure.',
     why: 'Waveform choice, filter sweeps, distortion, clipping and aliasing are all stories about harmonics — which ones exist, which get removed, which get added, which fold. It\'s the vocabulary of timbre.',
     studio: 'The overtones that make a Strat and a Les Paul play the same note and sound nothing alike. Same fundamental, different recipe.',
     uses: ['Waveform character', 'Subtractive filtering', 'Why clipping sounds harsh', 'Aliasing analysis'],
     viz: { t: 'wave', type: 'saw', caption: 'sharp corners = strong high harmonics — the saw has every one' },
-    mistake: 'Hearing "harmonics" as always pleasant. Musical harmonics sit at whole-number multiples; clipping and aliasing add energy at WRONG places — that\'s exactly why they read as harsh.',
+    mistake: 'Hearing "harmonics" as always pleasant. Clipping piles harsh new HIGH harmonics onto a tone — and digitally, any that pass Nyquist fold back to wrong, inharmonic places; aliasing lands at wrong places outright.',
     remember: 'A waveform\'s shape is a harmonic recipe — corners mean strong highs.',
     related: ['waveform', 'frequency', 'clipping', 'aliasing', 'cutoff'],
     appears: [{ z: 4, node: 'd7' }, { z: 4, node: 'd8' }, { z: 4, node: 'd10' }],
-    aka: ['overtones', 'partials', 'harmonic series'],
+    aka: ['overtones', 'harmonic partials', 'harmonic series'],
     search: ['overtones', 'timbre', 'bright sound', 'why saw sounds bright'],
   },
   {
     id: 'white-noise', t: 'white noise', c: 'SYNTHS',
-    plain: 'A signal where every sample is a fresh random value in ±1 — no cycle, no pitch, all frequencies at once at equal average energy. The "hiss" oscillator on every synth.',
+    plain: 'A signal where every sample is a fresh random value in ±1 — no cycle, no pitch, all frequencies at once at equal average energy. The "hiss" oscillator on nearly every subtractive synth.',
     why: 'It\'s the one generator that ignores phase entirely, the raw material of snares, hats, risers and wind — and its ±1 recentering is a classic first DC-offset bug.',
     studio: 'The ocean-hiss layer under a snare, the riser before the drop, the breath in a flute patch — all one random-number generator wearing different envelopes.',
     uses: ['Snares & hats', 'Risers & FX', 'Breath & texture layers', 'Testing filters'],
@@ -9929,7 +9931,7 @@ DICT.push(
   {
     id: 'clipping', t: 'clipping', c: 'AUDIO ENG',
     plain: 'What happens when samples try to leave the ±1.0 full-scale range: they\'re clamped at the boundary and the waveform\'s round peaks become flat tops. Flat tops are sharp corners — new harsh harmonics that were never in the music.',
-    why: 'It\'s the most audible failure in digital audio, the reason gain staging exists in code, and — controlled and intentional — the engine inside every distortion plugin. Same math, opposite intent.',
+    why: 'It\'s the most audible failure in digital audio, the reason gain staging exists in code, and — controlled and intentional — the engine inside most distortion plugins. Same math, opposite intent.',
     studio: 'The master bus red light, made of arithmetic. Analog clipping saturated gradually; digital clipping is a doorframe that flattens every head taller than the frame.',
     uses: ['Why mixes crunch', 'Output safety clamps', 'Distortion by design', 'Gain staging'],
     viz: { t: 'clipwave' },

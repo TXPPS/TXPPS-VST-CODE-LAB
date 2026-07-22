@@ -82,7 +82,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'the p11 mission wires an ADSR into the voice' },
-      { name: 'Every synth ever', use: 'at least one ADSR on amplitude; usually a second on the filter' },
+      { name: 'Nearly every synth', use: 'an amplitude envelope (usually ADSR); often a second one on the filter' },
     ],
     analogyPanel: 'An envelope is an automated fader ride recorded into every note. Attack: how fast you push it up. Decay: easing back. Sustain: the level you hold. Release: pulling to −∞ when the note ends.',
     beginnerMistake: 'Reading Sustain as "how long the note sustains." It has no duration. A patch that dies while you hold the key is Decay reaching a Sustain level of *zero* — not a short Sustain time.',
@@ -149,11 +149,12 @@ ZONE4_LESSONS.push(
         type: 'fill', concept: 'levels',
         prompt: 'Clamp the finished sample to full scale — floor first.',
         code: 's = juce::jlimit(___, 1.0f, s);',
-        accept: ['-1.0f', '-1.f', '-1', '-1.0'],
+        accept: ['-1.0f', '-1.f'],
         placeholder: 'floor',
         hint: 'Audio swings both ways.',
         mistakes: [
           { match: '^0(\\.0f?|\\.f)?$', msg: 'A floor of zero deletes the bottom half of every wave — total distortion. The floor mirrors the ceiling: −1.0f.' },
+          { match: '^-1(\\.0)?$', msg: 'Right value, wrong type: jlimit deduces ONE shared type — int or double bounds against float arguments won\'t compile. Write the float: -1.0f.' },
         ],
         explain: 'jlimit(−1, +1): the seatbelt engages only when something upstream went wrong. If it engages *constantly*, the bug is your gain staging.',
       },
@@ -202,7 +203,7 @@ ZONE4_LESSONS.push(
       },
       {
         h: 'Why real mixes survive',
-        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistics is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — d5\'s constructive interference on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
+        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistics is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — constructive interference, arriving on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
       },
     ],
     checks: [
@@ -284,7 +285,7 @@ ZONE4_LESSONS.push(
       },
       {
         h: 'The mono button: L + R',
-        body: 'Clubs, phones and many Bluetooth speakers play **left + right, summed**. Identical lanes sum fine. But if the lanes carry *opposite-polarity* versions of a sound, the mono sum cancels toward silence — d5\'s destructive interference eating your mix exactly where the crowd is. Some "wideners" work precisely this way: huge in headphones, gone in mono. Now you know the tradeoff by mechanism.',
+        body: 'Clubs, phones and many Bluetooth speakers play **left + right, summed**. Identical lanes sum fine. But if the lanes carry *opposite-polarity* versions of a sound, the mono sum cancels toward silence — destructive interference eating your mix exactly where the crowd is. Some "wideners" work precisely this way: huge in headphones, gone in mono. Now you know the tradeoff by mechanism.',
       },
     ],
     checks: [
@@ -421,7 +422,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'its Zone 3 gain smoother, now understood from the waveform side' },
-      { name: 'DAW automation', use: 'your drawn curves are interpolated to per-sample resolution before plugins see them' },
+      { name: 'DAW automation', use: 'hosts deliver your curves as sparse points — your smoother turns those steps into per-sample glides' },
     ],
     analogyPanel: 'An unsmoothed parameter is a lighting desk where every fader has ten hard notches — each scene change strobes. Smoothing is the motorized fader sliding through every level between.',
     beginnerMistake: 'Smoothing *everything*, then filing a bug that the waveform selector "sounds mushy between positions." The rule is not "smooth all parameters" — it\'s "smooth the continuous ones."',
@@ -445,7 +446,7 @@ ZONE4_LESSONS.push(
       {
         h: 'You already wrote this oscillator',
         body: 'An LFO is the d5 phase accumulator with a tiny frequency. Ask for 5 Hz instead of 440 and the same `std::sin(phase)` circles five times a second. The only new moves: **re-range** the −1..+1 output (a negative gain would flip polarity!) and scale by **depth**:',
-        code: 'lfoPhase += twoPi * 5.0 / sampleRate;          // 5 Hz — d5\'s formula\nfloat lfo  = (float) std::sin(lfoPhase);       // −1..+1, slowly\nfloat trem = 1.0f - depth * (0.5f + 0.5f * lfo);\nfloat s    = raw * env * trem * gain;          // tremolo, installed',
+        code: 'lfoPhase += twoPi * 5.0 / sampleRate;          // 5 Hz — d5\'s formula\nif (lfoPhase >= twoPi) lfoPhase -= twoPi;      // same wrap discipline\nfloat lfo  = (float) std::sin(lfoPhase);       // −1..+1, slowly\nfloat trem = 1.0f - depth * (0.5f + 0.5f * lfo);\nfloat s    = raw * env * trem * gain;          // tremolo, installed',
         codeTitle: 'a tremolo in four lines',
         breakdown: [
           ['5.0 / sampleRate', 'the accumulator doesn\'t know it\'s an LFO — only the increment shrank'],
@@ -516,13 +517,13 @@ ZONE4_LESSONS.push(
     sections: [
       {
         h: 'The chain has an order',
-        body: 'Chains order stages for the same reason pedalboards do. The oscillator makes the tone; the envelope shapes the note; the LFO adds motion; the smoothed gain sets level; the clamp guards the exit. Swap carelessly and it breaks: a clamp mid-chain guards nothing, gain before the envelope makes the knob fight the note\'s shape.',
+        body: 'Chains order stages for the same reason pedalboards do. The oscillator makes the tone; the envelope shapes the note; the LFO adds motion; the smoothed gain sets level; the clamp guards the exit. Swap carelessly and it breaks: a clamp mid-chain guards nothing, and math placed after the buffer write never reaches the listener at all. The multiplies commute with each other — the guard and the write do not.',
         viz: { t: 'chain', nodes: ['OSC', 'ENV', 'LFO', 'GAIN', 'CLAMP'], accent: 4, caption: 'tone → shape → motion → level → safety. every block is a lesson you\'ve done' },
       },
       {
         h: 'The whole loop, annotated',
         body: 'The heart of First Signal v3 — every line traceable to a lesson:',
-        code: 'gainSmoothed.setTargetValue(\n    juce::Decibels::decibelsToGain(gainDb));      // d4: ears speak dB\n\nfor (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float raw  = oscSample(waveform, phase);      // d6, d7\n    float env  = adsr.getNextSample();            // d9\n    lfoPhase  += lfoIncrement;                    // d14 (d5 math)\n    float trem = 1.0f - depth\n               * (0.5f + 0.5f * (float) std::sin(lfoPhase));\n    float g    = gainSmoothed.getNextValue();     // d13\n    float s    = raw * env * trem * g;            // the voice\n    s = juce::jlimit(-1.0f, 1.0f, s);             // d10 — LAST\n\n    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n        buffer.getWritePointer(ch)[i] = s;        // d12\n\n    phase += phaseIncrement;                      // d5\n    if (phase >= juce::MathConstants<double>::twoPi)\n        phase -= juce::MathConstants<double>::twoPi;\n}',
+        code: 'gainSmoothed.setTargetValue(\n    juce::Decibels::decibelsToGain(gainDb));      // d4: ears speak dB\n\nfor (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float raw  = oscSample(waveform, phase);      // d6, d7\n    float env  = adsr.getNextSample();            // d9\n    lfoPhase  += lfoIncrement;                    // d14 (d5 math)\n    if (lfoPhase >= juce::MathConstants<double>::twoPi)\n        lfoPhase -= juce::MathConstants<double>::twoPi;\n    float trem = 1.0f - depth\n               * (0.5f + 0.5f * (float) std::sin(lfoPhase));\n    float g    = gainSmoothed.getNextValue();     // d13\n    float s    = raw * env * trem * g;            // the voice\n    s = juce::jlimit(-1.0f, 1.0f, s);             // d10 — LAST\n\n    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n        buffer.getWritePointer(ch)[i] = s;        // d12\n\n    phase += phaseIncrement;                      // d5\n    if (phase >= juce::MathConstants<double>::twoPi)\n        phase -= juce::MathConstants<double>::twoPi;\n}',
         codeTitle: 'First Signal v3 — the sounding synth',
         breakdown: [
           ['raw * env * trem * g', 'tone × shape × motion × level — four multiplies, four lessons'],

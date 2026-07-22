@@ -71,7 +71,7 @@ const ZONE4_CHALLENGES = [
         type: 'fill', concept: 'dsp-basics',
         prompt: 'The MIDI map: which note number is the anchor A440?',
         code: 'float hz = 440.0f * std::pow(2.0f, (note - ___) / 12.0f);',
-        accept: ['69', '69.0f', '69.0'],
+        accept: ['69', '69.0f', '69.0', '69.f'],
         placeholder: 'note #',
         hint: 'The A above middle C.',
         explain: 'MIDI 69 = A440. Each semitone away multiplies by 2^(1/12) — twelve of them doubles the frequency: one octave. Every synth contains this line.',
@@ -108,11 +108,12 @@ const ZONE4_CHALLENGES = [
         type: 'fill', concept: 'levels',
         prompt: 'Bolt on the output seatbelt — the floor of the clamp.',
         code: 's = juce::jlimit(___, 1.0f, s);',
-        accept: ['-1.0f', '-1.f', '-1', '-1.0'],
+        accept: ['-1.0f', '-1.f'],
         placeholder: 'floor',
         hint: 'The ceiling has a mirror.',
         mistakes: [
           { match: '^0(\\.0f?|\\.f)?$', msg: 'Floor at zero deletes the bottom half of every waveform — total distortion, not protection. The floor mirrors the ceiling: −1.0f.' },
+          { match: '^-1(\\.0)?$', msg: 'Right value, wrong type: jlimit deduces ONE shared type, and an int or double bound against float arguments won\'t compile. Write it as a float: -1.0f.' },
         ],
         explain: 'jlimit(−1, +1) engages only when upstream staging failed. If it engages constantly, it IS the distortion — fix the gain plan, not the clamp.',
       },
@@ -186,9 +187,9 @@ const ZONE4_CHALLENGES = [
     ],
   },
   {
-    id: 'db2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Drifting Pitch', short: 'Find the bug',
+    id: 'db2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Flat Oscillator', short: 'Find the bug',
     concepts: ['oscillators'],
-    intro: 'Fresh from the tuner the synth is perfect; ten minutes into the set it\'s audibly flat. Nothing overheats in software — tap the line that lies.',
+    intro: 'The tuner says this synth never quite hits pitch — every note sits about 14 cents flat, always, on every key. Tap the line that lies.',
     questions: [
       {
         type: 'bugspot', concept: 'oscillators',
@@ -199,7 +200,7 @@ const ZONE4_CHALLENGES = [
           '    phase = 0.0;',
         ],
         buggy: 2,
-        explain: 'Reset-to-zero throws away the overshoot fraction — real phase, stolen once per cycle, 440 times a second. Each theft detunes a hair; ten minutes compounds into audible flat. Subtract twoPi instead: the fraction survives.',
+        explain: 'Reset-to-zero throws away the overshoot fraction, stretching every cycle to a whole number of samples — a “440 Hz” note at 48 kHz actually plays ≈436 Hz, about 14 cents flat, constantly. Subtract twoPi: the fraction survives and pitch stays honest.',
         fix: 'phase -= juce::MathConstants<double>::twoPi;',
       },
     ],
@@ -274,7 +275,7 @@ const ZONE4_CHALLENGES = [
     questions: [
       {
         type: 'order', concept: 'oscillators',
-        prompt: 'Arrange the loop body, top to bottom.',
+        prompt: 'Arrange the loop body top to bottom, exactly as d6 teaches it: generate → copy → advance → wrap.',
         lines: [
           'float s = (float) std::sin(phase) * 0.25f;',
           'for (int ch = 0; ch < buffer.getNumChannels(); ++ch)',
@@ -283,7 +284,7 @@ const ZONE4_CHALLENGES = [
           'if (phase >= juce::MathConstants<double>::twoPi)',
           '    phase -= juce::MathConstants<double>::twoPi;',
         ],
-        explain: 'Generate → copy to every lane → advance → wrap. Advance before the copy and the first sample is wrong; wrap before the advance and the check tests stale phase. Order IS the algorithm.',
+        explain: 'Generate → copy to every lane → advance → wrap. Advance before the *generate* and every sample reads a bookmark that already moved; wrap before the advance and the check tests stale phase. d6 keeps all the clockwork last — signal first, bookkeeping after.',
       },
     ],
   },
@@ -301,7 +302,7 @@ const ZONE4_CHALLENGES = [
           prompt: 'Which declarations are correct for the phase machinery?',
           options: [
             { t: 'double phase = 0.0; double phaseIncrement = 0.0;', why: '' },
-            { t: 'float phase = 0.0f; float phaseIncrement = 0.0f;', why: 'Floats drift audibly over hours of accumulated micro-steps — accumulators are double (d5).' },
+            { t: 'float phase = 0.0f; float phaseIncrement = 0.0f;', why: 'A wrapped phase mostly survives float — but float quantizes the tiny increment. Double costs nothing: make it the accumulator habit (d5).' },
             { t: 'static double phase;', why: 'static would SHARE one phase across every instance of the plugin — two tracks, one interleaved mess. Each processor owns its own.' },
             { t: 'double phase; (no initializer)', why: 'Uninitialized memory as your first sample: a click, or worse, garbage. = 0.0 starts at the zero crossing, silently.' },
           ],
@@ -425,7 +426,7 @@ const ZONE4_CHALLENGES = [
           type: 'fill', concept: 'envelopes',
           prompt: 'Tell the ADSR the session\'s time grid.',
           code: 'void prepareToPlay(double sampleRate, int samplesPerBlock)\n{\n    adsr.setSampleRate(___);\n    adsr.setParameters({ 0.01f, 0.10f, 0.8f, 0.30f });\n}',
-          accept: ['sampleRate'],
+          accept: ['sampleRate', 'getSampleRate()'],
           placeholder: 'argument',
           hint: 'Its A/D/R times are in seconds — seconds need a rate.',
           explain: 'Attack 10 ms, Decay 100 ms, Sustain LEVEL 0.8, Release 300 ms — but those times only mean something once the envelope knows the rate. Rate-dependent setup lives in prepareToPlay, always.',
@@ -449,13 +450,13 @@ const ZONE4_CHALLENGES = [
           type: 'order', concept: 'modulation',
           prompt: 'Arrange: generate, shape, guard, deliver.',
           lines: [
-            'float raw  = oscSample(waveform, phase);',
-            'float env  = adsr.getNextSample();',
-            'float s    = raw * env * trem * gainSmoothed.getNextValue();',
+            'float raw    = oscSample(waveform, phase);',
+            'float shaped = raw * adsr.getNextSample();',
+            'float s      = shaped * trem * gainSmoothed.getNextValue();',
             's = juce::jlimit(-1.0f, 1.0f, s);',
             'buffer.getWritePointer(ch)[i] = s;',
           ],
-          explain: 'Tone × shape × motion × level, THEN the clamp, THEN the write. Math after a clamp is unguarded — the seatbelt goes on last.',
+          explain: 'Each line feeds the next: tone → shaped → leveled, THEN the clamp, THEN the write. Math after a clamp is unguarded — the seatbelt goes on last, and only the write comes after it.',
         },
       },
       {
@@ -480,7 +481,7 @@ const ZONE4_CHALLENGES = [
   {
     id: 'boss4', kind: 'boss', title: 'BOSS: The Broken Synth', short: 'Zone 4 boss', passNeed: 5,
     concepts: ['oscillators', 'envelopes', 'mixing', 'levels', 'modulation'],
-    brief: 'A producer friend bought a "finished" synth plugin from a flea-market code sale. It won\'t build; when patched it drifts flat mid-set, drones forever, distorts on two oscillators, zippers on the gain knob and fizzes up high. Seven faults across the whole voice. Repair 5 of 7 and the synth plays.',
+    brief: 'A producer friend bought a "finished" synth plugin from a flea-market code sale. It won\'t build; when patched it plays flat on every note, drones forever, distorts on two oscillators, zippers on the gain knob and fizzes up high. Seven faults across the whole voice. Repair 5 of 7 and the synth plays.',
     stages: [
       {
         type: 'compiler', concept: 'dsp-basics',
@@ -498,14 +499,14 @@ const ZONE4_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'oscillators',
-        prompt: 'Stage 2 — Tuned at soundcheck, flat by the encore. Tap the lie.',
+        prompt: 'Stage 2 — It builds and plays — but the tuner reads ≈14 cents flat on every single note. Tap the lie.',
         code: [
           'phase += phaseIncrement;',
           'if (phase >= juce::MathConstants<double>::twoPi)',
           '    phase = 0.0;',
         ],
         buggy: 2,
-        explain: 'Reset-to-zero steals the overshoot fraction every cycle — 440 micro-thefts per second, compounding into audible flat over a set. Subtract twoPi: the fraction is real phase and it survives.',
+        explain: 'Reset-to-zero steals the overshoot fraction, so every cycle stretches to a whole number of samples — a constant flat detune from the very first cycle. Subtract twoPi: the fraction is real phase and it survives.',
         fix: 'phase -= juce::MathConstants<double>::twoPi;',
       },
       {
@@ -560,7 +561,7 @@ const ZONE4_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'levels',
-        prompt: 'Stage 7 — Last fault: the "protected" output still clips when the envelope spikes. The clamp is present — tap why it guards nothing.',
+        prompt: 'Stage 7 — Last fault: the output still clips when the envelope spikes. The ×1.8 is deliberate makeup drive, and a clamp IS present — tap why it guards nothing.',
         code: [
           'float raw = oscSample(waveform, phase);',
           'raw = juce::jlimit(-1.0f, 1.0f, raw);',
