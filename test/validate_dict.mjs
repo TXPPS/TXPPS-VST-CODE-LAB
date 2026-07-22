@@ -5,13 +5,14 @@ const read = (f) => readFileSync(new URL('../src/js/' + f, import.meta.url), 'ut
 const src = ['data_zones.js', 'data_zone1_lessons.js', 'data_zone1_lessons_b.js', 'data_zone1_challenges.js',
   'data_zone2_lessons.js', 'data_zone2_lessons_b.js', 'data_zone2_challenges.js',
   'data_zone3_lessons.js', 'data_zone3_lessons_b.js', 'data_zone3_challenges.js',
-  'data_glossary.js', 'data_glossary_b.js', 'data_glossary_c.js', 'data_glossary_d.js', 'data_glossary_e.js'].map(read).join('\n;\n');
-const fn = new Function(src + '\n  return { DICT, DICT_CATS, ZONES, ZONE1_LESSONS, ZONE1_CHALLENGES, ZONE2_LESSONS, ZONE2_CHALLENGES, ZONE3_LESSONS, ZONE3_CHALLENGES };');
-const { DICT, DICT_CATS, ZONES, ZONE1_LESSONS, ZONE1_CHALLENGES, ZONE2_LESSONS, ZONE2_CHALLENGES, ZONE3_LESSONS, ZONE3_CHALLENGES } = fn();
+  'data_zone4_lessons.js', 'data_zone4_lessons_b.js', 'data_zone4_challenges.js',
+  'data_glossary.js', 'data_glossary_b.js', 'data_glossary_c.js', 'data_glossary_d.js', 'data_glossary_e.js', 'data_glossary_f.js'].map(read).join('\n;\n');
+const fn = new Function(src + '\n  return { DICT, DICT_CATS, ZONES, ZONE1_LESSONS, ZONE1_CHALLENGES, ZONE2_LESSONS, ZONE2_CHALLENGES, ZONE3_LESSONS, ZONE3_CHALLENGES, ZONE4_LESSONS, ZONE4_CHALLENGES };');
+const { DICT, DICT_CATS, ZONES, ZONE1_LESSONS, ZONE1_CHALLENGES, ZONE2_LESSONS, ZONE2_CHALLENGES, ZONE3_LESSONS, ZONE3_CHALLENGES, ZONE4_LESSONS, ZONE4_CHALLENGES } = fn();
 
-const nodeIds = new Set([...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES].map((n) => n.id));
+const nodeIds = new Set([...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES, ...ZONE4_LESSONS, ...ZONE4_CHALLENGES].map((n) => n.id));
 const ids = new Set();
-const VIZ_TYPES = new Set(['knobToVar', 'chain', 'wave', 'buffer', 'gate', 'selector', 'mult', 'rackPointer', 'blueprint', 'twoLayer', 'adsr', 'filtercurve', 'voices', 'midimsg', 'lifetime', 'owners', 'moveviz', 'lanes', 'fifo', 'filemap', 'lifecycle', 'audioGrid', 'paramflow']);
+const VIZ_TYPES = new Set(['knobToVar', 'chain', 'wave', 'buffer', 'gate', 'selector', 'mult', 'rackPointer', 'blueprint', 'twoLayer', 'adsr', 'filtercurve', 'voices', 'midimsg', 'lifetime', 'owners', 'moveviz', 'lanes', 'fifo', 'filemap', 'lifecycle', 'audioGrid', 'paramflow', 'compare2', 'clipwave', 'mixsum', 'stereopan', 'stepramp', 'lfomod']);
 const problems = [];
 
 for (const e of DICT) {
@@ -36,7 +37,7 @@ for (const e of DICT) {
   for (const r of e.related || []) if (!ids.has(r)) problems.push(`[${e.id}] related id not found: ${r}`);
 }
 const dictIds = ids;
-for (const l of [...ZONE2_LESSONS, ...ZONE3_LESSONS]) {
+for (const l of [...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS]) {
   for (const b of [...(l.builds || []), ...(l.leads || [])]) {
     if (!dictIds.has(b)) problems.push(`[lesson ${l.id}] builds/leads id not in dictionary: ${b}`);
   }
@@ -47,6 +48,6 @@ for (const l of [...ZONE2_LESSONS, ...ZONE3_LESSONS]) {
 for (const z of ZONES.filter((z) => z.status === 'live')) {
   for (const nid of z.nodeOrder) if (!nodeIds.has(nid)) problems.push(`[zone ${z.id}] nodeOrder references unknown node: ${nid}`);
 }
-console.log(`entries: ${DICT.length}, categories: ${DICT_CATS.length - 1}, z2 nodes: ${ZONE2_LESSONS.length + ZONE2_CHALLENGES.length}, z3 nodes: ${ZONE3_LESSONS.length + ZONE3_CHALLENGES.length}`);
+console.log(`entries: ${DICT.length}, categories: ${DICT_CATS.length - 1}, z2 nodes: ${ZONE2_LESSONS.length + ZONE2_CHALLENGES.length}, z3 nodes: ${ZONE3_LESSONS.length + ZONE3_CHALLENGES.length}, z4 nodes: ${ZONE4_LESSONS.length + ZONE4_CHALLENGES.length}`);
 if (problems.length) { console.log('PROBLEMS:\n' + problems.join('\n')); process.exit(1); }
 console.log('DICTIONARY VALID');

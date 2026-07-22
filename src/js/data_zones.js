@@ -38,10 +38,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z4', num: 4, title: 'DSP WORKSHOP', status: 'planned',
-    tagline: 'Oscillators, filters, delays, smoothing',
-    desc: 'Sample-accurate DSP: phase, envelopes, delay lines, interpolation, aliasing, denormals, wet/dry and stereo.',
-    topics: ['sample rate & buffer size', 'phase / amplitude / frequency', 'oscillators', 'envelopes', 'filters', 'gain & parameter smoothing', 'delay lines & interpolation', 'distortion & oversampling', 'aliasing & denormals', 'wet/dry & stereo'],
+    id: 'z4', num: 4, title: 'DSP WORKSHOP', status: 'live',
+    tagline: 'From silence to your first synthesized sound',
+    desc: 'Digital Signal Processing (DSP) for real: samples, frequency, amplitude, phase, oscillators and the waveform family, envelopes, mixing, stereo, smoothing and aliasing — First Signal becomes a sounding synth.',
+    nodeOrder: [
+      'd1', 'd2', 'd3', 'dc1', 'd4', 'd5', 'db2', 'd6', 'dr1', 'p9',
+      'd7', 'db1', 'de1', 'd8', 'do1', 'p10', 'd9', 'dc3', 'd10', 'db4',
+      'd11', 'dc2', 'd12', 'dc4', 'd13', 'd14', 'db3', 'dr2', 'd15',
+      'p11', 'boss4',
+    ],
   },
   {
     id: 'z5', num: 5, title: 'SYNTH ENGINEERING', status: 'planned',
@@ -88,6 +93,8 @@ const ACHIEVEMENTS = [
   { id: 'modern_hands', name: 'MODERN HANDS', desc: 'Complete all three Zone 2 missions.' },
   { id: 'zone3_clear', name: 'ZONE 3 CLEARED', desc: 'Make the Silent Plugin sing.' },
   { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
+  { id: 'zone4_clear', name: 'ZONE 4 CLEARED', desc: 'Repair the Broken Synth.' },
+  { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -109,4 +116,6 @@ const DAILY_POOL = [
   'mc1.q1', 'mb4.q1', 'me1.q1', 'mb2.q1',
   'j1.q1', 'j4.q1', 'j5.q2', 'j7.q2', 'j8.q1', 'j10.q1', 'j11.q2', 'j14.q1',
   'jc2.q1', 'jb2.q1', 'je2.q1', 'jo1.q1',
+  'd1.q1', 'd2.q2', 'd5.q2', 'd6.q3', 'd7.q3', 'd8.q1', 'd9.q1', 'd10.q2',
+  'd11.q2', 'd12.q3', 'd13.q3', 'd15.q2', 'dc1.q1', 'db2.q1', 'de1.q1', 'dr1.q2',
 ];

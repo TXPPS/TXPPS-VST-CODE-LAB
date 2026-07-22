@@ -487,6 +487,127 @@ const Viz = (() => {
       if (o.caption) s.push(txt(170, 118, o.caption, C.faint, 9, 'middle'));
       return { svg: s.join(''), h: o.caption ? 124 : 108 };
     },
+
+    // Two stacked waves comparing frequency ('freq') or amplitude ('amp').
+    compare2(o) {
+      const amp = o.mode === 'amp';
+      const s = [];
+      const lane = (y, cycles, height, label, col) => {
+        s.push(box(8, y, 324, 44, C.line, false, '#07090B'));
+        s.push(`<line x1="8" y1="${y + 22}" x2="332" y2="${y + 22}" stroke="rgba(93,232,148,0.12)"/>`);
+        const pts = [];
+        for (let x = 0; x <= 300; x += 3) pts.push(`${16 + x},${y + 22 - Math.sin((x / 300) * Math.PI * 2 * cycles) * height}`);
+        s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.5"/>`);
+        s.push(txt(326, y + 12, label, col, 8.5, 'end'));
+      };
+      if (amp) {
+        lane(8, 3, 17, 'loud — tall wave', C.phos);
+        lane(58, 3, 5, 'quiet — same pitch', C.amber);
+        s.push(txt(170, 118, 'same frequency, different amplitude: height is loudness', C.faint, 9, 'middle'));
+      } else {
+        lane(8, 2, 15, 'low note — slow wobble', C.phos);
+        lane(58, 6, 15, 'high note — fast wobble', C.amber);
+        s.push(txt(170, 118, 'same amplitude, different frequency: speed is pitch', C.faint, 9, 'middle'));
+      }
+      return { svg: s.join(''), h: 124 };
+    },
+
+    // A sine pushed past full scale: peaks sliced flat at the ±1.0 lines.
+    clipwave() {
+      const s = [box(8, 8, 324, 84, C.line, false, '#07090B')];
+      const mid = 50, ceil = 26, floor = 74;
+      s.push(`<line x1="8" y1="${mid}" x2="332" y2="${mid}" stroke="rgba(93,232,148,0.12)"/>`);
+      const pts = [];
+      for (let x = 0; x <= 300; x += 2) {
+        let v = Math.sin((x / 300) * Math.PI * 4) * 1.6;
+        if (v > 1) v = 1; if (v < -1) v = -1;
+        pts.push(`${16 + x},${mid - v * (mid - ceil)}`);
+      }
+      s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${C.phos}" stroke-width="1.6"/>`);
+      s.push(`<line x1="8" y1="${ceil}" x2="332" y2="${ceil}" stroke="${C.red}" stroke-width="1" stroke-dasharray="5 4"/>`);
+      s.push(`<line x1="8" y1="${floor}" x2="332" y2="${floor}" stroke="${C.red}" stroke-width="1" stroke-dasharray="5 4"/>`);
+      s.push(txt(326, 20, '+1.0', C.red, 8.5, 'end'));
+      s.push(txt(326, 88, '−1.0', C.red, 8.5, 'end'));
+      s.push(txt(170, 108, 'past full scale the peaks slice flat — flat tops = harsh new harmonics', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 116 };
+    },
+
+    // Mixing: sine + saw = their per-sample sum.
+    mixsum() {
+      const s = [];
+      const sine = (x) => Math.sin((x / 300) * Math.PI * 4);
+      const saw = (x) => 2 * (((x / 300) * 2.5) % 1) - 1;
+      const lane = (y, fn, height, label, col) => {
+        s.push(box(8, y, 324, 36, C.line, false, '#07090B'));
+        s.push(`<line x1="8" y1="${y + 18}" x2="332" y2="${y + 18}" stroke="rgba(93,232,148,0.1)"/>`);
+        const pts = [];
+        for (let x = 0; x <= 296; x += 2) pts.push(`${16 + x},${y + 18 - fn(x) * height}`);
+        s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.3"/>`);
+        s.push(txt(326, y + 11, label, col, 8, 'end'));
+      };
+      lane(6, sine, 12, 'sine', C.phos);
+      lane(46, saw, 12, 'saw', C.amber);
+      s.push(txt(170, 94, '+', C.dim, 13, 'middle'));
+      lane(100, (x) => (sine(x) + saw(x)) * 0.5, 14, 'sum × 0.5', C.ink);
+      s.push(txt(170, 152, 'the bus adds them sample by sample — one wave, two sounds inside', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 158 };
+    },
+
+    // Stereo: one source, two gains, two lanes.
+    stereopan() {
+      const s = [];
+      s.push(box(14, 34, 84, 32, C.phosDim, false, 'rgba(93,232,148,0.05)'));
+      s.push(txt(56, 48, 'voice s', C.phos, 9.5, 'middle'));
+      s.push(txt(56, 60, 'one mono source', C.faint, 7.5, 'middle'));
+      s.push(arrow(98, 42, 168, 24, C.phosDim));
+      s.push(arrow(98, 58, 168, 76, C.phosDim));
+      s.push(txt(130, 26, '× gainL', C.amber, 8.5, 'middle'));
+      s.push(txt(130, 76, '× gainR', C.amber, 8.5, 'middle'));
+      s.push(box(172, 10, 152, 28, C.line));
+      s.push(txt(180, 28, 'ch 0 — LEFT', C.dim, 9, 'start', 1));
+      s.push(box(172, 62, 152, 28, C.line));
+      s.push(txt(180, 80, 'ch 1 — RIGHT', C.dim, 9, 'start', 1));
+      s.push(txt(170, 110, 'two lanes, one clock — the level difference IS the position', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 118 };
+    },
+
+    // Parameter step (staircase = clicks) vs per-sample ramp (glide).
+    stepramp() {
+      const s = [];
+      s.push(txt(88, 14, 'JUMPS — clicks', C.red, 9, 'middle', 1.5));
+      s.push(box(8, 20, 156, 64, C.line, false, '#07090B'));
+      s.push(`<path d="M 16 74 L 56 74 L 56 52 L 96 52 L 96 34 L 156 34" fill="none" stroke="${C.red}" stroke-width="1.6"/>`);
+      s.push(`<circle cx="56" cy="63" r="6" fill="none" stroke="${C.red}" stroke-width="1" stroke-dasharray="2 2"/>`);
+      s.push(`<circle cx="96" cy="43" r="6" fill="none" stroke="${C.red}" stroke-width="1" stroke-dasharray="2 2"/>`);
+      s.push(txt(252, 14, 'RAMP — smooth', C.phos, 9, 'middle', 1.5));
+      s.push(box(176, 20, 156, 64, C.line, false, '#07090B'));
+      s.push(`<path d="M 184 74 C 230 74, 280 34, 324 34" fill="none" stroke="${C.phos}" stroke-width="1.6"/>`);
+      s.push(txt(170, 102, 'same start, same end — the staircase has corners, corners click', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 110 };
+    },
+
+    // An LFO breathing the amplitude of a fast wave (tremolo).
+    lfomod() {
+      const s = [];
+      s.push(box(8, 8, 324, 40, C.line, false, '#07090B'));
+      const lp = [];
+      for (let x = 0; x <= 300; x += 3) lp.push(`${16 + x},${28 - Math.sin((x / 300) * Math.PI * 2) * 14}`);
+      s.push(`<polyline points="${lp.join(' ')}" fill="none" stroke="${C.amber}" stroke-width="1.4"/>`);
+      s.push(txt(326, 20, 'LFO — slow, unheard', C.amber, 8, 'end'));
+      s.push(arrow(170, 50, 170, 60, C.amber));
+      s.push(txt(196, 58, 'steers the gain', C.faint, 8, 'start'));
+      s.push(box(8, 62, 324, 48, C.line, false, '#07090B'));
+      s.push(`<line x1="8" y1="86" x2="332" y2="86" stroke="rgba(93,232,148,0.1)"/>`);
+      const ap = [];
+      for (let x = 0; x <= 300; x += 2) {
+        const env = 0.55 + 0.45 * Math.sin((x / 300) * Math.PI * 2);
+        ap.push(`${16 + x},${86 - Math.sin(x * 0.55) * 20 * env}`);
+      }
+      s.push(`<polyline points="${ap.join(' ')}" fill="none" stroke="${C.phos}" stroke-width="1.2"/>`);
+      s.push(txt(326, 74, 'audio — breathing', C.phos, 8, 'end'));
+      s.push(txt(170, 126, 'you hear the effect, never the LFO itself — that\'s tremolo', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 132 };
+    },
   };
 
   function render(spec) {

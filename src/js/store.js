@@ -217,8 +217,10 @@ const Store = (() => {
       if (id === 'boss1') grant('zone1_clear');
       if (id === 'boss2') grant('zone2_clear');
       if (id === 'boss3') grant('zone3_clear');
+      if (id === 'boss4') grant('zone4_clear');
       if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
       if (['p6', 'p7', 'p8'].every(isDone)) grant('first_signal');
+      if (['p9', 'p10', 'p11'].every(isDone)) grant('first_sound');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }

@@ -13,7 +13,7 @@ const Engine = (() => {
   const QINDEX = {};
 
   function indexAll() {
-    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES];
+    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES, ...ZONE4_LESSONS, ...ZONE4_CHALLENGES];
     for (const node of all) {
       NODES[node.id] = node;
       const qs = questionsOf(node);

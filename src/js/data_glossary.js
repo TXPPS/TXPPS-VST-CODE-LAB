@@ -57,7 +57,7 @@ const DICT = [
     mistake: 'Forgetting the f suffix. `0.5` alone is a double (a bigger, slower cousin) that gets converted — write `0.5f` in audio code.',
     remember: 'Audio is floats: fractional numbers, usually between -1.0 and +1.0.',
     related: ['double', 'sample', 'type', 'gain', 'amplitude'],
-    appears: [{ z: 1, node: 'l1' }, { z: 4, label: 'every DSP formula' }],
+    appears: [{ z: 1, node: 'l1' }, { z: 4, node: 'd1' }],
     search: ['volume', 'decimal', 'number', 'fraction'],
   },
   {
@@ -69,7 +69,7 @@ const DICT = [
     mistake: 'Using double everywhere "to be safe" — samples stay float; doubles are for accumulating positions, not for the audio itself.',
     remember: 'double = extra decimal precision for values that accumulate over time.',
     related: ['float', 'phase', 'oscillator', 'sample-rate'],
-    appears: [{ z: 1, node: 'l1' }, { z: 4, label: 'phase accumulators' }],
+    appears: [{ z: 1, node: 'l1' }, { z: 4, node: 'd5' }],
     search: ['precision', 'decimal'],
   },
   {
