@@ -248,7 +248,7 @@ DICT.push(
     mistake: 'Resetting phase to 0 when it passes 2π instead of subtracting 2π — the lost fraction detunes the pitch.',
     remember: 'An oscillator is a phase that advances and wraps, tracing a shape.',
     related: ['phase', 'frequency', 'waveform', 'lfo', 'voice'],
-    appears: [{ z: 1, node: 'p2' }, { z: 4, node: 'd6' }, { z: 5, label: 'unison & detune' }],
+    appears: [{ z: 1, node: 'p2' }, { z: 4, node: 'd6' }, { z: 5, node: 'n14' }],
     aka: ['osc'],
     search: ['sound source', 'tone', 'generator'],
   },
@@ -299,7 +299,7 @@ DICT.push(
     mistake: 'Jumping levels instantly at stage changes — envelopes glide between stages, or they click.',
     remember: 'An envelope is a value with a life cycle: rise, fall, hold, fade.',
     related: ['attack', 'decay', 'sustain', 'release', 'amplitude', 'voice'],
-    appears: [{ z: 4, node: 'd9' }, { z: 5, label: 'per-voice envelopes' }],
+    appears: [{ z: 4, node: 'd9' }, { z: 5, node: 'n5' }],
     aka: ['ADSR', 'eg', 'envelope generator'],
     search: ['adsr', 'shape over time', 'note shape'],
   },
@@ -336,7 +336,7 @@ DICT.push(
     mistake: 'Implementing sustain as a duration. It\'s a level held indefinitely — until note-off starts the release.',
     remember: 'Sustain is a level, not a time.',
     related: ['envelope', 'decay', 'release', 'midi'],
-    appears: [{ z: 4, node: 'd9' }, { z: 5, label: 'sustain pedal handling' }],
+    appears: [{ z: 4, node: 'd9' }, { z: 5, node: 'n10' }],
     search: ['hold', 'held level'],
   },
   {
@@ -348,7 +348,7 @@ DICT.push(
     mistake: 'Freeing a voice at note-off instead of at end-of-release — audible clicks as tails get cut.',
     remember: 'A note ends when release finishes, not when the finger lifts.',
     related: ['envelope', 'sustain', 'voice', 'voice-stealing'],
-    appears: [{ z: 4, node: 'd9' }, { z: 5, label: 'voice lifecycle' }],
+    appears: [{ z: 4, node: 'd9' }, { z: 5, node: 'n9' }],
     search: ['tail', 'fade out', 'let go'],
   },
   {
@@ -400,7 +400,7 @@ DICT.push(
     mistake: 'Updating LFO-modulated values once per block — fast LFOs need per-sample (or smoothed) application to avoid stair-stepping.',
     remember: 'An LFO is an oscillator aimed at a knob instead of a speaker.',
     related: ['oscillator', 'frequency', 'cutoff', 'automation'],
-    appears: [{ z: 4, node: 'd14' }, { z: 5, label: 'mod matrices' }, { z: 7, label: 'tremolo mission' }],
+    appears: [{ z: 4, node: 'd14' }, { z: 5, node: 'n13' }, { z: 7, label: 'tremolo mission' }],
     search: ['wobble', 'vibrato', 'tremolo', 'modulation'],
   },
   {
@@ -449,7 +449,7 @@ DICT.push(
     mistake: 'Sharing one envelope or phase across voices — every voice needs its own complete state.',
     remember: 'A voice is one self-contained note machine; polyphony is a team of them.',
     related: ['polyphony', 'voice-stealing', 'object', 'envelope', 'oscillator'],
-    appears: [{ z: 5, label: 'voices & allocation' }],
+    appears: [{ z: 5, node: 'n5' }, { z: 5, node: 'n7' }],
     search: ['note', 'polysynth', 'simultaneous'],
   },
   {
@@ -461,7 +461,7 @@ DICT.push(
     mistake: 'Unbounded polyphony "so notes never cut" — each voice costs CPU; every real synth caps the pool.',
     remember: 'Polyphony is a fixed pool of voices and a plan for when it runs out.',
     related: ['voice', 'voice-stealing', 'cpu', 'midi'],
-    appears: [{ z: 5, label: 'polyphony' }, { z: 7, label: 'poly synth mission' }],
+    appears: [{ z: 5, node: 'n6' }, { z: 7, label: 'poly synth mission' }],
     search: ['chords', 'multiple notes', 'mono poly'],
   },
   {
@@ -474,7 +474,7 @@ DICT.push(
     mistake: 'Hard-cutting the stolen voice — steal with a millisecond fade, or every busy passage clicks.',
     remember: 'When voices run out, steal gracefully — fade, then reassign.',
     related: ['voice', 'polyphony', 'release', 'midi'],
-    appears: [{ z: 5, label: 'voice stealing' }],
+    appears: [{ z: 5, node: 'n8' }, { z: 5, node: 'boss5' }],
     search: ['too many notes', 'cut off', 'note priority'],
   }
 );

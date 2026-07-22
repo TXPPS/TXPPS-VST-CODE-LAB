@@ -49,10 +49,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z5', num: 5, title: 'SYNTH ENGINEERING', status: 'planned',
-    tagline: 'Voices, polyphony, MIDI, modulation',
-    desc: 'Voice allocation and stealing, note lifecycle, velocity, pitch bend, unison, mod matrices and presets.',
-    topics: ['voices & polyphony', 'note ownership & stealing', 'note-on / note-off', 'velocity & sustain', 'pitch bend & mod wheel', 'unison', 'modulation matrices', 'preset management', 'panic behavior', 'sample-accurate events'],
+    id: 'z5', num: 5, title: 'SYNTH ENGINEERING', status: 'live',
+    tagline: 'From sound generator to playable instrument',
+    desc: 'How a synthesizer receives notes and performs: MIDI, velocity, voices and polyphony, allocation and stealing, the sustain pedal, pitch bend, mod wheel, mod matrix, unison — First Signal becomes fully playable.',
+    nodeOrder: [
+      'n1', 'n2', 'n3', 'nr2', 'p12', 'n4', 'n5', 'nr1', 'n6', 'nc2',
+      'n7', 'nc1', 'no1', 'nb2', 'n8', 'nr3', 'n9', 'nb1', 'p13',
+      'n10', 'nc3', 'nb3', 'n11', 'nc4', 'nb4', 'n12', 'ne1', 'p14',
+      'n13', 'n14', 'n15', 'p15', 'boss5',
+    ],
   },
   {
     id: 'z6', num: 6, title: 'PROFESSIONAL PLUGIN ENGINEERING', status: 'planned',
@@ -95,6 +100,8 @@ const ACHIEVEMENTS = [
   { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
   { id: 'zone4_clear', name: 'ZONE 4 CLEARED', desc: 'Repair the Broken Synth.' },
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
+  { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Revive the Forgotten Polysynth.' },
+  { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -118,4 +125,6 @@ const DAILY_POOL = [
   'jc2.q1', 'jb2.q1', 'je2.q1', 'jo1.q1',
   'd1.q1', 'd2.q2', 'd5.q2', 'd6.q3', 'd7.q3', 'd8.q1', 'd9.q1', 'd10.q2',
   'd11.q2', 'd12.q3', 'd13.q3', 'd15.q2', 'dc1.q1', 'db2.q1', 'de1.q1', 'dr1.q2',
+  'n1.q1', 'n2.q2', 'n3.q3', 'n5.q2', 'n6.q1', 'n8.q1', 'n9.q1', 'n10.q1',
+  'n11.q1', 'n12.q2', 'n13.q2', 'n14.q3', 'nb3.q1', 'ne1.q1',
 ];

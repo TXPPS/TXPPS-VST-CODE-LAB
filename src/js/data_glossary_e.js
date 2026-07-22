@@ -52,7 +52,7 @@ DICT.push(
     mistake: 'Handling all events at the block start "for simplicity" — that quantizes timing by up to a block and players feel it.',
     remember: 'MIDI arrives sample-stamped — deliver each event at its exact sample.',
     related: ['midi', 'processblock', 'block', 'velocity'],
-    appears: [{ z: 3, node: 'j9' }, { z: 5, label: 'the synth engine' }],
+    appears: [{ z: 3, node: 'j9' }, { z: 5, node: 'n3' }],
     aka: ['midi buffer', 'samplePosition'],
     search: ['midi events', 'note on position', 'midi in block'],
   }

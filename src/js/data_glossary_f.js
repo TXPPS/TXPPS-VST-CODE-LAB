@@ -135,7 +135,7 @@ DICT.push(
     mistake: 'Wiring a raw −1..+1 LFO straight into a gain: half of every cycle the polarity flips and the sound fully mutes at the crossings. Re-range to 0..1 and scale by depth first.',
     remember: 'Rate, depth, destination — every mod routing ever, three words.',
     related: ['lfo', 'envelope', 'oscillator', 'parameter'],
-    appears: [{ z: 4, node: 'd14' }, { z: 4, node: 'dr2' }, { z: 5, label: 'mod matrices' }],
+    appears: [{ z: 4, node: 'd14' }, { z: 4, node: 'dr2' }, { z: 5, node: 'n13' }],
     aka: ['mod routing', 'mod matrix', 'control signal'],
     search: ['movement', 'wobble', 'tremolo', 'vibrato', 'lfo to filter'],
   }

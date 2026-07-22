@@ -740,3 +740,13 @@ textarea.io {
   .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .dash-grid .span2 { grid-column: span 2; }
 }
+
+/* ---- animated diagram accents (killed by reduce-motion rules above) ---- */
+@keyframes vizPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.viz-pulse { animation: vizPulse 1.6s ease-in-out infinite; }
+@keyframes vizSnap {
+  0%, 55%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-14px); }
+  38% { transform: translateY(3px); }
+}
+.viz-snap { animation: vizSnap 3.2s ease-in-out infinite; }

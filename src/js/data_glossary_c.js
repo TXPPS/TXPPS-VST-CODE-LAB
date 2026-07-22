@@ -143,7 +143,7 @@ DICT.push(
     mistake: 'Renaming or renumbering parameters between versions without a migration path — old sessions load scrambled.',
     remember: 'A preset is the promise that state can always come back.',
     related: ['apvts', 'automation', 'parameter'],
-    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, label: 'preset management' }, { z: 6, label: 'version migration' }],
+    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, node: 'n12' }, { z: 6, label: 'version migration' }],
     aka: ['patch'],
     search: ['save', 'recall', 'snapshot', 'patch'],
   },
@@ -232,7 +232,7 @@ DICT.push(
     mistake: 'Treating MIDI as audio — it\'s events with timestamps. A note-on at sample 240 must start the voice mid-block, not at the block edge.',
     remember: 'MIDI is messages about music, never the sound itself.',
     related: ['velocity', 'cc', 'pitch-bend', 'processblock', 'voice'],
-    appears: [{ z: 3, label: 'MIDI buffers' }, { z: 5, label: 'note handling' }],
+    appears: [{ z: 3, label: 'MIDI buffers' }, { z: 5, node: 'n1' }],
     search: ['notes', 'keyboard', 'piano roll', 'messages'],
   },
   {
@@ -244,7 +244,7 @@ DICT.push(
     mistake: 'Mapping velocity to gain linearly — perception is curved; most instruments apply a velocity curve.',
     remember: 'Velocity is strike strength: 1–127, curved before it hits the gain.',
     related: ['midi', 'gain', 'envelope', 'voice'],
-    appears: [{ z: 5, label: 'velocity & expression' }],
+    appears: [{ z: 5, node: 'n2' }],
     search: ['hit strength', 'how hard', 'dynamics'],
   },
   {
@@ -256,7 +256,7 @@ DICT.push(
     mistake: 'Applying bend only to new notes — it must retune already-sounding voices live.',
     remember: 'Pitch bend retunes sounding voices in real time — center means no bend.',
     related: ['midi', 'frequency', 'mod-wheel', 'voice'],
-    appears: [{ z: 5, label: 'pitch bend' }],
+    appears: [{ z: 5, node: 'n11' }, { z: 5, node: 'nc4' }],
     search: ['bend wheel', 'slide', 'whammy'],
   },
   {
@@ -268,7 +268,7 @@ DICT.push(
     mistake: 'Hard-wiring mod wheel to one destination forever — make it a routable source from the start.',
     remember: 'Mod wheel is CC 1: a knob whose meaning the patch decides.',
     related: ['cc', 'midi', 'lfo'],
-    appears: [{ z: 5, label: 'mod routing' }],
+    appears: [{ z: 5, node: 'n12' }],
     search: ['modulation', 'expression wheel'],
   },
   {
@@ -280,7 +280,7 @@ DICT.push(
     mistake: 'Ignoring CC 64 — with sustain down, note-offs must be deferred until pedal-up, or held chords cut dead.',
     remember: 'CC = numbered controller + value; CC 64 (sustain) changes note-off logic.',
     related: ['midi', 'mod-wheel', 'sustain'],
-    appears: [{ z: 5, label: 'CC & sustain handling' }],
+    appears: [{ z: 5, node: 'n10' }],
     aka: ['control change', 'cc64', 'midi cc'],
     search: ['controller', 'knob messages', 'sustain pedal'],
   },
@@ -293,7 +293,7 @@ DICT.push(
     mistake: 'Swapping state abruptly on the audio thread — preset changes should be handed over safely, tails respected.',
     remember: 'Program change = "preset N, please" — switch it glitch-free.',
     related: ['preset', 'midi', 'cc'],
-    appears: [{ z: 5, label: 'preset management' }],
+    appears: [{ z: 5, node: 'n12' }],
     search: ['preset switch', 'patch change'],
   },
 

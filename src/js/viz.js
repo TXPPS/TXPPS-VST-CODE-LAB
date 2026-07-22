@@ -608,6 +608,202 @@ const Viz = (() => {
       s.push(txt(170, 126, 'you hear the effect, never the LFO itself — that\'s tremolo', C.faint, 9, 'middle'));
       return { svg: s.join(''), h: 132 };
     },
+
+    // Piano keyboard: pressed keys glow (with velocity bars), optional message.
+    keys(o) {
+      const s = [];
+      const pressed = o.pressed || [];
+      const vels = o.vels || [];
+      const x0 = 26, kw = 21, nWhite = 14, y = 14, kh = 46;
+      for (let i = 0; i < nWhite; i++) {
+        const x = x0 + i * kw;
+        const hit = pressed.indexOf(i);
+        s.push(`<rect x="${x}" y="${y}" width="${kw - 2}" height="${kh}" rx="2" fill="${hit >= 0 ? 'rgba(93,232,148,0.18)' : '#10141A'}" stroke="${hit >= 0 ? C.phos : C.line}" stroke-width="1.2"${hit >= 0 ? ' class="viz-pulse"' : ''}/>`);
+        if (hit >= 0 && vels[hit] !== undefined) {
+          const vh = Math.round((vels[hit] / 127) * (kh - 8));
+          s.push(`<rect x="${x + 4}" y="${y + kh - 4 - vh}" width="${kw - 10}" height="${vh}" rx="1.5" fill="${C.amber}" opacity="0.85"/>`);
+          s.push(txt(x + (kw - 2) / 2, y + kh + 12, String(vels[hit]), C.amber, 8, 'middle'));
+        }
+      }
+      // black keys (skip after white indices 2 and 6 in each 7-key octave)
+      for (let i = 0; i < nWhite - 1; i++) {
+        const pos = i % 7;
+        if (pos === 2 || pos === 6) continue;
+        s.push(`<rect x="${x0 + i * kw + kw - 8}" y="${y}" width="12" height="${Math.round(kh * 0.58)}" rx="2" fill="#05070A" stroke="${C.line}" stroke-width="1"/>`);
+      }
+      let hy = y + kh + (vels.length ? 20 : 8);
+      if (o.msg) {
+        s.push(box(52, hy, 236, 22, C.amber, false, 'rgba(240,180,80,0.05)'));
+        s.push(txt(170, hy + 14, o.msg, C.amber, 9, 'middle'));
+        hy += 30;
+      }
+      if (o.caption) { s.push(txt(170, hy + 8, o.caption, C.faint, 9, 'middle')); hy += 16; }
+      return { svg: s.join(''), h: hy + 4 };
+    },
+
+    // Voice cards: pool with note owners and states (free/busy/rel/alloc/steal).
+    voicecards(o) {
+      const cards = o.cards || [];
+      const s = [];
+      if (o.zoom && cards.length === 1) {
+        const c = cards[0];
+        s.push(box(96, 10, 148, 96, C.phosDim, false, 'rgba(93,232,148,0.04)'));
+        s.push(txt(170, 28, 'VOICE 1 · ' + (c.note || '—'), C.phos, 10, 'middle', 1.5));
+        ['int note', 'double phase', 'double increment', 'juce::ADSR adsr', 'float velGain · age'].forEach((m, i) => {
+          s.push(txt(170, 44 + i * 13, m, i === 0 ? C.amber : C.dim, 8.5, 'middle'));
+        });
+        if (o.caption) s.push(txt(170, 122, o.caption, C.faint, 9, 'middle'));
+        return { svg: s.join(''), h: o.caption ? 128 : 112 };
+      }
+      const n = cards.length || 4;
+      const cw = Math.min(76, (324 - 8 * (n - 1)) / n);
+      const total = cw * n + 8 * (n - 1);
+      let x = (340 - total) / 2;
+      const STATE = {
+        free:  { col: C.line,    fill: 'none',                    tag: 'FREE' },
+        busy:  { col: C.phosDim, fill: 'rgba(93,232,148,0.06)',   tag: 'BUSY' },
+        rel:   { col: C.amber,   fill: 'rgba(240,180,80,0.05)',   tag: 'RELEASING' },
+        alloc: { col: C.phos,    fill: 'rgba(93,232,148,0.12)',   tag: '← TAKES IT' },
+        steal: { col: C.red,     fill: 'rgba(240,120,98,0.07)',   tag: 'STOLEN' },
+      };
+      cards.forEach((c, i) => {
+        const st = STATE[c.state] || STATE.free;
+        const anim = c.state === 'alloc' || c.state === 'steal' ? ' class="viz-pulse"' : '';
+        s.push(`<rect x="${x}" y="18" width="${cw}" height="52" rx="5" fill="${st.fill}" stroke="${st.col}" stroke-width="1.3"${anim}/>`);
+        s.push(txt(x + cw / 2, 38, c.note || '—', c.state === 'free' ? C.faint : C.ink, 11, 'middle'));
+        s.push(txt(x + cw / 2, 56, st.tag, st.col, 7.5, 'middle', 1));
+        s.push(txt(x + cw / 2, 84, 'v' + (i + 1), C.faint, 8, 'middle'));
+        x += cw + 8;
+      });
+      if (o.caption) s.push(txt(170, 104, o.caption, C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: o.caption ? 112 : 94 };
+    },
+
+    // Voice lifecycle: idle → A → D → S → R → idle, with who drives each hop.
+    voicelife(o) {
+      const s = [];
+      const stages = [['idle', C.faint], ['attack', C.phos], ['decay', C.phos], ['sustain', C.phos], ['release', C.amber], ['idle', C.faint]];
+      const w = 47, gap = 8;
+      let x = 6;
+      stages.forEach(([label, col], i) => {
+        s.push(box(x, 30, w, 26, col === C.faint ? C.line : col, false, col === C.phos ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(x + w / 2, 46, label, col, 8, 'middle'));
+        if (i < stages.length - 1) s.push(arrow(x + w + 1, 43, x + w + gap - 1, 43));
+        x += w + gap;
+      });
+      s.push(txt(34, 20, 'note-on ↓', C.phos, 8, 'middle'));
+      s.push(txt(226, 20, 'note-off ↓', C.amber, 8, 'middle'));
+      s.push(txt(292, 70, '↑ envelope finishes', C.faint, 8, 'end'));
+      s.push(txt(170, 86, 'the player drives on/off; the envelope drives everything between — and the FREE flip', C.faint, 8.5, 'middle'));
+      if (o && o.caption) { s.push(txt(170, 102, o.caption, C.faint, 9, 'middle')); return { svg: s.join(''), h: 108 }; }
+      return { svg: s.join(''), h: 94 };
+    },
+
+    // Sustain pedal: deferred note-offs queueing while down.
+    pedalviz(o) {
+      const s = [];
+      s.push(`<path d="M 30 76 L 78 76 L 88 56 L 30 56 Z" fill="rgba(93,232,148,0.08)" stroke="${C.phos}" stroke-width="1.4"/>`);
+      s.push(txt(56, 92, 'CC 64 · DOWN', C.phos, 8.5, 'middle', 1));
+      s.push(box(116, 20, 130, 64, C.line));
+      s.push(txt(181, 34, 'DEFERRED GOODBYES', C.dim, 8, 'middle', 1));
+      ['C4 off — held', 'E4 off — held', 'G4 off — held'].forEach((t, i) => {
+        s.push(box(126, 40 + i * 14, 110, 11, C.amber, true, 'rgba(240,180,80,0.04)'));
+        s.push(txt(181, 48.5 + i * 14, t, C.amber, 7.5, 'middle'));
+      });
+      s.push(arrow(252, 52, 288, 52, C.phosDim));
+      s.push(txt(302, 44, 'pedal', C.faint, 8, 'middle'));
+      s.push(txt(302, 55, 'up →', C.faint, 8, 'middle'));
+      s.push(txt(302, 68, 'ALL fire', C.phos, 8, 'middle'));
+      s.push(txt(170, (o && o.caption) ? 112 : 104, (o && o.caption) || 'while down, note-offs queue as marks — pedal-up releases them together', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 118 };
+    },
+
+    // Pitch-bend or mod wheel with value scale.
+    bendwheel(o) {
+      const s = [];
+      const mod = o.mode === 'mod';
+      s.push(box(40, 12, 56, 92, C.line, false, '#0A0D11'));
+      const wy = mod ? 76 : 58;
+      s.push(`<rect x="46" y="${wy - 9}" width="44" height="18" rx="4" fill="rgba(93,232,148,0.15)" stroke="${C.phos}" stroke-width="1.4"${mod ? '' : ' class="viz-snap"'}/>`);
+      s.push(txt(68, 118, mod ? 'MOD (CC 1)' : 'PITCH BEND', C.dim, 8.5, 'middle', 1));
+      if (mod) {
+        [[20, '127', 'full depth'], [58, '64', 'half'], [96, '0', 'no vibrato']].forEach(([y, v, l]) => {
+          s.push(txt(112, y, v, C.amber, 8.5, 'start'));
+          s.push(txt(136, y, l, C.faint, 8.5, 'start'));
+        });
+        s.push(txt(226, 56, 'no spring — it stays put', C.dim, 9, 'middle'));
+        s.push(txt(226, 70, 'value → a mod DEPTH', C.phos, 9, 'middle'));
+      } else {
+        [[20, '16383', '+2 st'], [58, '8192', 'HOME · ratio 1.0'], [96, '0', '−2 st']].forEach(([y, v, l]) => {
+          s.push(txt(112, y, v, C.amber, 8.5, 'start'));
+          s.push(txt(152, y, l, C.faint, 8.5, 'start'));
+        });
+        s.push(txt(232, 56, 'spring-loaded: always', C.dim, 9, 'middle'));
+        s.push(txt(232, 70, 'snaps back to 8192', C.phos, 9, 'middle'));
+      }
+      if (o.caption) { s.push(txt(170, 138, o.caption, C.faint, 9, 'middle')); return { svg: s.join(''), h: 144 }; }
+      return { svg: s.join(''), h: 128 };
+    },
+
+    // Mod matrix: source → destination × amount rows.
+    modmatrix(o) {
+      const rows = o.rows || [['LFO 1', 'PITCH', 0.3], ['WHEEL', 'LFO DEPTH', 1.0]];
+      const s = [];
+      s.push(txt(60, 16, 'SOURCE', C.dim, 8, 'middle', 1.5));
+      s.push(txt(196, 16, 'DESTINATION', C.dim, 8, 'middle', 1.5));
+      s.push(txt(298, 16, 'AMOUNT', C.dim, 8, 'middle', 1.5));
+      rows.forEach(([src, dst, amt], i) => {
+        const y = 26 + i * 26;
+        s.push(box(14, y, 92, 20, C.phosDim, false, 'rgba(93,232,148,0.04)'));
+        s.push(txt(60, y + 13, src, C.phos, 8.5, 'middle'));
+        s.push(arrow(108, y + 10, 148, y + 10));
+        s.push(box(150, y, 92, 20, C.line));
+        s.push(txt(196, y + 13, dst, C.dim, 8.5, 'middle'));
+        s.push(box(268, y, 60, 20, C.amber, false, 'rgba(240,180,80,0.04)'));
+        s.push(txt(298, y + 13, (amt >= 0 ? '+' : '') + amt, C.amber, 8.5, 'middle'));
+      });
+      const hy = 26 + rows.length * 26 + 6;
+      s.push(txt(170, hy + 6, o.caption || 'each row: one invisible hand — rows aimed at one destination ADD', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: hy + 14 };
+    },
+
+    // Keyboard tracking: key position drives a parameter slope.
+    keytrack() {
+      const s = [];
+      const x0 = 26, kw = 21, nWhite = 14, ky = 62, kh = 34;
+      for (let i = 0; i < nWhite; i++) {
+        const mid = i === 7;
+        s.push(`<rect x="${x0 + i * kw}" y="${ky}" width="${kw - 2}" height="${kh}" rx="2" fill="${mid ? 'rgba(240,180,80,0.12)' : '#10141A'}" stroke="${mid ? C.amber : C.line}" stroke-width="1.1"/>`);
+      }
+      s.push(txt(x0 + 7 * kw + 9, ky + kh + 12, 'middle C — anchor (0)', C.amber, 8, 'middle'));
+      s.push(`<line x1="${x0}" y1="52" x2="${x0 + nWhite * kw - 2}" y2="16" stroke="${C.phos}" stroke-width="1.6"/>`);
+      s.push(txt(x0 + 4, 40, '−', C.phos, 12, 'middle'));
+      s.push(txt(x0 + nWhite * kw - 8, 14, '+', C.phos, 12, 'middle'));
+      s.push(txt(170, 30, 'parameter value', C.faint, 8.5, 'middle'));
+      s.push(txt(170, 124, 'the key POSITION is the mod source: low keys pull down, high keys push up', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 130 };
+    },
+
+    // Unison: one key fans into detuned, panned copies.
+    unisonviz() {
+      const s = [];
+      s.push(box(24, 40, 44, 30, C.phosDim, false, 'rgba(93,232,148,0.07)'));
+      s.push(txt(46, 59, 'C4', C.phos, 10.5, 'middle'));
+      s.push(txt(46, 84, 'one key', C.faint, 8, 'middle'));
+      const copies = [['−12¢', 'L', 18], ['−6¢', 'L½', 36], ['0¢', 'C', 54], ['+6¢', 'R½', 72], ['+12¢', 'R', 90]];
+      copies.forEach(([cents, pan, y], i) => {
+        const center = i === 2;
+        s.push(`<path d="M 68 55 C 110 55, 120 ${y} , 152 ${y}" fill="none" stroke="${center ? C.phos : C.phosDim}" stroke-width="1.2"/>`);
+        s.push(box(154, y - 8, 74, 16, center ? C.phos : C.line, false, center ? 'rgba(93,232,148,0.08)' : 'none'));
+        s.push(txt(191, y + 3.5, cents + '  ·  ' + pan, center ? C.phos : C.dim, 8, 'middle'));
+      });
+      s.push(txt(268, 22, 'detuned copies,', C.dim, 8.5, 'start'));
+      s.push(txt(268, 34, 'panned wide —', C.dim, 8.5, 'start'));
+      s.push(txt(268, 46, 'center stays', C.phos, 8.5, 'start'));
+      s.push(txt(268, 58, 'in tune', C.phos, 8.5, 'start'));
+      s.push(txt(170, 118, 'the shimmer is their interference — five near-misses, one anchor', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 124 };
+    },
   };
 
   function render(spec) {

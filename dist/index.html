@@ -742,6 +742,16 @@ textarea.io {
   .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .dash-grid .span2 { grid-column: span 2; }
 }
+
+/* ---- animated diagram accents (killed by reduce-motion rules above) ---- */
+@keyframes vizPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.viz-pulse { animation: vizPulse 1.6s ease-in-out infinite; }
+@keyframes vizSnap {
+  0%, 55%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-14px); }
+  38% { transform: translateY(3px); }
+}
+.viz-snap { animation: vizSnap 3.2s ease-in-out infinite; }
 </style>
 <div id="app" class="app">
   <noscript><div style="padding:2rem;font-family:monospace;color:#EAE4D4;background:#0A0C0F">TXPPS VST CODE LAB requires JavaScript.</div></noscript>
@@ -800,10 +810,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z5', num: 5, title: 'SYNTH ENGINEERING', status: 'planned',
-    tagline: 'Voices, polyphony, MIDI, modulation',
-    desc: 'Voice allocation and stealing, note lifecycle, velocity, pitch bend, unison, mod matrices and presets.',
-    topics: ['voices & polyphony', 'note ownership & stealing', 'note-on / note-off', 'velocity & sustain', 'pitch bend & mod wheel', 'unison', 'modulation matrices', 'preset management', 'panic behavior', 'sample-accurate events'],
+    id: 'z5', num: 5, title: 'SYNTH ENGINEERING', status: 'live',
+    tagline: 'From sound generator to playable instrument',
+    desc: 'How a synthesizer receives notes and performs: MIDI, velocity, voices and polyphony, allocation and stealing, the sustain pedal, pitch bend, mod wheel, mod matrix, unison — First Signal becomes fully playable.',
+    nodeOrder: [
+      'n1', 'n2', 'n3', 'nr2', 'p12', 'n4', 'n5', 'nr1', 'n6', 'nc2',
+      'n7', 'nc1', 'no1', 'nb2', 'n8', 'nr3', 'n9', 'nb1', 'p13',
+      'n10', 'nc3', 'nb3', 'n11', 'nc4', 'nb4', 'n12', 'ne1', 'p14',
+      'n13', 'n14', 'n15', 'p15', 'boss5',
+    ],
   },
   {
     id: 'z6', num: 6, title: 'PROFESSIONAL PLUGIN ENGINEERING', status: 'planned',
@@ -846,6 +861,8 @@ const ACHIEVEMENTS = [
   { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
   { id: 'zone4_clear', name: 'ZONE 4 CLEARED', desc: 'Repair the Broken Synth.' },
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
+  { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Revive the Forgotten Polysynth.' },
+  { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -869,6 +886,8 @@ const DAILY_POOL = [
   'jc2.q1', 'jb2.q1', 'je2.q1', 'jo1.q1',
   'd1.q1', 'd2.q2', 'd5.q2', 'd6.q3', 'd7.q3', 'd8.q1', 'd9.q1', 'd10.q2',
   'd11.q2', 'd12.q3', 'd13.q3', 'd15.q2', 'dc1.q1', 'db2.q1', 'de1.q1', 'dr1.q2',
+  'n1.q1', 'n2.q2', 'n3.q3', 'n5.q2', 'n6.q1', 'n8.q1', 'n9.q1', 'n10.q1',
+  'n11.q1', 'n12.q2', 'n13.q2', 'n14.q3', 'nb3.q1', 'ne1.q1',
 ];
 
 ;
@@ -8074,6 +8093,2003 @@ const ZONE4_CHALLENGES = [
 ];
 
 ;
+/* ===== src/js/data_zone5_lessons.js ===== */
+/* ============================================================
+   ZONE 5 — SYNTH ENGINEERING: lessons n1–n8.
+   First Signal learns to listen: MIDI, velocity, voices,
+   polyphony, allocation, stealing.
+   ============================================================ */
+
+const ZONE5_LESSONS = [
+
+  /* ------------------------------------------------------ N1 */
+  {
+    id: 'n1', kind: 'lesson', title: 'The Language of Keys', short: 'What MIDI actually says',
+    concepts: ['midi-basics'], time: '~5 MIN', diff: 1,
+    hook: 'You press middle C on your controller and First Signal — as shipped in Zone 4 — ignores you completely. It plays its own note, forever. The keyboard has been talking this whole time; your synth just doesn\'t speak the language yet. That language is MIDI, and it\'s simpler than any patch you\'ve ever saved.',
+    objective: 'Know what a MIDI message actually contains — and why MIDI carries instructions, never sound.',
+    sections: [
+      {
+        h: 'Messages, not audio',
+        body: '**Musical Instrument Digital Interface (MIDI)** carries *instructions*: “key 60 went down, this hard,” “key 60 came up,” “the wheel moved.” No audio travels down that cable — which is why one performance can play a piano patch today and a bass patch tomorrow. The recording is the *gesture*, not the sound.',
+        viz: { t: 'keys', pressed: [7], msg: 'NOTE ON  ·  note 60  ·  velocity 100', caption: 'one key press = one tiny message — three numbers, no sound' },
+      },
+      {
+        h: 'The anatomy of a note',
+        body: 'A **note-on** carries three numbers: which **channel** (1–16, like console channels for separate instruments), which **note** (0–127, middle C = 60, each step one semitone — the d3 map turns this into Hz), and how hard — the **velocity** (next lesson). A **note-off** for the same note number ends it. Everything your synth will do in this zone starts from these two events.',
+        code: '// what actually arrives, as JUCE sees it:\nmsg.getChannel();      // 1..16  — whose message is this?\nmsg.getNoteNumber();   // 0..127 — which key (60 = middle C)\nmsg.getVelocity();     // 0..127 — how hard',
+        codeTitle: 'three questions per key press',
+        breakdown: [
+          ['getChannel()', 'one cable, 16 lanes — a drum machine and a bass line can share it'],
+          ['getNoteNumber()', 'the key as a number: 60 = middle C, 69 = A440 — d3\'s formula eats this'],
+          ['getVelocity()', 'strike strength 0–127 — the player\'s dynamics, one byte'],
+        ],
+      },
+      {
+        h: 'Why this design won',
+        body: 'MIDI is from 1983 and still runs every studio, because instructions are tiny and universal. A note-on is 3 bytes; a second of CD audio is 176,400. Your DAW\'s piano roll IS a MIDI editor — every dot a note-on with a length, every lane a note number. You\'ve been *reading* this language for years; this zone teaches your plugin to read it too.',
+        analogy: 'MIDI is sheet music over a wire. The page tells the pianist what to play and how hard — it never makes a sound itself. Swap the pianist (the patch) and the same page plays a whole new performance.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'What does a MIDI cable actually carry?',
+        options: [
+          { t: 'Small instruction messages — key down, key up, wheel moved. Never audio', why: '' },
+          { t: 'A compressed audio stream', why: 'No audio at all — that\'s why the same MIDI clip can drive a piano patch or an 808 without re-recording.' },
+          { t: 'The synth\'s output signal', why: 'Output leaves through audio cables/buffers. MIDI flows the other way: performer → instrument.' },
+          { t: 'Preset data only', why: 'Presets can travel over MIDI (SysEx), but the moment-to-moment traffic is performance events.' },
+        ],
+        answer: 0,
+        explain: 'MIDI = the gesture, audio = the sound. Keeping them separate is why you can fix a wrong note in the piano roll without re-recording a take.',
+      },
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'Which three numbers ride inside a note-on message?',
+        options: [
+          { t: 'Channel, note number, velocity', why: '' },
+          { t: 'Frequency, amplitude, phase', why: 'Those are DSP quantities the *synth* computes FROM the message — d3\'s formula turns note number into frequency.' },
+          { t: 'Note number, duration, volume', why: 'MIDI has no duration — length is simply the gap until the matching note-off arrives.' },
+          { t: 'Sample rate, note, pan', why: 'Sample rate belongs to the audio engine; MIDI knows nothing about the grid it will be rendered on.' },
+        ],
+        answer: 0,
+        explain: 'Channel (whose lane), note (which key), velocity (how hard). Duration isn\'t stored anywhere — a note lasts until its note-off shows up.',
+      },
+      {
+        type: 'fill', concept: 'midi-basics',
+        prompt: 'The d3 map meets its input: convert the incoming key to Hertz.',
+        code: 'float hz = midiToHz(msg.___());',
+        accept: ['getNoteNumber'],
+        placeholder: 'method',
+        hint: 'Which key was pressed?',
+        explain: 'getNoteNumber() hands d3\'s formula its input: 69 → 440 Hz, 60 → ~261.63 Hz. The bridge between the player\'s hands and the oscillator\'s math is one method call.',
+      },
+    ],
+    recap: [
+      'MIDI (Musical Instrument Digital Interface) carries instructions, never audio.',
+      'A note-on = channel + note number + velocity; a note-off ends that note.',
+      'Note numbers are semitones: 60 = middle C, 69 = A440 — d3\'s formula converts.',
+      'Notes have no stored duration — they last until the matching note-off.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'the MidiBuffer it has ignored since Zone 3 is about to be read' },
+      { name: 'Your DAW\'s piano roll', use: 'a MIDI editor wearing a grid — every dot is a note-on' },
+    ],
+    analogyPanel: 'MIDI is sheet music over a wire: what to play, how hard, when to stop — never the sound itself. The patch is the musician; the message is the page.',
+    beginnerMistake: 'Recording a synth\'s audio when you meant to record its MIDI — then discovering you can\'t fix one wrong note without redoing the take. Gestures are editable; rendered audio is baked.',
+    remember: 'MIDI says what happened at the keys. Making it sound like something is entirely your synth\'s job.',
+    builds: ['midi', 'midibuffer', 'daw'],
+    leads: ['note-event', 'velocity'],
+  },
+
+  /* ------------------------------------------------------ N2 */
+  {
+    id: 'n2', kind: 'lesson', title: 'Velocity: How Hard You Hit', short: 'Dynamics as a number',
+    concepts: ['midi-basics'], time: '~5 MIN', diff: 1,
+    hook: 'Play a piano patch with everything at velocity 100 and it sounds like a robot doing data entry. Play the same notes with real dynamics and it breathes. The entire difference travels in one byte per note — and your synth decides what that byte *means*.',
+    objective: 'Use velocity musically in code — and learn the one strange rule: velocity 0 means note-off.',
+    sections: [
+      {
+        h: 'One byte of feel',
+        body: '**Velocity** is how fast the key was moving when it hit bottom — 1 (barely) to 127 (hammered). What it *controls* is your design decision: loudness is the classic mapping, but real instruments also get brighter when struck harder, so pro synths route velocity to filter cutoff, envelope attack, even sample layers. Velocity is a per-note control signal — d14\'s idea, delivered by the player\'s hands.',
+        viz: { t: 'keys', pressed: [4, 9], vels: [40, 118], caption: 'same two keys, different strikes — the byte that separates a lullaby from a stab' },
+      },
+      {
+        h: 'From byte to gain',
+        body: 'The straightforward mapping: divide by 127 to get 0..1, use it as a per-voice gain. JUCE will even do the division for you. One honest nuance: ears are logarithmic (d4), so pros often *curve* the value — squaring it is a common start — but linear is a fine first instrument.',
+        code: 'float vel = msg.getFloatVelocity();   // 0.0 .. 1.0 — JUCE divides for you\nvoice.velocityGain = vel * vel;       // curved: quiet strikes stay quiet\n// later, in the render:  sample * env * voice.velocityGain',
+        codeTitle: 'dynamics, wired in',
+        breakdown: [
+          ['getFloatVelocity()', 'the 0–127 byte, pre-divided into 0..1 — one less magic number'],
+          ['vel * vel', 'a square curve: 64 → ~0.25 instead of 0.5 — closer to how dynamics feel'],
+          ['per-VOICE gain', 'stored on the voice, not globally — each note keeps the strike it was born with'],
+        ],
+      },
+      {
+        h: 'The strange rule: velocity zero',
+        body: 'A **note-on with velocity 0** officially means *note-off*. It\'s a 1983 wire-efficiency trick (running status) that never went away, and controllers still send it. Miss this rule and some keyboards leave your synth with notes that never end. JUCE has your back — `isNoteOff()` returns true for velocity-0 note-ons by default — but only if you use the message queries instead of poking raw bytes.',
+        warn: 'This is the first of several “stuck note” traps in this zone. A synth that only *starts* notes correctly is half a synth — ending them correctly is where the engineering lives.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'What does velocity measure, physically?',
+        options: [
+          { t: 'How fast the key was moving when pressed — strike strength, 1–127', why: '' },
+          { t: 'How long the key is held', why: 'Hold time is the note-on → note-off gap. Velocity is captured in the first instant of the strike.' },
+          { t: 'The note\'s frequency', why: 'That\'s the note *number*. Velocity is the how-hard, not the which-key.' },
+          { t: 'The synth\'s output level', why: 'Only if you route it there! Velocity is player data — what it controls is your synth\'s design choice.' },
+        ],
+        answer: 0,
+        explain: 'Strike speed in one byte. Loudness is the classic destination, but brightness (cutoff) and attack are what make patches feel expensive.',
+      },
+      {
+        type: 'predict', concept: 'midi-basics',
+        prompt: 'A note-on arrives with velocity 0. What should your synth do?',
+        code: '// incoming: NOTE ON, note 64, velocity 0',
+        options: [
+          { t: 'Treat it as a note-off for note 64', why: '' },
+          { t: 'Play note 64 silently', why: 'A silent voice still burns a voice card — and never receiving a real note-off, it would sit there forever.' },
+          { t: 'Ignore it', why: 'Ignoring it loses the note\'s END on controllers that use this convention — the classic stuck-note bug.' },
+          { t: 'Reset the synth', why: 'Far too dramatic — it\'s a routine message with a historical costume on.' },
+        ],
+        answer: 0,
+        explain: 'Velocity 0 = note-off, by MIDI convention. JUCE\'s isNoteOff() honors this automatically — one of many reasons to query messages instead of parsing bytes.',
+      },
+      {
+        type: 'fill', concept: 'midi-basics',
+        prompt: 'Store the strike on the voice, using JUCE\'s pre-divided form.',
+        code: 'voice.velocityGain = msg.___();   // 0.0 .. 1.0',
+        accept: ['getFloatVelocity'],
+        placeholder: 'method',
+        hint: 'The velocity, already scaled to 0..1.',
+        mistakes: [
+          { match: '^getVelocity$', msg: 'getVelocity() returns the raw 0–127 byte — usable, but you\'d divide by 127 yourself. The float version arrives pre-scaled.' },
+        ],
+        explain: 'getFloatVelocity() → 0..1, ready to multiply. Stored per voice so every note keeps its own dynamics for its whole life.',
+      },
+    ],
+    recap: [
+      'Velocity = strike speed, 1–127; what it controls is your design decision.',
+      'Classic routing: per-voice gain (getFloatVelocity, optionally curved).',
+      'Pro routings: cutoff, attack, layers — velocity is a per-note control signal.',
+      'Note-on with velocity 0 = note-off. JUCE\'s isNoteOff() handles it.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p12 wires velocity into the voice gain' },
+      { name: 'Sample libraries', use: 'velocity switches whole recordings — pp and ff are different samples' },
+    ],
+    analogyPanel: 'Velocity is the difference between brushing a snare and rimshotting it — same drum, same stick, different energy in the first millisecond. One byte captures that millisecond.',
+    beginnerMistake: 'Mapping velocity to nothing. A patch where 30 and 127 sound identical feels dead under the hands no matter how good the oscillators are — dynamics are the cheapest realism you\'ll ever add.',
+    remember: 'Velocity is the player\'s energy in one byte — and velocity 0 secretly means “stop.”',
+    builds: ['velocity', 'note-event', 'gain'],
+    leads: ['cc', 'aftertouch'],
+  },
+
+  /* ------------------------------------------------------ N3 */
+  {
+    id: 'n3', kind: 'lesson', title: 'Reading the MIDI Inbox', short: 'The MidiBuffer loop',
+    concepts: ['midi-basics'], time: '~6 MIN', diff: 2,
+    hook: 'Zone 3 told you processBlock receives TWO deliveries: the audio buffer, and a MidiBuffer you\'ve politely ignored for two zones. Inside it: every key event that happened during this block, each stamped with exactly *when*. Time to open the mail.',
+    objective: 'Iterate the MidiBuffer, dispatch each message by type, and understand sample-position timing.',
+    sections: [
+      {
+        h: 'The inbox, opened',
+        body: 'The **MidiBuffer** holds this block\'s events in time order. The modern JUCE loop reads each one and asks what it is — note-on, note-off, or something else. Dispatch is a chain of questions:',
+        code: 'void processBlock(juce::AudioBuffer<float>& buffer,\n                  juce::MidiBuffer& midiMessages)\n{\n    for (const auto metadata : midiMessages)\n    {\n        const auto msg = metadata.getMessage();\n\n        if (msg.isNoteOn())\n            startNote(msg.getNoteNumber(),\n                      msg.getFloatVelocity());\n        else if (msg.isNoteOff())\n            stopNote(msg.getNoteNumber());\n    }\n    // ... then render audio as usual\n}',
+        codeTitle: 'First Signal reads its mail',
+        breakdown: [
+          ['for (const auto metadata : …)', 'walks every event this block, in time order — the Zone 1 loop pattern on a new container'],
+          ['metadata.getMessage()', 'unwraps the actual MidiMessage from its delivery envelope'],
+          ['isNoteOn() / isNoteOff()', 'ask, don\'t parse — these queries also handle the velocity-0 rule from n2'],
+          ['startNote / stopNote', 'OUR functions, coming in p12 — the dispatch calls the synth we\'re building'],
+        ],
+      },
+      {
+        h: 'When, exactly?',
+        body: 'Each event also carries `metadata.samplePosition` — *which sample within this block* it landed on. A note struck mid-block starts at sample 137, not at the block edge. Handling everything at position 0 quantizes your timing by up to a whole block (~10 ms at 512/48k) — real players feel that. First Signal starts simple (handle events, render after), and tightens timing when it matters; the pro move is splitting the block at each event.',
+        analogy: 'The MidiBuffer is a bar of your DAW timeline: events sit at exact ticks inside it, not just at bar lines. A synth that rounds everything to the bar line swings like a drum machine with quantize at 100% — technically right, humanly wrong.',
+      },
+      {
+        h: 'The other mail',
+        body: 'The same loop will grow more questions as the zone proceeds: `isPitchWheel()` (n11), `isController()` for the sustain pedal and mod wheel (n10, n12), `isChannelPressure()` for aftertouch (n12). One inbox, one loop, many message types — the dispatch chain IS your synth\'s ear.',
+        warn: 'Never assume an event *order* inside a block beyond time order: a note-off for a key can arrive in the same block as its note-on — a 5 ms stab from a tight player. Your voice logic (n7) has to survive that.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'What does metadata.samplePosition tell you?',
+        options: [
+          { t: 'Which sample inside THIS block the event lands on', why: '' },
+          { t: 'The event\'s position in the whole song', why: 'Blocks don\'t know the song — the position is relative to this block\'s first sample.' },
+          { t: 'The MIDI channel', why: 'Channel rides inside the message itself (getChannel()); the stamp is about time.' },
+          { t: 'How many events are in the buffer', why: 'It\'s per-event timing, not a count — each event carries its own stamp.' },
+        ],
+        answer: 0,
+        explain: 'Sample-accurate timing is what separates tight instruments from mushy ones: a note at sample 137 should start at sample 137.',
+      },
+      {
+        type: 'fill', concept: 'midi-basics',
+        prompt: 'Unwrap the actual message from its metadata envelope.',
+        code: 'for (const auto metadata : midiMessages)\n{\n    const auto msg = metadata.___();\n    if (msg.isNoteOn()) { /* ... */ }\n}',
+        accept: ['getMessage'],
+        placeholder: 'method',
+        hint: 'The envelope holds a message and a time stamp.',
+        explain: 'getMessage() unwraps the MidiMessage; samplePosition is the stamp on the envelope. Iterate, unwrap, ask, dispatch — the whole inbox routine.',
+      },
+      {
+        type: 'predict', concept: 'midi-basics',
+        prompt: 'A player stabs a key so fast that note-on AND note-off land in the same block. What does the loop see?',
+        code: 'for (const auto metadata : midiMessages) { /* ? */ }',
+        options: [
+          { t: 'Both events, in time order — the note starts and releases within one block', why: '' },
+          { t: 'Only the note-on; the off waits for the next block', why: 'The buffer holds everything that happened this block — both events are already inside.' },
+          { t: 'The events cancel out', why: 'Nothing cancels — a real (short) note happened, and the envelope\'s attack + release will sound it.' },
+          { t: 'Undefined behavior', why: 'Perfectly defined: two ordinary events, microseconds apart. Your voice logic just has to handle ON then OFF honestly.' },
+        ],
+        answer: 0,
+        explain: 'Short notes are legal and common. The loop sees ON then OFF in order; the voice starts, then enters release — a tiny note, rendered honestly.',
+      },
+    ],
+    recap: [
+      'MidiBuffer = this block\'s events, time-ordered, each with a samplePosition.',
+      'Iterate with for (const auto metadata : midi); unwrap with getMessage().',
+      'Dispatch by asking: isNoteOn / isNoteOff / isPitchWheel / isController.',
+      'Same-block on+off pairs are normal — voice logic must survive them.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p12 installs exactly this loop — the synth\'s ear' },
+      { name: 'juce::Synthesiser', use: 'JUCE\'s stock synth class splits blocks at each event for sample-tight starts' },
+    ],
+    analogyPanel: 'processBlock gets two deliveries every few milliseconds: a crate of audio to fill, and an envelope of stage directions. The synth you\'re building is the performer who reads the directions and fills the crate.',
+    beginnerMistake: 'Handling MIDI *after* rendering audio — the notes you just received then start one block late, every time. Read the mail first, then perform.',
+    remember: 'One loop, one unwrap, a chain of questions. The dispatch chain is your synth\'s ear.',
+    builds: ['midibuffer', 'processblock', 'block'],
+    leads: ['voice', 'note-event'],
+  },
+
+  /* ------------------------------------------------------ N4 */
+  {
+    id: 'n4', kind: 'lesson', title: 'Mono: One Key at a Time', short: 'Last-note, retrigger, legato',
+    concepts: ['voices-mono'], time: '~6 MIN', diff: 2,
+    hook: 'Hold a bass note, then tap a higher one without letting go. On a classic mono synth the pitch jumps up — release, and it falls back to the held key. That falling-back is a *decision someone programmed*. Mono synths aren\'t poly synths minus features: they\'re a personality, built from rules.',
+    objective: 'Build mono note logic: last-note priority, and the retrigger-vs-legato choice that defines mono feel.',
+    sections: [
+      {
+        h: 'The mono contract',
+        body: 'First Signal today is accidentally mono: one phase, one envelope — n5 names that bundle a **voice**. A *deliberate* mono synth adds a rule for overlapping keys. **Last-note priority** is the modern default: the newest key always wins. To fall back when it\'s released, the synth keeps a small list of held notes — press adds, release removes, and the pitch follows the list\'s newest entry.',
+        code: 'std::vector<int> heldNotes;             // pressed keys, oldest → newest\n\nvoid noteOn(int note)  { heldNotes.push_back(note); playPitch(note); }\nvoid noteOff(int note)\n{\n    heldNotes.erase(std::remove(heldNotes.begin(),\n                    heldNotes.end(), note), heldNotes.end());\n    if (!heldNotes.empty()) playPitch(heldNotes.back());  // fall back\n    else                    adsr.noteOff();               // truly done\n}',
+        codeTitle: 'last-note priority, honestly',
+        breakdown: [
+          ['heldNotes', 'the fingers currently down — Zone 1\'s vector, doing musical bookkeeping'],
+          ['back()', 'the newest held key: last-note priority in one call'],
+          ['fall back, not off', 'release the top key and the pitch returns to the one still held — the mono bassline feel'],
+          ['adsr.noteOff() only when empty', 'the envelope releases when the LAST finger lifts, not the first'],
+        ],
+      },
+      {
+        h: 'Retrigger or legato: the personality switch',
+        body: 'When a new key arrives while one is held, does the envelope restart? **Retrigger**: yes — every note gets a fresh attack, punchy and rhythmic. **Legato**: no — the pitch changes but the envelope keeps riding, notes bind into one phrase (add a pitch glide and you have portamento, d13\'s ramp used musically). Same messages, different `if`:',
+        code: 'void playPitch(int note)\n{\n    setIncrementFor(note);                    // d5 machinery\n    bool wasSilent = !adsr.isActive();\n    if (retrigger || wasSilent)\n        adsr.noteOn();                        // fresh attack\n    // legato + already sounding: pitch moves, envelope rides on\n}',
+        codeTitle: 'one if = the mono feel switch',
+        mistake: { code: 'void playPitch(int note)\n{\n    setIncrementFor(note);\n    adsr.noteOn();   // ✗ always retriggers\n}', text: 'Unconditional noteOn() makes legato impossible — every overlapped note stabs a new attack, and smooth mono lines turn into typewriter fire. The if IS the feature.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'voices-mono',
+        prompt: 'Last-note priority. You hold C2, press G2, then release G2. What sounds?',
+        code: 'heldNotes: [C2] → [C2, G2] → release G2 → ?',
+        options: [
+          { t: 'C2 again — the pitch falls back to the still-held key', why: '' },
+          { t: 'Silence — a key was released', why: 'C2 is still down! Only when the LAST finger lifts does the envelope release.' },
+          { t: 'G2 continues', why: 'G2\'s key is up and it\'s gone from the list — the newest *held* note is C2.' },
+          { t: 'Both notes', why: 'Mono means one voice, always — the list only decides WHICH one pitch wins.' },
+        ],
+        answer: 0,
+        explain: 'The held-notes list makes fall-back automatic: remove G2, back() says C2, the bassline walks home. This exact feel is why mono basses groove.',
+      },
+      {
+        type: 'mcq', concept: 'voices-mono',
+        prompt: 'What\'s the difference between retrigger and legato mode?',
+        options: [
+          { t: 'Retrigger restarts the envelope on every new note; legato lets overlapped notes share one envelope ride', why: '' },
+          { t: 'Legato adds more voices', why: 'Both are mono — one voice throughout. The difference is entirely in envelope behavior.' },
+          { t: 'Retrigger changes the waveform', why: 'The oscillator doesn\'t care — this is an envelope decision, not a timbre one.' },
+          { t: 'Legato is just portamento', why: 'Close cousins: portamento = legato + a pitch glide. Legato alone changes pitch instantly but keeps the envelope riding.' },
+        ],
+        answer: 0,
+        explain: 'Punchy stabs vs bound phrases — one if statement. Add d13\'s ramp to the pitch change and legato becomes portamento.',
+      },
+      {
+        type: 'bugspot', concept: 'voices-mono',
+        prompt: 'This mono synth goes silent when ANY key lifts, even mid-phrase. Tap the bug.',
+        code: [
+          'void noteOff(int note)',
+          '{',
+          '    removeFromHeld(note);',
+          '    adsr.noteOff();',
+          '    if (!heldNotes.empty())',
+          '        playPitch(heldNotes.back());',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'noteOff() fires unconditionally — the envelope starts dying even when fingers are still down. Release the envelope only when heldNotes is empty; otherwise just fall back to the newest held pitch.',
+        fix: 'if (heldNotes.empty()) adsr.noteOff(); else playPitch(heldNotes.back());',
+      },
+    ],
+    recap: [
+      'Mono is a personality: last-note priority via a held-notes list.',
+      'Fall-back: release the top key, pitch returns to back() of the list.',
+      'Retrigger = fresh attack per note; legato = shared envelope ride.',
+      'Envelope releases only when the LAST finger lifts.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'gets a mono mode before polyphony — walk, then run' },
+      { name: 'Classic mono basses', use: 'their famous feel IS these rules — priority + legato + glide' },
+    ],
+    analogyPanel: 'A mono synth is a session player who owns one instrument: hand them a new chart mid-note and they slide to it (legato) or restate it (retrigger) — but they never become two players.',
+    beginnerMistake: 'Releasing the envelope on every note-off. Mono players *overlap* keys constantly — the synth must track what\'s still held, or every phrase gets chopped at the first finger-lift.',
+    remember: 'Mono = one voice + rules. The held-notes list is the memory; the retrigger if is the feel.',
+    builds: ['monophonic', 'legato', 'retrigger'],
+    leads: ['voice', 'polyphony'],
+  },
+
+  /* ------------------------------------------------------ N5 */
+  {
+    id: 'n5', kind: 'lesson', title: 'The Voice: A Synth Within a Synth', short: 'One note\'s machinery',
+    concepts: ['voices-poly'], time: '~6 MIN', diff: 2,
+    hook: 'Play a C major triad. Three pitches, three envelopes at different points in their journey, maybe three strike strengths. Everything Zone 4 built — phase, increment, envelope — exists *once* in First Signal. A chord needs it three times. The fix is the most Zone-1 idea imaginable: put the machinery in a box and stamp copies.',
+    objective: 'Design the Voice — the bundle of state that renders exactly one note — and meet the fixed voice pool.',
+    sections: [
+      {
+        h: 'Everything one note needs',
+        body: 'A **voice** is one note\'s complete render kit: which note it\'s playing, its phase bookmark, its pitch step, its own envelope, its strike gain. Zone 1 taught classes as blueprint→units; this is that lesson earning its keep. Each voice is a tiny mono synth — the full instrument is several of them plus a manager.',
+        viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }], zoom: true, caption: 'one voice card: everything Zone 4 built, boxed — note, phase, increment, envelope, gain' },
+        code: 'struct Voice\n{\n    int    note      = -1;      // which key owns me (-1 = nobody)\n    double phase     = 0.0;     // d5\'s bookmark — mine alone\n    double increment = 0.0;     // my pitch\n    float  velGain   = 1.0f;    // my strike (n2)\n    juce::ADSR adsr;            // my envelope — mine alone\n    juce::uint32 age = 0;       // when I was allocated (n8 will need this)\n};',
+        codeTitle: 'the voice card',
+        breakdown: [
+          ['note = -1', 'the ownership tag: −1 means free — n7 lives on this field'],
+          ['own phase, own increment', 'three voices = three bookmarks; shared phase would be one blurred pitch'],
+          ['own adsr', 'chords only work because each note dies on its own schedule'],
+          ['age', 'an allocation timestamp — the stealing lesson (n8) will sort by it'],
+        ],
+      },
+      {
+        h: 'The pool: fixed, pre-built, waiting',
+        body: 'A real synth doesn\'t create voices when keys arrive — Zone 2 burned “never allocate on the audio thread” into you. Instead: a **fixed pool**, built once, reused forever. Eight is a classic number (entire legendary polysynths shipped with it). A silent voice costs almost nothing to keep around; a mid-note allocation can cost you a glitch.',
+        code: 'std::array<Voice, 8> voices;   // built with the plugin, reused forever\n// no push_back. no new. not ever — not on the audio thread.',
+        codeTitle: 'the voice rack',
+        analogy: 'The pool is a backline of eight identical session players, hired for the whole show. Notes don\'t hire new musicians — they hand charts to players already seated. That\'s why the show never stops to recruit.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'Why must each voice own its OWN phase and envelope?',
+        options: [
+          { t: 'Three simultaneous notes are three different pitches at three different envelope moments — shared state would blur them into nonsense', why: '' },
+          { t: 'JUCE requires it', why: 'JUCE doesn\'t care — *music* does: a chord is several independent journeys happening at once.' },
+          { t: 'It\'s faster', why: 'Cost is similar — correctness is the reason. One shared envelope would chop every held note when any new key hit.' },
+          { t: 'Voices sound warmer with their own state', why: '“Warm” isn\'t the issue — *possible* is. Independent notes need independent machinery, full stop.' },
+        ],
+        answer: 0,
+        explain: 'A voice is one note\'s whole world. Zone 1\'s blueprint→units idea (one class, many objects) is the entire foundation of polyphony.',
+      },
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'Why a fixed std::array of 8 voices instead of a std::vector that grows per note?',
+        options: [
+          { t: 'Growing a vector allocates memory — forbidden on the audio thread (Zone 2). The pool is built once and reused', why: '' },
+          { t: 'Arrays sound better', why: 'Containers don\'t touch the audio — the issue is WHEN memory gets allocated, and the answer must be “never, during rendering.”' },
+          { t: 'Vectors can\'t hold structs', why: 'They can. The problem is push_back\'s possible reallocation landing inside processBlock\'s deadline.' },
+          { t: 'Eight is a MIDI limit', why: 'MIDI happily reports 10 fingers and more. Eight is a *design budget* — a classic CPU/richness tradeoff, not a protocol rule.' },
+        ],
+        answer: 0,
+        explain: 'Pre-allocate, reuse, never grow mid-render: Zone 2\'s real-time rule shaping Zone 5\'s architecture. The pool IS that rule made of voices.',
+      },
+      {
+        type: 'fill', concept: 'voices-poly',
+        prompt: 'Mark a voice as unowned when its note fully dies.',
+        code: 'if (!v.adsr.isActive())\n    v.note = ___;   // free — nobody owns this card',
+        accept: ['-1'],
+        placeholder: 'value',
+        hint: 'The “no owner” tag from the struct.',
+        explain: '-1 is the agreed “free” tag (no real key is negative). Allocation (n7) hunts for exactly this value. One int field is the entire ownership system.',
+      },
+    ],
+    recap: [
+      'A voice = one note\'s full render kit: note, phase, increment, envelope, gain, age.',
+      'Polyphony is Zone 1\'s blueprint→units applied to sound: one struct, N copies.',
+      'Fixed pre-built pool (std::array) — never allocate voices mid-render.',
+      'note = -1 marks a free voice; that tag drives allocation and ownership.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13 refactors Zone 4\'s single machinery into the Voice struct' },
+      { name: 'juce::SynthesiserVoice', use: 'JUCE\'s stock voice class — same idea with virtuals: startNote, stopNote, renderNextBlock' },
+    ],
+    analogyPanel: 'A voice card is one channel strip in a rack of eight: its own input (note), its own fader ride (envelope), its own tuning. The synth is the rack plus a patch engineer deciding which strip takes the next signal.',
+    beginnerMistake: 'Giving voices their own phase but SHARING one envelope “to save code.” First chord: every held note chops to the new note\'s attack. If notes can overlap, every per-note thing must live per-voice.',
+    remember: 'One voice, one note, one world. The synth is a rack of worlds plus a manager.',
+    builds: ['voice', 'class', 'envelope'],
+    leads: ['polyphony', 'voice-allocation'],
+  },
+
+  /* ------------------------------------------------------ N6 */
+  {
+    id: 'n6', kind: 'lesson', title: 'Polyphony: Two Keys, Two Voices', short: 'Rendering a chord',
+    concepts: ['voices-poly'], time: '~6 MIN', diff: 2,
+    hook: 'You press two keys. The synth now needs two independent voices — and one output. You already know both halves: n5 built the independent voices, and d11 taught you what happens when signals meet: they add. Polyphony is a for-loop around Zone 4.',
+    objective: 'Render the voice pool: loop the active voices, sum their samples, keep the gain plan honest.',
+    sections: [
+      {
+        h: 'The polyphonic render loop',
+        body: 'Per sample: start at silence, let every **active** voice add its contribution, then stage the sum. Each voice runs its own d5/d6/d9 machinery; the mix bus is d11\'s plus sign; the 1/8 trim is d11\'s worst-case guarantee for eight full voices.',
+        viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }, { note: 'E4', state: 'busy' }, { note: 'G4', state: 'rel' }, { note: '—', state: 'free' }], caption: 'three sounding voices flow to one bus — the free card costs nothing' },
+        code: 'for (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float mix = 0.0f;\n    for (auto& v : voices)\n    {\n        if (! v.adsr.isActive()) continue;      // silent card: skip, free\n        float raw = oscSample(waveform, v.phase);\n        mix += raw * v.adsr.getNextSample() * v.velGain;\n        v.phase += v.increment;                 // d5, per voice\n        if (v.phase >= juce::MathConstants<double>::twoPi)\n            v.phase -= juce::MathConstants<double>::twoPi;\n    }\n    float s = mix * 0.125f * g;                 // 8 voices → ×1/8 guarantee\n    // ... clamp and write to channels as in d15\n}',
+        codeTitle: 'First Signal v5 — the chord engine',
+        breakdown: [
+          ['mix = 0.0f each sample', 'the bus starts at silence every tick — sums don\'t carry over'],
+          ['isActive() → continue', 'released-and-finished voices cost one if — that\'s why idle cards are cheap'],
+          ['mix +=', 'd11\'s entire lesson as an operator: a chord is addition'],
+          ['per-voice advance & wrap', 'every voice walks its own bookmark — d5 machinery ×8'],
+          ['× 0.125f', '8 full-scale voices worst-case = 8.0 → trimmed to 1.0; the d11 gain plan, scaled up'],
+        ],
+      },
+      {
+        h: 'Mono was a special case all along',
+        body: 'Notice what polyphony did to the architecture: the *render* barely changed — it grew a loop. The hard new work is all in *management*: which voice takes which note (n7), what happens when the pool runs dry (n8), when is a voice truly done (n9). Sound generation was Zone 4; Zone 5 is government.',
+        warn: 'The ×1/8 trim is the guaranteed-safe floor, and it parks single notes at −18 dBFS — 6 dB below the mono synth\'s −12. Real synths run hotter (÷√N, or a fixed voice level plus a limiter) because eight worst-case peaks almost never align — d11\'s statistics argument, now with stakes. First Signal ships the guarantee first; taste can come later.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'How do eight voices become one output signal?',
+        options: [
+          { t: 'Per sample: each active voice\'s output is added into a mix, then the sum is gain-staged', why: '' },
+          { t: 'Each voice writes its own audio channel', why: 'Channels are speakers (d12), not notes — 8-voice polyphony on a stereo bus means summing, then writing the same mix to both lanes.' },
+          { t: 'Voices take turns, one per block', why: 'Turn-taking would arpeggiate every chord — all active voices contribute to every single sample.' },
+          { t: 'The loudest voice wins', why: 'That\'s how some 80s video game chips worked — synths add, exactly like air (d11).' },
+        ],
+        answer: 0,
+        explain: 'Polyphony = per-sample summing of independent voices. The bus is d11\'s plus sign; the trim is d11\'s gain plan with N = 8.',
+      },
+      {
+        type: 'bugspot', concept: 'voices-poly',
+        prompt: 'Chords play wrong pitches that change with what else is held. Tap the shared-state bug.',
+        code: [
+          'float renderVoice(Voice& v)',
+          '{',
+          '    float raw = oscSample(waveform, phase);',
+          '    phase += v.increment;',
+          '    return raw * v.adsr.getNextSample();',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'It reads the PROCESSOR\'s old global phase, not v.phase — every voice advances one shared bookmark by its own increment. Each voice must read and advance its OWN phase: oscSample(waveform, v.phase), then v.phase += v.increment.',
+        fix: 'float raw = oscSample(waveform, v.phase);  // and advance v.phase',
+      },
+      {
+        type: 'predict', concept: 'voices-poly',
+        prompt: 'With the ×0.125f trim, all 8 voices peak at the same instant at full scale. The bus value just before the trim, and just after?',
+        code: 'float s = mix * 0.125f;   // worst case?',
+        options: [
+          { t: '8.0 before, 1.0 after — the guarantee holds exactly at the ceiling', why: '' },
+          { t: '1.0 before, 0.125 after', why: 'Eight full-scale voices SUM to 8.0 before the trim — that\'s the whole reason it exists.' },
+          { t: '8.0 before, 8.0 after', why: 'The multiply happens: 8.0 × 0.125 = 1.0. Skipping it is how the d10 flat-tops arrive.' },
+          { t: 'It depends on the waveform', why: 'Shape changes WHEN peaks align, not the worst case: N voices at ±1 can always reach N.' },
+        ],
+        answer: 0,
+        explain: '8 × 1.0 × 0.125 = 1.0: worst case lands exactly at full scale. d11\'s 1/N rule, deployed at synth scale.',
+      },
+    ],
+    recap: [
+      'Polyphonic render: per sample, sum every active voice, then gain-stage the sum.',
+      'Inactive voices cost one if — an idle pool is nearly free.',
+      'Each voice advances its OWN phase — shared state is the classic poly bug.',
+      '×1/N is the guaranteed trim; real synths run hotter on d11\'s statistics.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'v5: the chord engine — p13 makes you build it' },
+      { name: 'juce::Synthesiser', use: 'its renderNextBlock does exactly this loop over SynthesiserVoice objects' },
+    ],
+    analogyPanel: 'Eight players read eight charts into one mixer. The mix bus doesn\'t know or care how many are playing — it adds whatever arrives, and the engineer (your gain plan) keeps the master out of the red.',
+    beginnerMistake: 'Testing polyphony with single notes and shipping. The bugs live in COMBINATIONS: shared state, sum overloads, voices that never free. Test with fists on the keyboard, not fingers.',
+    remember: 'The render grew a loop; the hard part is management. Sound was Zone 4 — Zone 5 is government.',
+    builds: ['polyphony', 'mixing', 'voice'],
+    leads: ['voice-allocation', 'voice-stealing'],
+  },
+
+  /* ------------------------------------------------------ N7 */
+  {
+    id: 'n7', kind: 'lesson', title: 'Allocation: Who Plays What', short: 'Ownership & the free hunt',
+    concepts: ['allocation'], time: '~6 MIN', diff: 2,
+    hook: 'You press three keys; three voices light up. You release the MIDDLE key — and exactly the right note stops. Nobody\'s amazed at a piano for this. In code, that precision has a name: ownership. Every note-off is a search for the one voice that owns that key.',
+    objective: 'Implement note-on allocation (find a free voice) and note-off ownership lookup (find MY voice).',
+    sections: [
+      {
+        h: 'Note-on: hunt for a free card',
+        body: 'When a note-on arrives, scan the pool for an unowned voice, hand it the note, and stamp its paperwork. The `note` field does double duty: −1 means free; otherwise it IS the ownership record.',
+        viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }, { note: 'E4', state: 'busy' }, { note: '—', state: 'alloc' }, { note: '—', state: 'free' }], caption: 'G4 arrives: scan left to right, first free card takes the gig' },
+        code: 'void startNote(int note, float vel)\n{\n    for (auto& v : voices)\n    {\n        if (v.note == -1)                    // free?\n        {\n            v.note      = note;              // ownership stamp\n            v.increment = twoPi * midiToHz(note) / getSampleRate();\n            v.velGain   = vel;\n            v.age       = ++ageCounter;      // n8 will thank us\n            v.adsr.noteOn();\n            return;                          // one note, one voice\n        }\n    }\n    // pool full → n8: stealing\n}',
+        codeTitle: 'allocation with paperwork',
+        breakdown: [
+          ['v.note == -1', 'the free test — allocation is a linear hunt for the tag'],
+          ['ownership stamp', 'from here on, this card answers for that key'],
+          ['age = ++ageCounter', 'a birth certificate: stealing (n8) will pick victims by it'],
+          ['return', 'ONE voice per note-on — forget this and one press lights the whole pool'],
+        ],
+      },
+      {
+        h: 'Note-off: find MY voice',
+        body: 'A note-off doesn\'t say “stop a voice” — it says “stop **note 64**.” The synth must find the voice whose ownership stamp matches, and release *that one*. Get the search wrong and you meet the two classic bugs: the **stuck note** (off never finds its voice — it rings forever) and the **wrong-victim** (off silences someone else\'s note).',
+        code: 'void stopNote(int note)\n{\n    for (auto& v : voices)\n        if (v.note == note && v.adsr.isActive())\n            v.adsr.noteOff();      // release — n9: not dead yet!\n}',
+        codeTitle: 'the ownership lookup',
+        mistake: { code: 'void stopNote(int note)\n{\n    voices[0].adsr.noteOff();   // ✗ always releases card 0\n}', text: 'Releasing a fixed voice ignores ownership entirely: whichever note happens to sit on card 0 dies — usually the OLDEST held note — while the key you actually lifted rings on. Stuck note + wrong victim, one line.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'match', concept: 'allocation',
+        prompt: 'Keys arrive in order: C4, E4, G4 — then C4\'s note-off. Match each event to what the pool does (voices scanned left to right, all start free).',
+        left: ['C4 note-on', 'E4 note-on', 'G4 note-on', 'C4 note-off'],
+        right: ['voice 1 takes it (first free)', 'voice 2 takes it (next free)', 'voice 3 takes it (next free)', 'voice 1 releases — its stamp matches'],
+        explain: 'Allocation fills the first free card; note-off hunts by ownership stamp, not by position or order. The middle chord tone releasing correctly is this lookup working.',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'Press one key: EVERY voice fires the same note, ff. Tap the missing discipline.',
+        code: [
+          'void startNote(int note, float vel)',
+          '{',
+          '    for (auto& v : voices)',
+          '        if (v.note == -1)',
+          '        {',
+          '            claimVoice(v, note, vel);',
+          '        }',
+          '}',
+        ],
+        buggy: 5,
+        explain: 'The loop keeps running after claiming — with a fresh pool, ALL free voices claim the same note: one press, eight unison copies, +18 dB of surprise. After claiming, stop: return (or break). One note-on, one voice.',
+        fix: 'claimVoice(v, note, vel); return;',
+      },
+      {
+        type: 'predict', concept: 'allocation',
+        prompt: 'C4 is held on voice 2. A SECOND C4 note-on arrives (same key retriggered fast — the off hasn\'t come yet). With the code above, what happens?',
+        code: '// pool: v1 free, v2 owns C4 (held), v3 free ...',
+        options: [
+          { t: 'Voice 1 also starts C4 — two voices now own the same note number', why: '' },
+          { t: 'Voice 2 restarts its envelope', why: 'The hunt looks for note == -1, so it never even glances at v2 — it claims the first FREE card.' },
+          { t: 'The message is rejected', why: 'Nothing rejects it — allocation happily hands the same note to a second card. The next note-off gets interesting…' },
+          { t: 'The synth crashes', why: 'No crash — just two owners with the same stamp, and stopNote() releasing both at once (or the wrong one, in fancier designs).' },
+        ],
+        answer: 0,
+        explain: 'Duplicate ownership is legal and common (fast repeats, sustain pedal overlaps). Our stopNote releases ALL matching active voices — a defensible call. Pro synths choose policies here; knowing the case exists is the lesson.',
+      },
+    ],
+    recap: [
+      'Note-on: hunt for note == -1, stamp ownership, start the envelope, RETURN.',
+      'Note-off: hunt by stamp (v.note == note), release the match.',
+      'The note field is the whole ownership system: −1 free, otherwise owner.',
+      'Classic failures: stuck note (off finds nobody), wrong victim (off ignores stamps).',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13\'s centerpiece: allocation + ownership in your own pool' },
+      { name: 'juce::Synthesiser', use: 'findFreeVoice() + per-voice getCurrentlyPlayingNote() — same hunt, stock form' },
+    ],
+    analogyPanel: 'Allocation is a stage manager with a clipboard: gig comes in, first free player gets the chart, and their name goes next to the song. When the song ends, the manager checks the clipboard — not the seating order — to know who stops playing.',
+    beginnerMistake: 'Testing note-off by releasing keys in reverse order of pressing (last pressed, first released) — which accidentally works even with broken ownership. Release the MIDDLE note of a chord: that\'s the test that catches clipboard-free code.',
+    remember: 'Every note-off is a search. The note field is the clipboard; −1 means “for hire.”',
+    builds: ['voice-allocation', 'voice', 'note-event'],
+    leads: ['voice-stealing', 'release'],
+  },
+
+  /* ------------------------------------------------------ N8 */
+  {
+    id: 'n8', kind: 'lesson', title: 'Voice Stealing: The 9th Note', short: 'When the pool runs dry',
+    concepts: ['allocation'], time: '~6 MIN', diff: 2,
+    hook: 'Eight voices, and you play a sustained ninth note — or just hold the damper pedal through two bars of arpeggio. The pool is full and a new gig walks in. A real synth doesn\'t drop the new note (the player JUST played it). It quietly retires someone. Choosing whom is a musical judgment call encoded in C++.',
+    objective: 'Implement voice stealing — and understand the priority policies that decide who dies.',
+    sections: [
+      {
+        h: 'Somebody has to go',
+        body: 'Dropping the newest note is almost always wrong: it\'s the one the player just asked for, so its absence is *instantly* heard. Stealing works because the victim, done well, is the note ears have already filed away. The classic priority ladder: steal a voice already in **release** first (it\'s dying anyway) — otherwise steal the **oldest** sounding voice.',
+        viz: { t: 'voicecards', cards: [{ note: 'C2', state: 'steal' }, { note: 'E3', state: 'busy' }, { note: 'G3', state: 'rel' }, { note: 'B3', state: 'busy' }], caption: '9th note arrives: the releasing G3 would go first — here, with no releases, the oldest (C2) pays' },
+        code: 'Voice* findVictim()\n{\n    Voice* oldest = nullptr;\n    for (auto& v : voices)\n    {\n        if (! v.adsr.isActive()) return &v;        // free — not a steal at all\n        if (isReleasing(v))       return &v;        // dying anyway: perfect victim\n        if (oldest == nullptr || v.age < oldest->age)\n            oldest = &v;                            // track the elder\n    }\n    return oldest;                                  // full pool: the oldest pays\n}',
+        codeTitle: 'the priority ladder',
+        breakdown: [
+          ['!isActive() → free', 'the hunt naturally finds true frees first — stealing is the fallback, not the norm'],
+          ['releasing first', 'a note in release is already leaving — nobody mourns it'],
+          ['v.age < oldest->age', 'n5\'s birth certificate cashes in: smallest age = longest-sounding'],
+          ['return oldest', 'the honest worst case: a note the ear has had the longest to absorb'],
+        ],
+      },
+      {
+        h: 'Stealing without the click',
+        body: 'The victim is mid-waveform at some level; slamming a new note onto it makes a d13-style cliff — a click on every steal. Pro synths retire the victim with a *very fast fade* (a few ms) before restarting, or crossfade into the new note. First Signal starts with the simplest honest version — call noteOff() with a short release and start the new note on the next free scan — and the boss will test whether you know *why* the fade exists.',
+        warn: 'Policies are a personality, not a law: some synths protect the LOWEST note (the bass anchor) rather than the newest, and many protect the most recently played. What\'s universal is having a deliberate policy — the bug is not having one.',
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'allocation',
+        prompt: 'Pool of 4. Sounding: C2 (age 1, held), E3 (age 2, held), G3 (age 3, RELEASING), B3 (age 4, held). A 5th note arrives. Who\'s stolen?',
+        code: '// ladder: free → releasing → oldest',
+        options: [
+          { t: 'G3 — it\'s already in release, the perfect victim', why: '' },
+          { t: 'C2 — it\'s the oldest', why: 'Oldest is the FALLBACK. The ladder checks for releasing voices first, and G3 is already on its way out.' },
+          { t: 'B3 — newest goes first', why: 'Backwards: the newest is the note the player just asked for — stealing it is the most audible choice possible.' },
+          { t: 'The new note is dropped', why: 'Dropping the incoming note is the one policy everyone notices immediately — the player JUST played it.' },
+        ],
+        answer: 0,
+        explain: 'Releasing voices are gifts to the allocator: already dying, already fading. Only a pool with zero releases makes the oldest pay.',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'This “steal the oldest” hunt reliably steals the NEWEST voice. Tap the backwards line.',
+        code: [
+          'Voice* victim = &voices[0];',
+          'for (auto& v : voices)',
+          '    if (v.age > victim->age)',
+          '        victim = &v;',
+          'return victim;',
+        ],
+        buggy: 2,
+        explain: 'age counts UP as notes start — the biggest age is the YOUNGEST voice. The comparison must find the smallest: v.age < victim->age. One flipped comparison turns polite stealing into eating the note the player just played.',
+        fix: 'if (v.age < victim->age) victim = &v;',
+      },
+      {
+        type: 'mcq', concept: 'allocation',
+        prompt: 'Why do pro synths fade a stolen voice for a few ms instead of instantly restarting it?',
+        options: [
+          { t: 'An instant restart is a vertical step mid-waveform — a corner, i.e. an audible click on every steal (d13)', why: '' },
+          { t: 'To give the CPU time', why: 'A steal is a few assignments — nanoseconds. The fade is for EARS, not processors.' },
+          { t: 'MIDI requires it', why: 'MIDI ended at the inbox — stealing and its manners are entirely the synth\'s internal business.' },
+          { t: 'It makes stealing reversible', why: 'The stolen note is gone either way — the fade just makes its exit polite instead of clicky.' },
+        ],
+        answer: 0,
+        explain: 'd13\'s law, third appearance: jumps are corners, corners click. A steal is a forced jump — the fade rounds it off.',
+      },
+    ],
+    recap: [
+      'Stealing priority: free → releasing → oldest. Never drop the incoming note.',
+      'age (allocation stamp) finds the elder: smallest age = longest-sounding.',
+      'Steals click without a fast fade — d13\'s corner rule at allocation scale.',
+      'Policies vary (protect bass, protect newest) — having ONE deliberately is the point.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13 installs the ladder; the boss breaks it for you to fix' },
+      { name: 'juce::Synthesiser', use: 'setNoteStealingEnabled(true) — its ladder also prefers dying voices' },
+    ],
+    analogyPanel: 'A maître d\' with a full room and a VIP at the door: he never turns away the arrival. He looks for a table already paying the check (releasing), then the party that\'s lingered longest (oldest) — and he moves them *quietly*. The fade is the quiet.',
+    beginnerMistake: 'Assuming 8 voices means “I\'ll never notice stealing.” One held damper pedal and every arpeggio floods the pool in two bars. Stealing isn\'t an edge case — on real material it\'s constant, which is why its manners matter.',
+    remember: 'Free, then releasing, then oldest — and always fade the victim. The player must never catch the theft.',
+    builds: ['voice-stealing', 'voice-allocation', 'release'],
+    leads: ['sustain-pedal', 'panic'],
+  },
+];
+
+;
+/* ===== src/js/data_zone5_lessons_b.js ===== */
+/* ============================================================
+   ZONE 5 — lessons n9–n15 (appended to ZONE5_LESSONS).
+   Voice lifecycle, sustain pedal, pitch bend, performance
+   controls, the mod matrix, unison, and the playable synth.
+   ============================================================ */
+
+ZONE5_LESSONS.push(
+
+  /* ------------------------------------------------------ N9 */
+  {
+    id: 'n9', kind: 'lesson', title: 'Release Isn\'t Dead Yet', short: 'The voice lifecycle',
+    concepts: ['allocation'], time: '~6 MIN', diff: 2,
+    hook: 'Lift a key on a pad patch with a 4-second release. The note keeps singing — beautifully, on purpose — for four more seconds. Question: during those seconds, is that voice free? Answer wrong and you get either stolen tails or a synth that runs out of voices while half its pool sits “busy” doing almost nothing.',
+    objective: 'Track the full voice lifecycle — idle → attack → decay → sustain → release → idle — and know exactly when a voice returns to the pool.',
+    sections: [
+      {
+        h: 'The life of a voice',
+        body: 'A voice cycles through states, and each transition has an owner: **note-on** starts attack; the envelope itself walks attack → decay → sustain; **note-off** starts release; and the envelope *finishing* release is what makes the voice idle again. Two different events end a note: the player ends the *key*, the envelope ends the *sound*.',
+        viz: { t: 'voicelife', caption: 'two hands on the wheel: the player drives note-on and note-off; the envelope drives everything between and after' },
+      },
+      {
+        h: 'Busy until the tail ends',
+        body: 'During release the voice still renders — that IS the tail you hear. So it\'s not free: its phase advances, its envelope fades, its samples land on the bus. `adsr.isActive()` stays true through release and flips false only when the fade completes. That flip is the pool\'s recycling moment:',
+        code: '// in the render loop, after getting the envelope value:\nif (! v.adsr.isActive())     // release just finished\n    v.note = -1;             // recycle: back to the pool\n',
+        codeTitle: 'the recycling moment',
+        breakdown: [
+          ['isActive()', 'true from noteOn until the release fade completes — the whole audible life'],
+          ['the flip', 'the envelope, not the player, declares death — note-off only *started* the ending'],
+          ['v.note = -1', 'n5\'s free tag restored — allocation can hire this card again'],
+        ],
+        mistake: { code: 'void stopNote(int note)\n{\n    for (auto& v : voices)\n        if (v.note == note)\n        {\n            v.adsr.noteOff();\n            v.note = -1;      // ✗ freed while still singing\n        }\n}', text: 'Freeing at note-off orphans the tail: the voice still renders its release, but allocation now sees a “free” card and hands it a new note mid-fade — the tail is randomly assassinated. Free when the ENVELOPE finishes, never at note-off.' },
+      },
+      {
+        h: 'Why releasing voices are prime steal targets',
+        body: 'Now n8\'s ladder fully makes sense: a releasing voice is *audibly leaving* — stealing it merely shortens a goodbye. And notice the resource math: with long releases, a fast passage can have MORE releasing voices than held ones. That\'s why real polyphony counts sound, not fingers — eight voices means eight *tails and notes combined*.',
+        analogy: 'A voice in release is a guest with their coat on, saying goodbye at the door. They\'re still IN the room (still rendering), but when a new guest knocks, everyone knows whose spot to take — and nobody\'s offended.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'allocation',
+        prompt: 'When does a voice actually return to the free pool?',
+        options: [
+          { t: 'When its envelope finishes the release fade — isActive() flips false', why: '' },
+          { t: 'At note-off', why: 'Note-off only STARTS release — the tail is still rendering. Freeing here orphans it (and gets it assassinated).' },
+          { t: 'When a new note needs it', why: 'That\'s stealing — the exception path. The normal return is the envelope completing its fade.' },
+          { t: 'At the end of each block', why: 'Block edges are invisible to notes — a release can span hundreds of blocks.' },
+        ],
+        answer: 0,
+        explain: 'The player ends the key; the envelope ends the sound. The pool listens to the envelope.',
+      },
+      {
+        type: 'predict', concept: 'allocation',
+        prompt: 'A pad has a 4-second release. The player rapidly plays 8 short notes, lifting each key immediately. Two seconds later, how does the pool look?',
+        code: '// 8 voices, all notes released quickly, release = 4 s',
+        options: [
+          { t: 'All 8 voices busy — every one is mid-release, still rendering its tail', why: '' },
+          { t: 'All 8 free — the keys are up', why: 'Keys up ≠ sound done: each tail has 2 more seconds to sing, and each occupies its voice the whole time.' },
+          { t: '4 busy, 4 free', why: 'Nothing halves — all 8 releases started within the burst and all are still fading.' },
+          { t: 'The synth crashed', why: 'Perfectly healthy — just fully booked. The 9th note would invoke n8\'s ladder (and find 8 lovely releasing victims).' },
+        ],
+        answer: 0,
+        explain: 'Long releases book the pool with tails. This is why pad patches steal constantly and why the ladder prefers releasing voices — the pool is often FULL of goodbyes.',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'Tails randomly cut off mid-fade on this synth. Tap the premature paperwork.',
+        code: [
+          'void stopNote(int note)',
+          '{',
+          '    for (auto& v : voices)',
+          '        if (v.note == note && v.adsr.isActive())',
+          '        {',
+          '            v.adsr.noteOff();',
+          '            v.note = -1;',
+          '        }',
+          '}',
+        ],
+        buggy: 6,
+        explain: 'v.note = -1 at note-off marks a still-singing voice as free — the next note-on hijacks it mid-tail. Release the envelope here; free the voice later, in the render loop, when isActive() flips false.',
+        fix: 'Remove the line — recycle in the render loop when !v.adsr.isActive()',
+      },
+    ],
+    recap: [
+      'Lifecycle: idle → attack → decay → sustain → release → idle.',
+      'Note-off starts release; the ENVELOPE finishing is what frees the voice.',
+      'isActive() spans the whole audible life, tail included.',
+      'Long releases fill pools with tails — polyphony counts sound, not fingers.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13\'s render loop recycles voices at the isActive() flip' },
+      { name: 'juce::SynthesiserVoice', use: 'clearCurrentNote() is its “I\'m done” call — same flip, stock name' },
+    ],
+    analogyPanel: 'A note is a firework: the button press launches it (note-on), letting go ends nothing — the shell keeps flying (sustain), bursts, and only when the last spark fades (release complete) is the sky free for the next one.',
+    beginnerMistake: 'Testing with organ-style patches (release ≈ 0) where note-off and voice-free happen at nearly the same instant — hiding lifecycle bugs completely. Test with a LONG release: that\'s where orphaned tails and premature frees become audible.',
+    remember: 'Two endings per note: the key\'s (note-off) and the sound\'s (envelope done). The pool only cares about the second.',
+    builds: ['release', 'envelope', 'voice'],
+    leads: ['sustain-pedal', 'voice-stealing'],
+  },
+
+  /* ------------------------------------------------------ N10 */
+  {
+    id: 'n10', kind: 'lesson', title: 'The Sustain Pedal: CC 64', short: 'Deferred goodbyes',
+    concepts: ['performance'], time: '~6 MIN', diff: 2,
+    hook: 'Foot down, and every note you play hangs in the air after your fingers leave — chords stack into a wash. Foot up, and the whole cloud releases at once. Pianists don\'t think about this; your synth has to. The pedal doesn\'t make notes longer — it makes note-offs *wait*.',
+    objective: 'Understand Continuous Controllers (CC), and implement sustain-pedal logic: defer note-offs while down, release the deferred on pedal-up.',
+    sections: [
+      {
+        h: 'Meet the Continuous Controllers',
+        body: 'Beyond notes, MIDI carries **Continuous Controller (CC)** messages: a controller number (which knob/pedal/slider, 0–127) and a value (0–127). CC 1 is the mod wheel (n12), CC 7 volume, CC 64 the **sustain pedal**. The pedal is a switch wearing a controller costume: by convention, value **64 and above means down**, below 64 means up.',
+        code: 'else if (msg.isController())\n{\n    if (msg.getControllerNumber() == 64)              // sustain pedal\n        setPedal(msg.getControllerValue() >= 64);     // ≥64 = down\n}',
+        codeTitle: 'the inbox grows an ear for feet',
+        breakdown: [
+          ['isController()', 'the CC family test — one branch for every knob and pedal'],
+          ['getControllerNumber()', 'WHICH controller: 64 is sustain, by 40-year-old agreement'],
+          ['>= 64', 'the half-way convention turns a continuous value into a switch'],
+        ],
+      },
+      {
+        h: 'The pedal defers goodbyes',
+        body: 'The logic is bookkeeping, not sound: while the pedal is down, a note-off doesn\'t release its voice — it *marks* it “held by pedal.” When the pedal lifts, every marked voice finally gets its noteOff(). The voice\'s n9 lifecycle is untouched; the pedal just delays one transition.',
+        viz: { t: 'pedalviz', caption: 'foot down: note-offs queue up as “sustained” marks — foot up: every mark converts to a real release, at once' },
+        code: 'void stopNote(int note)\n{\n    for (auto& v : voices)\n        if (v.note == note && v.adsr.isActive())\n        {\n            if (pedalDown) v.sustained = true;   // goodbye, deferred\n            else           v.adsr.noteOff();     // goodbye, now\n        }\n}\n\nvoid setPedal(bool down)\n{\n    pedalDown = down;\n    if (! down)                                   // pedal lifted:\n        for (auto& v : voices)\n            if (v.sustained)\n            {\n                v.sustained = false;\n                v.adsr.noteOff();                 // the deferred goodbyes fire\n            }\n}',
+        codeTitle: 'deferred release, both halves',
+        breakdown: [
+          ['v.sustained = true', 'the mark: key is up, but the pedal vouches for this voice'],
+          ['pedal-up loop', 'the wash releasing all at once — every mark converts to a real noteOff'],
+          ['sustained = false first', 'clear the mark as you fire — a voice must never stay marked into its next life'],
+        ],
+      },
+      {
+        h: 'Where sustain bugs come from',
+        body: 'Every stuck-note story in this territory is one of three misses: the pedal-up loop never runs (notes hang forever), the ≥64 test is inverted (pedal works backwards), or a stolen/reused voice keeps its old `sustained` mark (a NEW note mysteriously refuses to release later). The fix for the third: clear `sustained` in startNote — allocation paperwork, again.',
+        warn: 'Also real: a note pressed *while* the pedal is down, then released — it defers like any other. And a note that\'s re-pressed while sustained should clear its mark and retrigger. Pedal logic is small but it multiplies against every other note path; the boss knows this.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'What does the sustain pedal actually do to note-offs, mechanically?',
+        options: [
+          { t: 'While down, note-offs mark voices “sustained” instead of releasing; pedal-up fires all the deferred releases', why: '' },
+          { t: 'It lengthens the release time', why: 'The envelope\'s R knob never moves — the pedal delays WHEN release starts, not how long it takes.' },
+          { t: 'It holds the keys down electronically', why: 'The keys (and their note-offs) behave normally — the *synth* chooses to postpone acting on them.' },
+          { t: 'It boosts sustain level', why: 'Different “sustain”: the S in ADSR is a level; CC 64 is a hold pedal. Sharing the word is MIDI\'s little joke on all of us.' },
+        ],
+        answer: 0,
+        explain: 'The pedal is pure bookkeeping: goodbyes get queued, then fired together at pedal-up. The envelope itself never changes.',
+      },
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Decode the pedal switch from its CC value.',
+        code: 'if (msg.getControllerNumber() == 64)\n    setPedal(msg.getControllerValue() >= ___);',
+        accept: ['64'],
+        placeholder: 'threshold',
+        hint: 'Half of the 0–127 range, by convention.',
+        explain: '≥64 = down, <64 = up — the standard MIDI convention for switch-style CCs. (Half-pedaling exists on fancy pianos, but the switch reading is the universal baseline.)',
+      },
+      {
+        type: 'predict', concept: 'performance',
+        prompt: 'Pedal goes down. You play C4 and release the key. Then the pedal lifts. What does C4\'s voice experience?',
+        code: 'pedal down → C4 on → C4 key up → pedal up',
+        options: [
+          { t: 'noteOn at press; “sustained” mark at key-up; real noteOff (release begins) only at pedal-up', why: '' },
+          { t: 'It releases at key-up as normal', why: 'The pedal was down — stopNote takes the defer branch and only MARKS the voice.' },
+          { t: 'It never releases', why: 'Pedal-up runs the deferred-release loop: every marked voice gets its noteOff then. Never-releasing is the BUG version.' },
+          { t: 'It releases twice', why: 'Once, at pedal-up. The key-up produced a mark, not a release — that\'s the whole deferral.' },
+        ],
+        answer: 0,
+        explain: 'Press → mark → deferred release: the pianist\'s wash, implemented as three lines of bookkeeping around n9\'s lifecycle.',
+      },
+    ],
+    recap: [
+      'CC messages = controller number + value; CC 64 is sustain, ≥64 means down.',
+      'Pedal down: note-offs mark voices sustained instead of releasing.',
+      'Pedal up: every marked voice fires its deferred noteOff at once.',
+      'Clear the sustained mark in startNote — stale marks are stuck notes waiting.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p14 wires the pedal — and the boss un-wires it for you to fix' },
+      { name: 'Every piano plugin', use: 'plus resonance modeling — but the deferral logic underneath is exactly this' },
+    ],
+    analogyPanel: 'The pedal is a bartender holding the tab open: every “I\'m leaving” (note-off) goes on the tab instead of being settled. Foot up = last call — every open tab settles in the same instant. And a new customer must never inherit someone\'s old tab.',
+    beginnerMistake: 'Implementing pedal-down (easy, notes hang — sounds right!) and forgetting pedal-up\'s release loop. The synth demos fine for ten seconds, then drowns in a hundred-voice wash. Both halves or neither.',
+    remember: 'The pedal defers goodbyes. Down = mark instead of release; up = fire every mark.',
+    builds: ['cc', 'sustain-pedal', 'release'],
+    leads: ['pitch-bend', 'panic'],
+  },
+
+  /* ------------------------------------------------------ N11 */
+  {
+    id: 'n11', kind: 'lesson', title: 'Pitch Bend: The Sliding Wheel', short: '14 bits, ±2 semitones',
+    concepts: ['performance'], time: '~6 MIN', diff: 2,
+    hook: 'Push the left wheel up and your lead cries; let go and it snaps home. Guitarists bend strings, singers scoop — the wheel is keyboard players\' claim to the same expression. Under your thumb: a spring, a sensor, and the highest-resolution message in classic MIDI.',
+    objective: 'Decode the 14-bit pitch-bend message, convert it through a semitone range to a frequency ratio, and apply it to every sounding voice.',
+    sections: [
+      {
+        h: 'Why 14 bits',
+        body: 'Notes are steps; bends are *glides*. A 0–127 bend would zipper audibly (d13\'s staircase, in pitch — the ear\'s most sensitive dimension). So pitch bend gets two bytes glued together: **0 to 16,383**, with **8,192 as center** (wheel at rest). Up from center bends up; down bends down; the spring always returns you to 8,192.',
+        viz: { t: 'bendwheel', mode: 'bend', caption: 'the wheel is a spring-loaded 14-bit number: 0 · 8192 (home) · 16383' },
+      },
+      {
+        h: 'From wheel to ratio',
+        body: 'Three conversions, each one you already own: center the raw value (−1..+1), scale by the **bend range** in semitones (±2 is the universal default — synth and controller must agree), then d3\'s law turns semitones into a frequency **ratio**. The ratio multiplies each voice\'s increment at render time — the base increment stays untouched, so releasing the wheel lands you *exactly* back in tune.',
+        code: 'else if (msg.isPitchWheel())\n{\n    int raw = msg.getPitchWheelValue();               // 0..16383\n    float centered  = (raw - 8192) / 8192.0f;         // −1..+1\n    float semitones = centered * 2.0f;                // ±2 st range\n    bendRatio = std::pow(2.0f, semitones / 12.0f);    // d3\'s law\n}\n// render: v.phase += v.increment * bendRatio;        // every voice bends',
+        codeTitle: 'wheel → semitones → ratio',
+        breakdown: [
+          ['(raw - 8192) / 8192', 'center then normalize: rest = 0.0, full down = −1.0, full up ≈ +1.0'],
+          ['* 2.0f', 'the bend RANGE — a whole tone each way; change this and the wheel\'s reach changes'],
+          ['pow(2, st/12)', 'semitones→ratio, the d3 formula — pitch is a ratio world, bends included'],
+          ['multiply at render', 'base increments stay pure: wheel home ⇒ ratio 1.0 ⇒ perfectly in tune'],
+        ],
+        mistake: { code: 'v.increment *= bendRatio;   // ✗ every wheel message compounds', text: 'Multiplying the STORED increment applies the bend again on every message — wiggle the wheel and pitch drifts off into the weeds, never returning home. Bend is a live multiplier at render time, never an edit to the base.' },
+      },
+      {
+        h: 'One wheel, every voice',
+        body: 'Pitch bend is a **channel** message: it bends every sounding note on the channel together — the whole chord slides as one, like a guitarist bending a barre. That\'s why `bendRatio` lives on the *synth*, not the voice, and every voice multiplies by it. (Per-note bends exist in MIDI Polyphonic Expression (MPE) — the modern per-finger standard — but classic bend is all-or-everyone.)',
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'performance',
+        prompt: 'The wheel sits at rest. What raw value arrives, and what must the resulting ratio be?',
+        code: 'int raw = msg.getPitchWheelValue();   // wheel at rest → ?',
+        options: [
+          { t: '8192 → ratio 1.0 — center means “multiply by exactly nothing extra”', why: '' },
+          { t: '0 → ratio 1.0', why: 'Raw 0 is the wheel pinned fully DOWN — center of a 14-bit range is 8192.' },
+          { t: '8192 → ratio 0.0', why: 'A ratio of 0 would set every increment to zero — pitch death. Center must be the do-nothing multiplier: 1.0.' },
+          { t: '16383 → ratio 2.0', why: '16383 is fully UP; and with a ±2 st range it\'s ~1.122, not 2.0 (that would be a whole octave).' },
+        ],
+        answer: 0,
+        explain: '8192 centers to 0 semitones, and 2^(0/12) = 1.0. The wheel\'s home position must be mathematically invisible — that\'s what “in tune” means.',
+      },
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Complete the semitones-to-ratio conversion.',
+        code: 'bendRatio = std::pow(2.0f, semitones / ___);',
+        accept: ['12.0f', '12', '12.0', '12.f'],
+        placeholder: 'divisor',
+        hint: 'Semitones per octave — d3\'s constant.',
+        explain: '2^(st/12): the same law that maps MIDI notes to Hz maps bend amounts to ratios. Pitch is a ratio world; the wheel just feeds the exponent continuously.',
+      },
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'Why is bendRatio applied at render (increment × ratio) instead of written into each voice\'s stored increment?',
+        options: [
+          { t: 'The stored increment stays pure, so wheel-home means exactly in tune — and repeated messages can\'t compound', why: '' },
+          { t: 'Multiplying at render is faster', why: 'Cost is a wash — CORRECTNESS is the point: an edited base has no clean way back to “in tune.”' },
+          { t: 'Voices can\'t modify their increment', why: 'They can (note-on does). The choice is architectural: base state vs live modifier.' },
+          { t: 'JUCE forbids modifying increments', why: 'JUCE has no opinion — the compounding-drift bug is what forbids it.' },
+        ],
+        answer: 0,
+        explain: 'Base value + live multiplier is the modulation pattern from d14, again: the modulator never edits the target\'s stored state, it rides on top.',
+      },
+    ],
+    recap: [
+      'Pitch bend is 14-bit: 0–16383, center 8192 = wheel at rest.',
+      'Convert: center → normalize → × range (±2 st default) → 2^(st/12) ratio.',
+      'Apply at render: increment × bendRatio. Never edit the stored base.',
+      'Classic bend is per-channel — every voice slides together (per-note = MPE).',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p14 installs the wheel; the boss ships one with a broken exponent' },
+      { name: 'MPE controllers', use: 'per-finger bend — the same math, one bendRatio per note instead of per channel' },
+    ],
+    analogyPanel: 'The bend wheel is a whammy bar for the whole keyboard: one spring-loaded lever that detunes everything sounding, then physically snaps back to zero. The snap-home IS the ratio returning to exactly 1.0.',
+    beginnerMistake: 'Forgetting the synth and controller must AGREE on bend range. Synth set to ±12 with a controller assuming ±2 turns a subtle vibrato gesture into a six-semitone lurch — the classic “my bends are huge” support ticket.',
+    remember: 'Wheel → semitones → ratio → multiply at render. Home is 8192, and home must mean ratio 1.0.',
+    builds: ['pitch-bend', 'frequency', 'phase'],
+    leads: ['mod-wheel', 'aftertouch'],
+  },
+
+  /* ------------------------------------------------------ N12 */
+  {
+    id: 'n12', kind: 'lesson', title: 'The Mod Wheel & Friends', short: 'Performance controls',
+    concepts: ['performance'], time: '~6 MIN', diff: 2,
+    hook: 'Right wheel up: the lead starts to shimmer with vibrato. Press harder into the key: it swells. Tap a patch-change button mid-set: new sound, same hands. None of these are notes — they\'re the player steering the *synth* while it plays. Your inbox already speaks their language.',
+    objective: 'Wire the mod wheel (CC 1) into d14\'s LFO depth, and meet aftertouch and program change.',
+    sections: [
+      {
+        h: 'The mod wheel: a depth knob for your thumb',
+        body: 'The **mod wheel** is CC 1 — no spring, it stays where you leave it. By tradition it controls **vibrato depth**: wheel down = clean, wheel up = expressive wobble. You built the entire machine in d14 — LFO, re-range, depth, destination. The wheel simply *becomes* the depth:',
+        viz: { t: 'bendwheel', mode: 'mod', caption: 'no spring, no center — 0..127 straight into a mod DEPTH. the wheel is a routing amount with a handle' },
+        code: 'else if (msg.isController())\n{\n    if (msg.getControllerNumber() == 1)              // mod wheel\n        vibratoDepth = msg.getControllerValue() / 127.0f;\n}\n// render, per voice — d14\'s vibrato with the wheel as depth:\n// pitchMod = 1.0f + vibratoDepth * 0.03f * (float) std::sin(lfoPhase);\n// v.phase += v.increment * bendRatio * pitchMod;',
+        codeTitle: 'CC 1 → LFO depth',
+        breakdown: [
+          ['/ 127.0f', 'normalize to 0..1 — the same reflex as getFloatVelocity'],
+          ['vibratoDepth', 'd14\'s “amount” knob — now the player\'s thumb owns it'],
+          ['* 0.03f', 'scale to a musical width (~half a semitone) — full wheel ≠ seasick'],
+          ['stacks with bendRatio', 'bend × vibrato: two live multipliers riding one pure base increment (n11\'s pattern)'],
+        ],
+      },
+      {
+        h: 'Aftertouch: pressing INTO the key',
+        body: '**Aftertouch** is pressure applied after the key bottoms out — lean into a held note and the synth responds (swell, brightness, vibrato). Two flavors: **channel pressure** (one value for the whole keyboard — `isChannelPressure()`, the common one) and **polyphonic aftertouch** (per-key pressure — `isAftertouch()`, rare and glorious). Route it like any control signal: another depth, another destination.',
+      },
+      {
+        h: 'Program change: the patch switcher',
+        body: '**Program change** is a one-byte message meaning “switch to preset N” — how players flip sounds from the controller without touching the screen. Your Zone 3 state system is the machinery it drives: program change N ↦ load preset N. One message type, and suddenly set-lists work.',
+        warn: 'All these controls are *channel-wide* state (like n11\'s bend), stored on the synth and read by voices at render. The pattern never changes: message → normalized value → stored → live multiplier somewhere in the voice math. Learn it once, wire anything.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'The mod wheel traditionally controls…',
+        options: [
+          { t: 'Vibrato depth — how much the pitch LFO is allowed to move things', why: '' },
+          { t: 'Pitch directly, like the bend wheel', why: 'That\'s the OTHER wheel — the sprung one. The mod wheel stays put and scales a modulation.' },
+          { t: 'Master volume', why: 'Volume is CC 7. CC 1 is modulation — the clue is in the name.' },
+          { t: 'Waveform selection', why: 'Selectors snap (d13); the wheel is continuous. Tradition wires it to a continuous thing: depth.' },
+        ],
+        answer: 0,
+        explain: 'CC 1 → vibrato depth is the 40-year default. It\'s d14\'s depth knob with a thumb-sized handle — and being tradition, players EXPECT it.',
+      },
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'What separates channel pressure from polyphonic aftertouch?',
+        options: [
+          { t: 'Channel pressure is one value for all keys; poly aftertouch reports each key\'s pressure separately', why: '' },
+          { t: 'Channel pressure is velocity-sensitive', why: 'Velocity is the strike (n2); aftertouch is pressure AFTER the key lands — different moment, different message.' },
+          { t: 'Poly aftertouch only works on channel 10', why: 'Channel 10 is a drum convention, unrelated — poly AT works anywhere the hardware supports it.' },
+          { t: 'They\'re two names for one message', why: 'Two distinct message types (isChannelPressure vs isAftertouch in JUCE) — one shared value vs per-key values.' },
+        ],
+        answer: 0,
+        explain: 'One squeeze for the whole keyboard vs a squeeze per finger. Channel pressure is common; per-key is the luxury option (and MPE\'s ancestor).',
+      },
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Normalize the mod wheel into a 0..1 depth.',
+        code: 'if (msg.getControllerNumber() == 1)\n    vibratoDepth = msg.getControllerValue() / ___;',
+        accept: ['127.0f', '127.f', '127.0'],
+        placeholder: 'divisor',
+        hint: 'The top of the CC value range, as a float.',
+        mistakes: [
+          { match: '^127$', msg: 'Integer division: value/127 is 0 for every value below 127 — the wheel would do nothing until fully up, then snap. Zone 1\'s truncation trap rides again: 127.0f.' },
+        ],
+        explain: 'value / 127.0f → 0..1. The int-division version is a genuinely classic bug: a mod wheel that only works at maximum.',
+      },
+    ],
+    recap: [
+      'Mod wheel = CC 1, no spring: traditionally vibrato depth (d14\'s amount knob).',
+      'Aftertouch = pressure after the strike: channel-wide or per-key (poly).',
+      'Program change = “load preset N” — Zone 3\'s state system, player-driven.',
+      'The universal pattern: message → normalize → store → live multiplier at render.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p14 gives the player\'s thumb the vibrato depth' },
+      { name: 'Stage keyboards', use: 'program change is how set-lists flip sounds between songs, hands-free' },
+    ],
+    analogyPanel: 'Performance controls are the difference between a player piano and a pianist: same notes, but a human leans, presses, and steers WHILE the notes sound. These messages are the leaning, digitized.',
+    beginnerMistake: 'Wiring the mod wheel to maximum-depth vibrato because it demos dramatically. Players ride the wheel constantly and expect SUBTLE at low values — scale the range so full wheel is expressive, not carnival.',
+    remember: 'Bend is the sprung wheel, mod is the one that stays. Both are just live multipliers a musician steers.',
+    builds: ['mod-wheel', 'aftertouch', 'cc'],
+    leads: ['mod-matrix', 'program-change'],
+  },
+
+  /* ------------------------------------------------------ N13 */
+  {
+    id: 'n13', kind: 'lesson', title: 'The Modulation Matrix', short: 'Routing as data',
+    concepts: ['performance'], time: '~7 MIN', diff: 3,
+    hook: 'Open the mod page of any serious synth: a grid of rows, each saying “THIS moves THAT, this much.” LFO → pitch, envelope → cutoff, velocity → brightness, wheel → depth. You\'ve hand-wired four of these already, one if-statement at a time. The matrix is what happens when you stop hand-wiring and make routing *data*.',
+    objective: 'Generalize sources → destinations × amount into a routing table — and meet keyboard tracking, the mod source hiding inside the note number itself.',
+    sections: [
+      {
+        h: 'Three columns, everything',
+        body: 'Every routing you\'ve built is the d14 sentence: **source** (LFO, envelope, velocity, wheel…), **destination** (pitch, gain, cutoff…), **amount** (how much). A **modulation matrix** stores these sentences as rows in a table, and one loop applies them all. Adding a routing stops being “write new code” and becomes “add a row” — the same data-driven turn this app took with lessons.',
+        viz: { t: 'modmatrix', rows: [['LFO 1', 'PITCH', 0.3], ['MOD WHEEL', 'LFO DEPTH', 1.0], ['VELOCITY', 'GAIN', 0.8], ['KEY TRACK', 'BRIGHTNESS', 0.5]], caption: 'each row is one sentence: source moves destination, this much' },
+        code: 'struct ModRoute { Source src; Dest dst; float amount; };\nstd::array<ModRoute, 8> matrix;   // fixed rows — the n5 pool rule again\n\nfloat modValueFor(Dest d, const Voice& v)\n{\n    float total = 0.0f;\n    for (const auto& r : matrix)\n        if (r.dst == d)\n            total += sourceValue(r.src, v) * r.amount;\n    return total;   // summed, like the d11 bus — control signals mix too\n}',
+        codeTitle: 'routing as a table',
+        breakdown: [
+          ['ModRoute', 'one sentence as a struct: who, whom, how much'],
+          ['fixed std::array', 'no allocation on the audio thread — even routing obeys Zone 2'],
+          ['r.dst == d', '“all rows aimed at pitch, report in” — the destination collects its movers'],
+          ['total +=', 'multiple sources on one destination ADD — a control-signal mix bus'],
+        ],
+      },
+      {
+        h: 'Keyboard tracking: the note number as a source',
+        body: '**Keyboard tracking** feeds the *note number itself* into the matrix: higher keys → higher value. Why: real instruments change character across their range (a piano\'s top is brighter and shorter than its bass), and filters need it badly — a cutoff that flatters C2 strangles C6. Normalize the key position and route it like anything else:',
+        code: 'float keyTrack(const Voice& v)\n{\n    return (v.note - 60) / 32.0f;   // middle C = 0, ±1 ≈ edges of a 61-key bed\n}\n// row: { Source::keyTrack, Dest::brightness, 0.5f }',
+        codeTitle: 'the keyboard as a mod source',
+        analogy: 'Keyboard tracking is a lighting rig that follows the singer across the stage: nobody moves a spotlight per note — the POSITION drives the light. Here, the key position drives brightness, level, envelope speed — whatever the rows say.',
+      },
+      {
+        h: 'Why matrices win',
+        body: 'The hand-wired ifs from n11–n12 still live inside `sourceValue()` — the matrix didn\'t delete the wiring, it *organized* it. The win is combinatorial: 6 sources × 6 destinations is 36 possible routings; as ifs that\'s 36 code paths, as a matrix it\'s one loop and a menu. This is the exact moment synth architecture becomes software architecture.',
+        warn: 'Amounts can be negative — wheel-down opens the filter, tracking DARKENS high notes. A matrix without negative amounts is missing half its sound design. (And note what sums can do: two rows both aimed at pitch is how you stack vibrato on top of a bend.)',
+      },
+    ],
+    checks: [
+      {
+        type: 'match', concept: 'performance',
+        prompt: 'Match each matrix row to the sound it makes.',
+        left: ['LFO → pitch, small amount', 'Mod wheel → LFO depth', 'Velocity → gain', 'Key track → brightness'],
+        right: ['vibrato', 'player\'s thumb controls the vibrato', 'harder strikes are louder', 'higher notes cut through brighter'],
+        explain: 'Four rows you\'ve already built as separate wiring — in a matrix they\'re just data. Reading rows as sentences is reading any synth\'s mod page.',
+      },
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'Two matrix rows both target PITCH (an LFO and the bend wheel). What happens?',
+        options: [
+          { t: 'Their contributions add — vibrato rides on top of the bend, like signals on the d11 bus', why: '' },
+          { t: 'The second row overwrites the first', why: 'Overwriting would make multi-source modulation impossible — the loop SUMS matching rows on purpose.' },
+          { t: 'It\'s a configuration error', why: 'It\'s a classic patch! Bend a note while vibrato wobbles it — two movers, one destination, summed.' },
+          { t: 'Only the larger amount applies', why: 'No contest is held — control signals mix by addition, exactly like audio does.' },
+        ],
+        answer: 0,
+        explain: 'Destinations collect ALL their movers and sum them — a control-signal mix bus. That summing is what makes matrices musical instead of merely tidy.',
+      },
+      {
+        type: 'predict', concept: 'performance',
+        prompt: 'keyTrack returns (note − 60) / 32. The player hits C2 (note 36). Sign and rough size of the value?',
+        code: 'float k = (36 - 60) / 32.0f;',
+        options: [
+          { t: 'Negative, about −0.75 — keys below middle C push their destinations DOWN', why: '' },
+          { t: 'Positive, about 0.75', why: '36 − 60 = −24: bass keys sit BELOW the middle-C zero point, so tracking goes negative.' },
+          { t: 'Zero — tracking only affects high notes', why: 'Zero happens only AT middle C — the anchor. Everything else pushes, one way or the other.' },
+          { t: '36 — the raw note number', why: 'The subtraction and divide normalize it: tracking speaks in ±1-ish, not in raw key numbers.' },
+        ],
+        answer: 0,
+        explain: '(36−60)/32 = −0.75: a low note DARKENS a brightness destination (with a positive amount). Bidirectional tracking is the point — middle C is home, both directions push.',
+      },
+    ],
+    recap: [
+      'A mod matrix stores source → destination × amount rows as data.',
+      'One loop per destination sums every matching row — control signals mix.',
+      'Keyboard tracking = the note number as a source, normalized around middle C.',
+      'Negative amounts are half the design space; fixed rows obey the no-allocation rule.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'its wheel/velocity/tracking wiring, seen as three rows of a matrix' },
+      { name: 'Flagship synths', use: 'the mod page IS this table with a GUI — 30 rows, same three columns' },
+    ],
+    analogyPanel: 'A mod matrix is a patchbay for invisible hands (d14\'s robots, unionized): every row is one cable — from a mover, to a knob, with an attenuator on the way. The synth just walks the bay top to bottom, every sample.',
+    beginnerMistake: 'Hand-wiring a fifth and sixth routing as more ifs because the matrix “can wait.” The refactor gets harder with every wire — the moment you have three routings is the moment the table pays for itself.',
+    remember: 'Source, destination, amount. Rows are sentences; the matrix is the paragraph; sums make it music.',
+    builds: ['mod-matrix', 'keyboard-tracking', 'lfo'],
+    leads: ['unison', 'modulation'],
+  },
+
+  /* ------------------------------------------------------ N14 */
+  {
+    id: 'n14', kind: 'lesson', title: 'Unison: One Note, A Choir', short: 'Detune & stereo spread',
+    concepts: ['unison-poly'], time: '~6 MIN', diff: 2,
+    hook: 'Every anthem lead and every supersaw pad shares one trick: press ONE key, hear SEVEN voices — each a hair out of tune with its neighbors, fanned across the stereo field. Alone, each copy is a plain saw. Together they shimmer. The shimmer has an implementation, and you own every piece of it.',
+    objective: 'Implement unison: multiple detuned copies per note, spread across the stereo field — and pay its polyphony bill knowingly.',
+    sections: [
+      {
+        h: 'Detune: near-misses on purpose',
+        body: 'Stack copies of one note at slightly different pitches — offsets measured in **cents** (hundredths of a semitone, ratio 2^(cents/1200)) — and their waves drift in and out of phase: d5\'s interference as slow, animated *beating*. A few cents apart = lush chorus shimmer; the copies are wrong together in a way that sounds rich, the same physics as a 12-string guitar or a string section\'s slightly-human tuning.',
+        viz: { t: 'unisonviz', caption: 'one key → 5 copies: detuned in cents around center, panned across the field — the shimmer is their interference' },
+        code: 'const int unisonCount = 5;\nfor (int u = 0; u < unisonCount; ++u)\n{\n    float spread = (u - 2) / 2.0f;                 // −1 .. +1 across copies\n    float cents  = spread * detuneAmount;          // e.g. ±12 cents\n    double ratio = std::pow(2.0, cents / 1200.0);  // cents → ratio\n    startUnisonVoice(note, vel,\n                     baseIncrement * ratio,        // detuned pitch\n                     spread);                      // doubles as pan position!\n}',
+        codeTitle: 'the choir, hired',
+        breakdown: [
+          ['(u - 2) / 2.0f', 'five copies → positions −1, −0.5, 0, +0.5, +1: symmetric around the true pitch'],
+          ['cents / 1200', 'd3\'s ratio law at cent resolution — 100 cents per semitone, 1200 per octave'],
+          ['center copy = 0 cents', 'one voice stays PERFECTLY in tune — the anchor the ear locks onto'],
+          ['spread → pan', 'the same −1..+1 feeds d12\'s pan recipe: detune positions become stage positions'],
+        ],
+      },
+      {
+        h: 'Stereo spread: the choir takes the stage',
+        body: 'Detune alone is thick but mono. Feed each copy\'s spread position into d12\'s constant-power pan — flat-left copy hard left, center copy center — and the note *widens* into a field. This is THE supersaw recipe: detune × spread. (d12\'s warning applies: spread built from level differences folds to mono gracefully; fancy phase tricks may not.)',
+      },
+      {
+        h: 'The bill: unison eats polyphony',
+        body: 'Five-voice unison means one key consumes FIVE voice cards. An 8-voice pool plays one-and-a-half unison notes — press a chord and n8\'s stealing goes into overdrive. Real synths budget explicitly (unison mode may cap polyphony to 2, or the pool grows and the CPU pays). There is no free shimmer: unison is polyphony *spent on thickness* instead of on notes.',
+        warn: 'Sum-scaling changes too: each unison note is a 5-voice sum before it even reaches the chord bus — the d11 gain plan must count TOTAL sounding copies, not pressed keys. Forgetting this is why first unison builds clip on the second key.',
+      },
+    ],
+    checks: [
+      {
+        type: 'fill', concept: 'unison-poly',
+        prompt: 'Convert a detune in cents to a frequency ratio.',
+        code: 'double ratio = std::pow(2.0, cents / ___);',
+        accept: ['1200.0', '1200', '1200.0f', '1200.f'],
+        placeholder: 'divisor',
+        hint: '100 cents per semitone, 12 semitones per octave.',
+        mistakes: [
+          { match: '^12(\\.0f?)?$', msg: 'Dividing by 12 reads cents as SEMITONES — your ±12-cent shimmer becomes a ±one-octave catastrophe. Cents need /1200.' },
+        ],
+        explain: '2^(cents/1200): the octave law at cent resolution. 12 cents ≈ 0.7% frequency — invisible alone, shimmering in a stack.',
+      },
+      {
+        type: 'predict', concept: 'unison-poly',
+        prompt: '8-voice pool, 5-voice unison enabled. The player presses a two-note interval. What happens?',
+        code: '// 2 keys × 5 copies = 10 voices wanted, 8 exist',
+        options: [
+          { t: 'The pool overflows: 10 copies wanted, 8 cards exist — stealing fires on the SECOND key', why: '' },
+          { t: 'Both notes get 5 copies', why: 'That needs 10 cards — two more than exist. Something yields: n8\'s ladder decides what.' },
+          { t: 'Unison disables automatically', why: 'Only if you designed that policy! By default the allocator just runs dry and steals.' },
+          { t: 'The second note is dropped', why: 'Dropping the new note is the one thing stealing exists to prevent — victims come from what\'s already sounding.' },
+        ],
+        answer: 0,
+        explain: 'Unison multiplies voice demand: 2 keys × 5 = 10 > 8. This is why unison modes ship with explicit polyphony budgets — the shimmer is paid for in cards.',
+      },
+      {
+        type: 'mcq', concept: 'unison-poly',
+        prompt: 'Why does one copy stay at exactly 0 cents in a symmetric unison stack?',
+        options: [
+          { t: 'It\'s the in-tune anchor — the ear locks to it while the detuned copies shimmer around it', why: '' },
+          { t: 'To save CPU', why: 'Same cost as any copy — the reason is musical: pitch needs a home.' },
+          { t: 'Zero cents means silent', why: 'Cents measure PITCH offset, not level — the center copy plays at full voice, perfectly in tune.' },
+          { t: 'MIDI requires it', why: 'MIDI sent one note and went home — the stack is entirely the synth\'s interior decoration.' },
+        ],
+        answer: 0,
+        explain: 'Symmetric spreads keep a true-pitch anchor so the note reads as IN TUNE with shimmer around it — rather than as a cloud with no center.',
+      },
+    ],
+    recap: [
+      'Unison = N copies per note, detuned in cents (2^(cents/1200)), panned by spread.',
+      'The shimmer is interference — d5\'s physics as slow beating.',
+      'Spread positions feed d12\'s constant-power pan: detune becomes width.',
+      'Unison multiplies voice demand and re-scales the gain plan — budget for both.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p15 installs unison — the last capability before the boss' },
+      { name: 'The supersaw', use: 'the most sampled synth sound of the century is exactly this recipe, ×7' },
+    ],
+    analogyPanel: 'Unison is a string section: twelve violinists play the same line, each humanly imperfect, seated across the stage. One perfect violin is a soloist; twelve imperfect ones are a SECTION. The imperfection, spread out, is the lushness.',
+    beginnerMistake: 'Detuning ALL copies off-center (none at 0 cents) — the note loses its pitch anchor and reads as out of tune rather than wide. Symmetry around zero, with one copy ON zero, is the difference between lush and seasick.',
+    remember: 'Detune in cents, spread across the stage, keep one copy honest — and pay the polyphony bill.',
+    builds: ['unison', 'detune', 'stereo'],
+    leads: ['polyphony', 'voice-stealing'],
+  },
+
+  /* ------------------------------------------------------ N15 */
+  {
+    id: 'n15', kind: 'lesson', title: 'The Playable Synth', short: 'First Signal, complete',
+    concepts: ['unison-poly'], time: '~7 MIN', diff: 3,
+    hook: 'Fifteen lessons ago First Signal ignored your keyboard. Now trace one key press: the inbox reads it, allocation seats it, a voice renders it with YOUR velocity, the wheels steer it, the pedal holds it, unison thickens it, the bus sums it. Nothing in that chain is someone else\'s magic anymore. Let\'s read the whole instrument — and add its emergency brake.',
+    objective: 'Read First Signal\'s complete performance architecture end to end, and implement panic — the all-notes-off everything needs.',
+    sections: [
+      {
+        h: 'The whole instrument, one diagram',
+        body: 'The architecture now has two rivers meeting in processBlock: the **event river** (MIDI → dispatch → allocation/pedal/wheels → voice state) and the **audio river** (voices render → sum → gain plan → clamp → channels). Zone 4 built the audio river; Zone 5 built the event river and the government between them.',
+        viz: { t: 'chain', nodes: ['MIDI', 'DISPATCH', 'VOICES', 'SUM', 'PERF', 'OUT'], accent: 2, caption: 'events steer the pool; the pool renders the river — First Signal v6, whole' },
+      },
+      {
+        h: 'Panic: the emergency brake',
+        body: 'Every synth eventually meets a stuck note — a lost note-off, a MIDI cable yanked mid-phrase, a crashed sequencer. **Panic** (all-notes-off) is the escape hatch: release everything, clear every mark, trust nothing. MIDI even has a dedicated message (CC 123, All Notes Off) — and hosts send it on stop. Respond, and also give the UI a panic button that calls the same code:',
+        code: 'void allNotesOff(bool hard)\n{\n    for (auto& v : voices)\n    {\n        v.sustained = false;          // no pedal exemptions in an emergency\n        if (hard)  { v.adsr.reset(); v.note = -1; }   // instant silence\n        else if (v.adsr.isActive())\n                     v.adsr.noteOff();                 // musical: release tails\n    }\n    pedalDown = false;                // the pedal itself resets too\n}\n// inbox: else if (msg.isAllNotesOff()) allNotesOff(false);',
+        codeTitle: 'the emergency brake, two strengths',
+        breakdown: [
+          ['sustained = false', 'pedal marks are exactly what causes stuck notes — clear them FIRST'],
+          ['soft: noteOff()', 'the polite stop — every voice fades through its own release'],
+          ['hard: reset() + free', 'the fire alarm — instant silence, pool scrubbed (clicks allowed; it\'s an emergency)'],
+          ['pedalDown = false', 'panic resets the STATE, not just the voices — half a reset is a future bug'],
+        ],
+        mistake: { code: 'void allNotesOff()\n{\n    for (auto& v : voices)\n        v.adsr.noteOff();   // ✗ sustained marks survive\n}', text: 'Releasing envelopes without clearing sustained marks and pedalDown leaves ghosts: the next pedal-up “releases” voices that are already dead, and stale marks stick future notes. Panic means ALL the state.' },
+      },
+      {
+        h: 'What First Signal has become — and what\'s next',
+        body: 'Take inventory: it reads every message type this zone taught, allocates and steals with a policy, tracks the full voice lifecycle, defers goodbyes for the pedal, bends and wobbles under the wheels, tracks the keyboard, and stacks unison — a genuinely playable instrument with honest limits (naive waveforms from d8, no filter yet). Zone 6 turns from *capability* to *professionalism*: thread safety at depth, testing, debugging, shipping. The instrument works; next we make it bulletproof.',
+      },
+    ],
+    checks: [
+      {
+        type: 'order', concept: 'unison-poly',
+        prompt: 'Trace one key press through the instrument, top to bottom.',
+        lines: [
+          'the MidiBuffer delivers NOTE ON, note 64, velocity 96',
+          'dispatch asks isNoteOn() and routes to startNote()',
+          'allocation finds a free voice and stamps its ownership',
+          'the voice renders: oscillator × envelope × velocity gain',
+          'the bus sums all voices and the gain plan stages the mix',
+          'the clamp guards the finished samples into every channel',
+        ],
+        explain: 'Inbox → dispatch → allocation → render → sum → guard: the event river feeding the audio river. Every line is a lesson; together they\'re an instrument.',
+      },
+      {
+        type: 'mcq', concept: 'unison-poly',
+        prompt: 'Why must panic clear sustained marks and pedalDown, not just release envelopes?',
+        options: [
+          { t: 'Stale pedal state re-sticks future notes — panic must reset ALL state, not just silence voices', why: '' },
+          { t: 'Envelopes can\'t release while marks exist', why: 'They can — but the leftover marks corrupt the NEXT notes\' bookkeeping. The bug arrives later, which is worse.' },
+          { t: 'MIDI requires it', why: 'CC 123 just says “all notes off” — HOW thoroughly you reset is your engineering, and half-resets breed ghosts.' },
+          { t: 'It\'s faster', why: 'Speed is irrelevant in a panic — completeness is the whole point of the button.' },
+        ],
+        answer: 0,
+        explain: 'Panic is a state reset wearing a mute button. Silencing voices while keeping stale bookkeeping just schedules the next emergency.',
+      },
+      {
+        type: 'predict', concept: 'unison-poly',
+        prompt: 'A note is held by the sustain pedal (key up, foot down). SOFT panic (all-notes-off) arrives. What happens to that voice?',
+        code: 'v.sustained == true, adsr active   →   allNotesOff(false)',
+        options: [
+          { t: 'Its mark clears and noteOff() fires — it fades out through its normal release', why: '' },
+          { t: 'Nothing — the pedal protects it', why: 'Panic clears sustained FIRST — no exemptions is the entire point of an emergency brake.' },
+          { t: 'It\'s instantly silenced', why: 'That\'s the HARD variant. Soft panic is musical: everything releases, tails intact.' },
+          { t: 'It waits for pedal-up', why: 'pedalDown is force-cleared too — panic doesn\'t wait for anyone\'s foot.' },
+        ],
+        answer: 0,
+        explain: 'Soft panic: clear the mark, release the envelope, reset the pedal — the wash ends gracefully. Hard panic exists for when graceful is a luxury.',
+      },
+    ],
+    recap: [
+      'Two rivers: events steer voice state; voices render the audio.',
+      'Panic = total state reset: marks, pedal, envelopes — soft (release) or hard (reset).',
+      'CC 123 (All Notes Off) arrives from hosts on stop — respond to it.',
+      'First Signal is now a playable instrument; Zone 6 makes it professional.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'v6 complete — the Forgotten Polysynth awaits your repair skills' },
+      { name: 'Every DAW', use: 'the MIDI panic menu item sends exactly these messages when things get weird' },
+    ],
+    analogyPanel: 'The finished synth is a small theater company: the inbox is the stage door, allocation the stage manager, voices the cast, the wheels a director giving live notes, the pedal a hold cue, and panic the house lights — one switch that ends every scene at once, no exceptions.',
+    beginnerMistake: 'Shipping without panic because “note-offs always arrive.” They don\'t: cables drop, hosts hiccup, loops truncate. The first stuck note in front of an audience teaches this lesson much more expensively than this paragraph does.',
+    remember: 'Events steer, voices render, and panic resets EVERYTHING. That\'s a synthesizer — and you can read all of it.',
+    builds: ['panic', 'polyphony', 'sustain-pedal'],
+    leads: ['voice', 'mod-matrix'],
+  }
+);
+
+;
+/* ===== src/js/data_zone5_challenges.js ===== */
+/* ============================================================
+   ZONE 5 — challenges, missions p12–p15, and the boss.
+   Synth Engineering: First Signal becomes a playable instrument.
+   ============================================================ */
+
+const ZONE5_CHALLENGES = [
+
+  /* ============ READING THE SIGNAL PATH ============ */
+  {
+    id: 'nr1', kind: 'challenge', ctype: 'reading', title: 'Read: The Voice Card', short: 'Trace the code',
+    concepts: ['voices-poly'],
+    intro: 'One Voice struct, fully loaded. Read it like a channel strip: what\'s state, what\'s paperwork, what\'s shared with the whole desk.',
+    questions: [
+      {
+        type: 'match', concept: 'voices-poly',
+        prompt: 'Match each member to its job.',
+        left: ['int note = -1', 'double phase', 'juce::ADSR adsr', 'juce::uint32 age'],
+        right: ['ownership stamp — −1 means free', 'this note\'s own d5 bookmark', 'this note\'s own life story', 'birth certificate — stealing sorts by it'],
+        explain: 'Everything a note needs, boxed. The note field doubles as the entire ownership system; age exists purely so stealing can find the elder.',
+      },
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'Which of these belongs on the SYNTH, not inside each Voice?',
+        code: 'struct Voice { int note; double phase, increment;\n               float velGain; juce::ADSR adsr; };\n// and somewhere: ??? ',
+        options: [
+          { t: 'bendRatio — the pitch wheel bends every voice together, so it\'s channel-wide state', why: '' },
+          { t: 'phase — voices could share one', why: 'Shared phase = one blurred pitch for all notes. Per-voice phase is the foundation of polyphony (n5).' },
+          { t: 'adsr — one envelope is enough', why: 'One envelope would chop every held note when any new key hit — chords need independent life stories.' },
+          { t: 'velGain — velocity is global', why: 'Velocity is per-STRIKE: each note keeps the dynamics it was born with, for its whole life.' },
+        ],
+        answer: 0,
+        explain: 'Classic MIDI bend is a channel message: one wheel, everyone slides (n11). Per-note things live in the Voice; channel-wide things live on the synth — the split IS the architecture.',
+      },
+    ],
+  },
+  {
+    id: 'nr2', kind: 'challenge', ctype: 'reading', title: 'Read: The Dispatch Chain', short: 'Trace the code',
+    concepts: ['midi-basics'],
+    intro: 'A full inbox loop from a working synth. Read it as the synth\'s ear: which question catches which gesture.',
+    questions: [
+      {
+        type: 'match', concept: 'midi-basics',
+        prompt: 'Match each query to the player gesture it catches.',
+        left: ['isNoteOn()', 'isPitchWheel()', 'isController() && number == 64', 'isChannelPressure()'],
+        right: ['a key going down', 'the sprung left wheel moving', 'the sustain pedal', 'leaning into held keys'],
+        explain: 'The dispatch chain is the synth\'s ear: one question per gesture family. Every capability in this zone started as one more else-if.',
+      },
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'In this loop, what is metadata.samplePosition used for?',
+        code: 'for (const auto metadata : midiMessages)\n{\n    const auto msg = metadata.getMessage();\n    // metadata.samplePosition — the stamp\n    dispatch(msg);\n}',
+        options: [
+          { t: 'Sample-accurate timing: it says which sample within this block the event belongs to', why: '' },
+          { t: 'Sorting the messages', why: 'The buffer already delivers them in time order — the stamp tells you WHEN, not in what order.' },
+          { t: 'Identifying the sender', why: 'Channel (inside the message) identifies lanes; the stamp is purely temporal.' },
+          { t: 'Nothing — it\'s legacy', why: 'It\'s the difference between tight and mushy instruments: a note at sample 137 should start at sample 137, not at the block edge.' },
+        ],
+        answer: 0,
+        explain: 'Events land mid-block constantly. Handling them at their samplePosition (pros split the block there) is what makes an instrument feel tight under fast hands.',
+      },
+    ],
+  },
+  {
+    id: 'nr3', kind: 'challenge', ctype: 'reading', title: 'Trace: Who Owns Middle C?', short: 'Allocation puzzle',
+    concepts: ['allocation'],
+    intro: 'A 4-voice pool, a busy passage, and a clipboard. Play stage manager: seat every note, then survive the overflow.',
+    questions: [
+      {
+        type: 'match', concept: 'allocation',
+        prompt: 'Pool starts empty; voices are scanned left to right. Seat the passage: C3 on, E3 on, C3 off, G3 on.',
+        left: ['C3 note-on', 'E3 note-on', 'C3 note-off', 'G3 note-on'],
+        right: ['voice 1 — first free card', 'voice 2 — next free card', 'voice 1 releases — stamp matches C3', 'voice 1 again — freed and rehired'],
+        explain: 'Allocation always hunts from the left, so freed cards get rehired before untouched ones. (Assume C3\'s release completed before G3 arrived — n9\'s flip already happened.)',
+      },
+      {
+        type: 'predict', concept: 'allocation',
+        prompt: 'All 4 voices busy: C2 (age 1, held), E3 (age 4, held), G3 (age 2, RELEASING), B3 (age 3, held). A 5th note arrives. Using the n8 ladder, who is stolen?',
+        code: '// ladder: free → releasing → oldest',
+        options: [
+          { t: 'G3 — releasing beats everything; its age never even gets compared', why: '' },
+          { t: 'C2 — oldest always pays', why: 'Oldest is the FALLBACK rung. The ladder finds the releasing G3 first and stops looking.' },
+          { t: 'E3 — highest age', why: 'Highest age = NEWEST — the note the player just asked for. Stealing it is the most audible mistake available.' },
+          { t: 'B3 — middle age is fairest', why: 'The ladder doesn\'t do “fair” — it does “least audible”: dying voices first, then the longest-heard.' },
+        ],
+        answer: 0,
+        explain: 'A releasing voice is a gift: already fading, already filed away by the ear. The ladder\'s whole job is finding the exit nobody will notice.',
+      },
+    ],
+  },
+
+  /* ============ COMPLETION ============ */
+  {
+    id: 'nc1', kind: 'challenge', ctype: 'completion', title: 'Complete: The Note-On Handler', short: 'Code completion',
+    concepts: ['allocation'],
+    intro: 'Allocation with two blanks: the paperwork is done — start the sound, and honor the one-voice rule.',
+    questions: [
+      {
+        type: 'fill', concept: 'allocation',
+        prompt: 'The voice is claimed and tuned. Begin its attack.',
+        code: 'v.note = note;\nv.velGain = vel;\nv.age = ++ageCounter;\nv.adsr.___();',
+        accept: ['noteOn'],
+        placeholder: 'method',
+        hint: 'The envelope call that starts a note\'s life.',
+        explain: 'noteOn() launches the attack — after the paperwork, so the voice never sounds before it knows its pitch and owner.',
+      },
+      {
+        type: 'fill', concept: 'allocation',
+        prompt: 'One note-on must claim exactly ONE voice. Stop the hunt after a claim.',
+        code: 'for (auto& v : voices)\n    if (v.note == -1)\n    {\n        claimVoice(v, note, vel);\n        ___;\n    }',
+        accept: ['return', 'break', 'return;', 'break;'],
+        placeholder: 'statement',
+        hint: 'Leave the loop — the gig is filled.',
+        explain: 'Without it, every free card claims the same note: one press, a full-pool unison blast at +18 dB. One note-on, one voice — enforced by one keyword.',
+      },
+    ],
+  },
+  {
+    id: 'nc2', kind: 'challenge', ctype: 'completion', title: 'Complete: The Chord Bus', short: 'Code completion',
+    concepts: ['voices-poly'],
+    intro: 'The polyphonic render: eight voices, one bus, one gain plan. Two blanks keep it honest.',
+    questions: [
+      {
+        type: 'fill', concept: 'voices-poly',
+        prompt: 'Each active voice contributes to the bus. Which operator mixes it in?',
+        code: 'float mix = 0.0f;\nfor (auto& v : voices)\n{\n    if (! v.adsr.isActive()) continue;\n    mix ___ renderVoice(v);\n}',
+        accept: ['+='],
+        placeholder: 'operator',
+        hint: 'd11: a bus is a plus sign.',
+        mistakes: [
+          { match: '^=$', msg: 'Plain = OVERWRITES: only the last active voice would survive — chords collapse to one note. The bus accumulates: +=.' },
+        ],
+        explain: '+= is d11\'s entire lesson as an operator. Each voice adds its sample; the sum is the chord.',
+      },
+      {
+        type: 'fill', concept: 'voices-poly',
+        prompt: 'Eight full-scale voices worst-case to exactly 1.0: trim the bus.',
+        code: 'float s = mix * ___;   // 8-voice pool',
+        accept: ['0.125f', '0.125', '.125f', '.125', '(1.0f / 8.0f)', '1.0f / 8.0f', '1.0f/8.0f'],
+        placeholder: 'factor',
+        hint: 'The 1/N guarantee with N = 8.',
+        explain: '8 × 1.0 × 0.125 = 1.0: the d11 gain plan at synth scale. Real synths run hotter on peak statistics — but the guarantee is where a trustworthy instrument starts.',
+      },
+    ],
+  },
+  {
+    id: 'nc3', kind: 'challenge', ctype: 'completion', title: 'Complete: The Pedal Logic', short: 'Code completion',
+    concepts: ['performance'],
+    intro: 'Both halves of the sustain pedal — the deferral and the last call. One blank each.',
+    questions: [
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Pedal is down and a key lifts. Defer the goodbye.',
+        code: 'if (v.note == note && v.adsr.isActive())\n{\n    if (pedalDown) v.___ = true;   // mark, don\'t release\n    else           v.adsr.noteOff();\n}',
+        accept: ['sustained'],
+        placeholder: 'member',
+        hint: 'The mark that says “the pedal vouches for me.”',
+        explain: 'The mark replaces the release — the voice keeps singing on the pedal\'s word. The envelope never hears about the key-up until the foot lifts.',
+      },
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'The pedal lifts. Fire every deferred goodbye.',
+        code: 'if (! down)\n    for (auto& v : voices)\n        if (v.sustained)\n        {\n            v.sustained = false;\n            v.adsr.___();\n        }',
+        accept: ['noteOff'],
+        placeholder: 'method',
+        hint: 'The release that was postponed.',
+        explain: 'Every marked voice gets its real noteOff at once — the pianist\'s wash ending together. Clear the mark as you fire: stale marks are stuck notes waiting to happen.',
+      },
+    ],
+  },
+  {
+    id: 'nc4', kind: 'challenge', ctype: 'completion', title: 'Complete: The Bend Decoder', short: 'Code completion',
+    concepts: ['performance'],
+    intro: 'From raw wheel to frequency ratio in three lines. Two blanks carry the whole conversion.',
+    questions: [
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Center the 14-bit value so the wheel\'s rest position means zero.',
+        code: 'int raw = msg.getPitchWheelValue();          // 0..16383\nfloat centered = (raw - ___) / 8192.0f;      // −1..+1',
+        accept: ['8192'],
+        placeholder: 'center',
+        hint: 'The midpoint of 0..16383.',
+        explain: '8192 is home: subtract it and rest reads as 0.0, full down −1.0, full up ≈ +1.0. Forget the centering and the wheel\'s REST position bends you sharp.',
+      },
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Semitones to ratio — the law that runs all pitch.',
+        code: 'float semitones = centered * 2.0f;           // ±2 st range\nbendRatio = std::pow(2.0f, semitones / ___);',
+        accept: ['12.0f', '12', '12.0', '12.f'],
+        placeholder: 'divisor',
+        hint: 'Semitones per octave.',
+        explain: '2^(st/12), d3\'s law with the wheel feeding the exponent. Applied at render as increment × bendRatio — the base stays pure so home means exactly in tune.',
+      },
+    ],
+  },
+
+  /* ============ BUG HUNTS ============ */
+  {
+    id: 'nb1', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Stuck Note', short: 'Find the bug',
+    concepts: ['allocation'],
+    intro: 'Lift a key and a DIFFERENT note dies — while yours rings on forever. The clipboard is being ignored. Tap where.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'This stopNote releases the wrong voice. Which line ignores ownership?',
+        code: [
+          'void stopNote(int note)',
+          '{',
+          '    for (auto& v : voices)',
+          '        if (v.adsr.isActive())',
+          '        {',
+          '            v.adsr.noteOff();',
+          '            return;',
+          '        }',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'The condition never checks WHOSE note this is — it releases the first active voice it meets (usually the oldest chord tone), while the lifted key\'s voice never gets its noteOff. The stamp exists for exactly this: v.note == note && v.adsr.isActive().',
+        fix: 'if (v.note == note && v.adsr.isActive())',
+      },
+    ],
+  },
+  {
+    id: 'nb2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Upside-Down Hunt', short: 'Find the bug',
+    concepts: ['allocation'],
+    intro: 'Every new note cuts off a sounding one — even with six voices sitting idle. The free hunt is finding the wrong crowd. Tap it.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'This allocator steals constantly and never uses free voices. Which line is backwards?',
+        code: [
+          'Voice* findFreeVoice()',
+          '{',
+          '    for (auto& v : voices)',
+          '        if (v.note != -1)',
+          '            return &v;',
+          '    return nullptr;',
+          '}',
+        ],
+        buggy: 3,
+        explain: '!= -1 finds OWNED voices — the hunt returns the first BUSY card, silencing its note, while genuinely free cards are skipped. One flipped comparison turns allocation into permanent stealing: the free test is v.note == -1.',
+        fix: 'if (v.note == -1)',
+      },
+    ],
+  },
+  {
+    id: 'nb3', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Backwards Pedal', short: 'Find the bug',
+    concepts: ['performance'],
+    intro: 'Foot DOWN chops every note short; foot UP makes everything hang forever. The pedal works — in a mirror. Tap the inversion.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'performance',
+        prompt: 'One comparison runs the pedal upside down. Which line?',
+        code: [
+          'else if (msg.isController())',
+          '{',
+          '    if (msg.getControllerNumber() == 64)',
+          '        setPedal(msg.getControllerValue() < 64);',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'The convention is ≥64 = down. With < 64, pressing the pedal reports UP (releasing your wash) and lifting it reports DOWN (deferring everything forever). One flipped comparison, a perfectly mirrored pedal: >= 64.',
+        fix: 'setPedal(msg.getControllerValue() >= 64);',
+      },
+    ],
+  },
+  {
+    id: 'nb4', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Runaway Bend', short: 'Find the bug',
+    concepts: ['performance'],
+    intro: 'Wiggle the bend wheel a few times and the whole synth drifts sharp — release the wheel and it NEVER comes back in tune. Tap the compounding line.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'performance',
+        prompt: 'The bend is being applied destructively. Which line?',
+        code: [
+          'else if (msg.isPitchWheel())',
+          '{',
+          '    float ratio = ratioFor(msg.getPitchWheelValue());',
+          '    for (auto& v : voices)',
+          '        v.increment *= ratio;',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'Multiplying the STORED increment applies each wheel message on top of the last — wiggles compound, and “wheel home” multiplies by ~1.0 without ever undoing the damage. Bend is a live multiplier at render time (v.increment * bendRatio); the stored base never gets edited.',
+        fix: 'bendRatio = ratio;  // apply at render: v.increment * bendRatio',
+      },
+    ],
+  },
+
+  /* ============ COMPILER ============ */
+  {
+    id: 'ne1', kind: 'challenge', ctype: 'compiler', title: 'Decode: The Read-Only Voice', short: 'Read the error',
+    concepts: ['voices-poly'],
+    intro: 'The render loop refuses to build. The compiler is protecting you from a promise you made two tokens earlier. Decode it.',
+    questions: [
+      {
+        type: 'compiler', concept: 'voices-poly',
+        prompt: 'What fixes this build?',
+        code: 'for (const auto& v : voices)\n{\n    mix += renderVoice(v);\n    v.phase += v.increment;   // advance the bookmark\n}',
+        error: "error: assignment of member 'Voice::phase'\nin read-only object\n    v.phase += v.increment;\n            ^",
+        options: [
+          { t: 'Loop with auto& (drop the const) — the render loop MUTATES each voice', why: '' },
+          { t: 'Make phase a global variable', why: 'Sharing one phase across voices is the n6 blurred-pitch bug — the fix is permission to write, not demolition of the design.' },
+          { t: 'Cast away the const', why: 'const_cast silences the guard instead of honoring it — the loop\'s declaration should simply tell the truth: it writes.' },
+          { t: 'Advance the phase somewhere else', why: 'Somewhere else needs write access too — the honest fix is declaring the intent where the work happens.' },
+        ],
+        answer: 0,
+        explain: 'const auto& promises “I\'ll only look” — then the advance writes. The render loop changes phase and envelope state every sample, so it must borrow mutably: for (auto& v : voices). Zone 1\'s const contract, enforced at synth scale.',
+      },
+    ],
+  },
+
+  /* ============ ORDERING ============ */
+  {
+    id: 'no1', kind: 'challenge', ctype: 'ordering', title: 'Order: The Note-On Path', short: 'Arrange the code',
+    concepts: ['allocation'],
+    intro: 'One key press, four moves. Only one order finds a card, survives a full pool, and never sounds before the paperwork is done.',
+    questions: [
+      {
+        type: 'order', concept: 'allocation',
+        prompt: 'Arrange the note-on path exactly as n7/n8 teach it: find, fall back, paperwork, attack.',
+        lines: [
+          'Voice* v = findFreeVoice();',
+          'if (v == nullptr) v = findVictim();',
+          'claimVoice(*v, note, vel);   // ownership, pitch, age, marks',
+          'v->adsr.noteOn();            // the attack — after the paperwork',
+        ],
+        explain: 'Hunt free first (stealing is the fallback, not the norm), then claim, then sound. noteOn() last means a voice never sings before it knows its pitch, owner, and a clean pedal mark.',
+      },
+    ],
+  },
+
+  /* ============ MISSIONS ============ */
+  {
+    id: 'p12', kind: 'project', title: 'Mission 1: The Ear Opens', short: 'Zone mission',
+    concepts: ['midi-basics'],
+    brief: 'First Signal has played its own note since Zone 4. Today it plays YOURS: read the MidiBuffer, dispatch note events, tune the voice from the key, and carry the strike in the gain. When this mission ends, your keyboard is wired to your code.',
+    steps: [
+      {
+        note: 'Step 1 — Find the mail. Where has MIDI been arriving all along?',
+        q: {
+          type: 'mcq', concept: 'midi-basics',
+          prompt: 'Where does MIDI reach your plugin?',
+          options: [
+            { t: 'The second parameter of processBlock — the MidiBuffer you\'ve ignored since Zone 3', why: '' },
+            { t: 'A separate callback', why: 'No separate delivery — audio and MIDI arrive together, every block, in the same call.' },
+            { t: 'The editor forwards it', why: 'The editor is the panel (message thread) — performance data goes straight to the engine.' },
+            { t: 'You must poll the host', why: 'The host pushes; you read. The buffer is already in your hands each block.' },
+          ],
+          answer: 0,
+          explain: 'processBlock(buffer, midiMessages) — both rivers in one call. The MidiBuffer was always there; today it gets read.',
+        },
+      },
+      {
+        note: 'Step 2 — The dispatch. Ask each message what it is.',
+        q: {
+          type: 'fill', concept: 'midi-basics',
+          prompt: 'Route key-down events to your handler.',
+          code: 'for (const auto metadata : midiMessages)\n{\n    const auto msg = metadata.getMessage();\n    if (msg.___())\n        startNote(msg.getNoteNumber(), msg.getFloatVelocity());\n    else if (msg.isNoteOff())\n        stopNote(msg.getNoteNumber());\n}',
+          accept: ['isNoteOn'],
+          placeholder: 'query',
+          hint: 'The question that catches a key going down.',
+          explain: 'isNoteOn() — and by using the query (not raw bytes), the velocity-0 convention from n2 is already handled: those report as note-offs.',
+        },
+      },
+      {
+        note: 'Step 3 — Pitch from the key. The d3 map finally gets its real input.',
+        q: {
+          type: 'fill', concept: 'midi-basics',
+          prompt: 'Tune the voice from the incoming note number.',
+          code: 'void startNote(int note, float vel)\n{\n    increment = juce::MathConstants<double>::twoPi\n              * ___(note) / getSampleRate();\n    velGain = vel;\n    adsr.noteOn();\n}',
+          accept: ['midiToHz'],
+          placeholder: 'function',
+          hint: 'Note number → Hertz — you built it in dc1.',
+          explain: 'midiToHz(note) → Hz → 2π·f/fs → increment: key press to pitch in one line. First Signal just played a note YOU chose — the first time since Zone 3 it obeyed a musician.',
+        },
+      },
+      {
+        note: 'Step 4 — Understand what just changed. This is bigger than a feature.',
+        q: {
+          type: 'mcq', concept: 'midi-basics',
+          prompt: 'Architecturally, what did this mission do to First Signal?',
+          options: [
+            { t: 'It became event-driven: the player\'s messages now steer the DSP, instead of the DSP playing itself', why: '' },
+            { t: 'It got a better oscillator', why: 'Same oscillator — what changed is WHO decides its frequency: the musician, not a hard-coded 440.' },
+            { t: 'It moved to the message thread', why: 'Everything still renders on the audio thread — MIDI arrives IN processBlock precisely so no thread hop is needed.' },
+            { t: 'It became polyphonic', why: 'Not yet — one voice obeys the keys (mono). The pool arrives in Mission 2.' },
+          ],
+          answer: 0,
+          explain: 'The event river now feeds the audio river. Every remaining mission just adds more ways for the player to steer — the architecture turn happened HERE.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p13', kind: 'project', title: 'Mission 2: The Voice Rack', short: 'Zone mission',
+    concepts: ['voices-poly', 'allocation'],
+    brief: 'One voice obeys the keyboard; now build eight. Refactor Zone 4\'s machinery into the Voice struct, wire allocation and ownership, install the stealing ladder, and recycle voices when their tails end. Chords, at last.',
+    steps: [
+      {
+        note: 'Step 1 — Sort the state. Polyphony begins with knowing what\'s per-voice and what\'s shared.',
+        q: {
+          type: 'match', concept: 'voices-poly',
+          prompt: 'Per-voice, or shared synth state?',
+          left: ['phase', 'adsr', 'bendRatio', 'waveform selector'],
+          right: ['per-voice — every note has its own bookmark', 'per-voice — every note dies on its own schedule', 'shared — one wheel bends everyone (n11)', 'shared — one panel switch, all voices obey'],
+          explain: 'The split rule: if two simultaneous notes could need different values, it lives in the Voice. If the player has ONE control for it, it lives on the synth.',
+        },
+      },
+      {
+        note: 'Step 2 — The free hunt. Allocation\'s first question.',
+        q: {
+          type: 'fill', concept: 'allocation',
+          prompt: 'Find an unowned card.',
+          code: 'Voice* findFreeVoice()\n{\n    for (auto& v : voices)\n        if (v.note == ___)\n            return &v;\n    return nullptr;\n}',
+          accept: ['-1'],
+          placeholder: 'tag',
+          hint: 'The “nobody owns me” value from n5.',
+          explain: '-1 is the free tag — no real key is negative. nullptr from this hunt is the signal that n8\'s ladder must choose a victim instead.',
+        },
+      },
+      {
+        note: 'Step 3 — The ladder. Arrange the victim hunt in priority order.',
+        q: {
+          type: 'order', concept: 'allocation',
+          prompt: 'Arrange findVictim\'s body: the n8 ladder, top to bottom.',
+          lines: [
+            'if (! v.adsr.isActive()) return &v;   // free: not a steal at all',
+            'if (isReleasing(v)) return &v;        // dying anyway: perfect victim',
+            'if (oldest == nullptr || v.age < oldest->age)',
+            '    oldest = &v;                      // track the elder as fallback',
+          ],
+          explain: 'Free beats releasing beats oldest. The early returns ARE the priority: cheaper victims exit the hunt before the fallback bookkeeping even runs.',
+        },
+      },
+      {
+        note: 'Step 4 — The recycling moment. When does a card truly return to the pool?',
+        q: {
+          type: 'predict', concept: 'allocation',
+          prompt: 'A pad with a 3-second release. Player holds a chord, lifts all keys, and 1 second later presses ONE new note. What does allocation find?',
+          code: '// all chord voices: keys up, envelopes mid-release',
+          options: [
+            { t: 'No free voices — the tails still own their cards, so the ladder steals a releasing voice', why: '' },
+            { t: 'All voices free — the keys are up', why: 'Keys up started the releases; the cards free only when each envelope FINISHES (n9). Two more seconds to go.' },
+            { t: 'A crash', why: 'Routine traffic: full pool, releasing candidates everywhere — the ladder\'s favorite weather.' },
+            { t: 'The new note is dropped', why: 'Never — the ladder exists so the new note ALWAYS plays. A releasing chord tone pays, barely audibly.' },
+          ],
+          answer: 0,
+          explain: 'Tails are tenants. The isActive() flip is the only true checkout — until then, new notes go through the ladder, which finds the releasing chord gladly.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p14', kind: 'project', title: 'Mission 3: The Performance Deck', short: 'Zone mission',
+    concepts: ['performance'],
+    brief: 'Chords work; now make them SING. Wire the sustain pedal\'s deferred goodbyes, decode the 14-bit bend wheel into a live ratio, and hand the mod wheel to d14\'s vibrato. After this mission, First Signal responds to feet, thumbs, and drama.',
+    steps: [
+      {
+        note: 'Step 1 — The pedal\'s address. One controller number, forty years old.',
+        q: {
+          type: 'fill', concept: 'performance',
+          prompt: 'Catch the sustain pedal in the dispatch chain.',
+          code: 'else if (msg.isController())\n{\n    if (msg.getControllerNumber() == ___)\n        setPedal(msg.getControllerValue() >= 64);\n}',
+          accept: ['64'],
+          placeholder: 'CC number',
+          hint: 'Sustain\'s controller number — same as its threshold, coincidentally.',
+          explain: 'CC 64 is sustain by MIDI convention (and ≥64 = down — the number appearing twice is pure coincidence). CC 1 will join this chain in step 3.',
+        },
+      },
+      {
+        note: 'Step 2 — The wheel, decoded. Guard the one line everyone gets wrong.',
+        q: {
+          type: 'bugspot', concept: 'performance',
+          prompt: 'This bend decoder plays everything 2 semitones SHARP with the wheel at rest. Tap why.',
+          code: [
+            'int raw = msg.getPitchWheelValue();',
+            'float centered  = raw / 8192.0f;',
+            'float semitones = centered * 2.0f;',
+            'bendRatio = std::pow(2.0f, semitones / 12.0f);',
+          ],
+          buggy: 1,
+          explain: 'No centering: at rest, raw = 8192 → centered = 1.0 → +2 semitones, permanently. Subtract the midpoint first: (raw − 8192) / 8192.0f — home must decode to exactly zero.',
+          fix: 'float centered = (raw - 8192) / 8192.0f;',
+        },
+      },
+      {
+        note: 'Step 3 — The thumb takes the depth. CC 1 meets d14\'s vibrato.',
+        q: {
+          type: 'fill', concept: 'performance',
+          prompt: 'Normalize the mod wheel into the vibrato depth.',
+          code: 'if (msg.getControllerNumber() == 1)\n    vibratoDepth = msg.getControllerValue() / ___;',
+          accept: ['127.0f', '127.f', '127.0'],
+          placeholder: 'divisor',
+          hint: 'Float, or Zone 1\'s truncation trap strikes.',
+          mistakes: [
+            { match: '^127$', msg: 'Integer division: 0 for every value below 127 — a mod wheel that\'s dead until slammed fully up. Divide by 127.0f.' },
+          ],
+          explain: 'value / 127.0f → 0..1 into d14\'s depth. The int version is the boss\'s favorite fault: a wheel that only works at maximum.',
+        },
+      },
+      {
+        note: 'Step 4 — Contract check. The wheel is math, but its RANGE is a handshake.',
+        q: {
+          type: 'mcq', concept: 'performance',
+          prompt: 'Your bends sound four times too wide on a friend\'s controller. Most likely cause?',
+          options: [
+            { t: 'The synth and controller disagree on bend RANGE — e.g. your ±2 st assumption vs their ±8 expectation', why: '' },
+            { t: 'Their controller is broken', why: 'Both devices are fine — they\'re just speaking different ranges over the same 14-bit wire.' },
+            { t: 'The 14-bit math is wrong', why: 'The wire math is universal; the RANGE multiplier is the negotiable part — and the usual culprit.' },
+            { t: 'Their DAW resamples MIDI', why: 'MIDI values pass through hosts untouched — the disagreement is at the endpoints.' },
+          ],
+          answer: 0,
+          explain: 'The wheel sends position; the synth decides what it MEANS. Pro synths expose bend range as a setting precisely because this handshake breaks constantly in the wild.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p15', kind: 'project', title: 'Mission 4: The Choir & The Brake', short: 'Zone mission',
+    concepts: ['unison-poly', 'performance'],
+    brief: 'The final capabilities: stack detuned unison copies across the stereo field, then install panic — the total state reset every stage-worthy instrument carries. When this mission ends, First Signal is a complete playable synthesizer.',
+    steps: [
+      {
+        note: 'Step 1 — The shimmer math. Cents, not semitones.',
+        q: {
+          type: 'fill', concept: 'unison-poly',
+          prompt: 'Convert a per-copy detune in cents to a frequency ratio.',
+          code: 'float cents  = spread * detuneAmount;   // e.g. ±12 cents\ndouble ratio = std::pow(2.0, cents / ___);',
+          accept: ['1200.0', '1200', '1200.0f', '1200.f'],
+          placeholder: 'divisor',
+          hint: '100 cents per semitone, 12 semitones per octave.',
+          mistakes: [
+            { match: '^12(\\.0f?)?$', msg: 'That reads cents as SEMITONES — ±12 cents of shimmer becomes ±a whole octave of chaos. Cents divide by 1200.' },
+          ],
+          explain: '2^(cents/1200) — the octave law at cent resolution. A dozen cents is invisible alone and lush in a stack; a dozen SEMITONES is a different genre.',
+        },
+      },
+      {
+        note: 'Step 2 — The bill. Unison spends voices; count them before the player does.',
+        q: {
+          type: 'predict', concept: 'unison-poly',
+          prompt: '8-voice pool, 3-voice unison. The player plays a 3-note chord. What happens on the LAST note?',
+          code: '// 3 keys × 3 copies = 9 voices wanted, 8 exist',
+          options: [
+            { t: 'Its third copy triggers the stealing ladder — 9 wanted, 8 exist, someone releasing (or oldest) pays', why: '' },
+            { t: 'All 9 copies play', why: 'The pool is physics: 8 cards. The 9th copy must be seated by the ladder, not by wishes.' },
+            { t: 'The chord is refused', why: 'Refusing the player is the one policy synths never choose — the ladder absorbs the overflow instead.' },
+            { t: 'Unison switches off', why: 'Only if you designed that policy. Default behavior: allocation runs dry and n8 handles it, note by note.' },
+          ],
+          answer: 0,
+          explain: '3 × 3 = 9 > 8: unison multiplies demand, and the ladder eats the overflow. This is why unison modes ship with explicit polyphony budgets.',
+        },
+      },
+      {
+        note: 'Step 3 — The brake. Panic is a state reset, not a mute.',
+        q: {
+          type: 'fill', concept: 'performance',
+          prompt: 'Panic must reset the pedal itself, not just the voices.',
+          code: 'void allNotesOff(bool hard)\n{\n    for (auto& v : voices)\n    {\n        v.sustained = false;\n        if (hard) { v.adsr.reset(); v.note = -1; }\n        else if (v.adsr.isActive()) v.adsr.noteOff();\n    }\n    pedalDown = ___;\n}',
+          accept: ['false'],
+          placeholder: 'value',
+          hint: 'After a panic, no foot is on anything.',
+          explain: 'Every piece of performance state resets: marks, envelopes, and the pedal flag itself. Half a reset (voices silenced, pedal still “down”) just schedules the next stuck note.',
+        },
+      },
+      {
+        note: 'Step 4 — Ship check. Diagnose like the engineer you now are.',
+        q: {
+          type: 'mcq', concept: 'performance',
+          prompt: 'Field report: “notes stick — but ONLY in songs where I used the sustain pedal at some point.” Where do you look first?',
+          options: [
+            { t: 'A stale sustained mark — a reused voice kept its old pedal mark, so its later note-off gets deferred forever. Check that startNote clears it', why: '' },
+            { t: 'The oscillator', why: 'Pitch machinery can\'t make notes REFUSE to end — endings live in envelope and pedal bookkeeping.' },
+            { t: 'The stealing ladder', why: 'Stealing cuts notes SHORT — the opposite symptom. Notes that overstay point at deferred or lost releases.' },
+            { t: 'The buffer size', why: 'Block size affects latency, never note lifetimes — lifecycle bugs are state bugs.' },
+          ],
+          answer: 0,
+          explain: 'The condition (“only after pedal use”) is the fingerprint: stale sustained marks surviving into a voice\'s next life. First Signal is complete — and you just debugged it like a professional. The Forgotten Polysynth is waiting.',
+        },
+      },
+    ],
+  },
+
+  /* ============ BOSS ============ */
+  {
+    id: 'boss5', kind: 'boss', title: 'BOSS: The Forgotten Polysynth', short: 'Zone 5 boss', passNeed: 5,
+    concepts: ['midi-basics', 'allocation', 'performance', 'voices-poly'],
+    brief: 'A legendary 1983 8-voice polysynth, reborn as a plugin — badly. Chords lose notes, half the voice cards are dead, lifting one key kills another, everything plays sharp, the pedal murders what you\'re holding, the mod wheel is dead until slammed, and stolen voices go silent. Seven systems, seven faults. Repair 5 and the legend sings again.',
+    stages: [
+      {
+        type: 'bugspot', concept: 'midi-basics',
+        prompt: 'Stage 1 — Play a chord tightly: only ONE note sounds. The inbox is being abandoned. Tap where.',
+        code: [
+          'for (const auto metadata : midiMessages)',
+          '{',
+          '    const auto msg = metadata.getMessage();',
+          '    handleMessage(msg);',
+          '    break;',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'break exits after the FIRST event — a tight chord delivers several note-ons in one block, and all but one go unread. Remove the break: the loop must drain the whole inbox, every block.',
+        fix: 'Delete the break — handle every message in the buffer',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'Stage 2 — It claims 8 voices, but a 5-note chord always steals. Half the rack is unreachable. Tap why.',
+        code: [
+          'Voice* findFreeVoice()',
+          '{',
+          '    for (int i = 0; i < 4; ++i)',
+          '        if (voices[i].note == -1)',
+          '            return &voices[i];',
+          '    return nullptr;   // voices.size() == 8',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'The hunt stops at 4 — voices 4..7 exist, render, and are NEVER offered work: dead cards by loop bound. Hunt the whole rack: i < 8, or better, range-for over voices so the bound can\'t lie.',
+        fix: 'for (auto& v : voices)  — never hard-code the pool size twice',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'Stage 3 — Lift ANY key and the oldest sounding note dies instead; the lifted note rings on. Tap the ignored clipboard.',
+        code: [
+          'void stopNote(int note)',
+          '{',
+          '    for (auto& v : voices)',
+          '        if (v.adsr.isActive())',
+          '        {',
+          '            v.adsr.noteOff();',
+          '            return;',
+          '        }',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'No ownership check: the first active voice pays for every key-up, and the actual owner never releases — wrong victim AND stuck note in one condition. The stamp is the fix: v.note == note && v.adsr.isActive().',
+        fix: 'if (v.note == note && v.adsr.isActive())',
+      },
+      {
+        type: 'fill', concept: 'performance',
+        prompt: 'Stage 4 — Every note plays exactly 2 semitones sharp until the wheel is yanked fully down. Complete the missing decode step.',
+        code: 'int raw = msg.getPitchWheelValue();          // 0..16383, rest = 8192\nfloat centered  = (raw - ___) / 8192.0f;\nfloat semitones = centered * 2.0f;\nbendRatio = std::pow(2.0f, semitones / 12.0f);',
+        accept: ['8192'],
+        placeholder: 'center',
+        hint: 'Rest position must decode to zero semitones.',
+        explain: 'Uncentered, rest reads 8192/8192 = +1.0 → a permanent +2 st bend — the synth is “broken sharp” with a healthy oscillator. Subtract the midpoint and home means home. (14 cents of n8… no: two full semitones. The tuner never lies.)',
+      },
+      {
+        type: 'bugspot', concept: 'performance',
+        prompt: 'Stage 5 — Pedal-up CUTS the notes you\'re still holding and leaves the pedal wash ringing forever. Tap the inverted filter.',
+        code: [
+          'void setPedal(bool down)',
+          '{',
+          '    pedalDown = down;',
+          '    if (down) return;',
+          '    for (auto& v : voices)',
+          '        if (! v.sustained)',
+          '            v.adsr.noteOff();',
+          '}',
+        ],
+        buggy: 5,
+        explain: 'The filter is inverted: it releases every voice EXCEPT the sustained ones — held keys get chopped, deferred notes stay deferred forever. Release the marked voices (if (v.sustained)), clearing each mark as you fire.',
+        fix: 'if (v.sustained) { v.sustained = false; v.adsr.noteOff(); }',
+      },
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'Stage 6 — The mod wheel does nothing… until slammed to the top, where vibrato snaps to maximum. Diagnose.',
+        code: 'vibratoDepth = msg.getControllerValue() / 127;',
+        options: [
+          { t: 'Integer division: every value below 127 truncates to 0, and 127 gives exactly 1 — dead wheel, then full blast. Divide by 127.0f', why: '' },
+          { t: 'The LFO is broken', why: 'The LFO is fine — at full wheel the vibrato works perfectly. Only the DEPTH arithmetic is wrong, and only below the top.' },
+          { t: 'CC 1 is the wrong controller', why: 'CC 1 IS the mod wheel — and the wheel demonstrably reaches the code. The division is the culprit.' },
+          { t: 'The wheel needs centering like pitch bend', why: 'The mod wheel has no center — it\'s 0..127 one-way. The bug is Zone 1\'s truncation trap, not missing bend math.' },
+        ],
+        answer: 0,
+        explain: 'int / int truncates: 126/127 = 0. One .0f resurrects the whole wheel — Zone 1\'s very first trap, found alive inside a 1983 legend.',
+      },
+      {
+        type: 'bugspot', concept: 'voices-poly',
+        prompt: 'Stage 7 — When the pool is full, stolen voices go SILENT instead of playing their new note. Tap the wrong envelope call.',
+        code: [
+          'void claimVoice(Voice& v, int note, float vel)',
+          '{',
+          '    v.note      = note;',
+          '    v.increment = incrementFor(note);',
+          '    v.velGain   = vel;',
+          '    v.adsr.reset();',
+          '}',
+        ],
+        buggy: 5,
+        explain: 'reset() drops the envelope to idle and STOPS — isActive() goes false, the render loop skips the voice, and the “new note” is a silent card. The claim must START a life: v.adsr.noteOn(). (A quick pre-fade before the restart is the polish; the attack is the fix.)',
+        fix: 'v.adsr.noteOn();',
+      },
+    ],
+  },
+];
+
+;
 /* ===== src/js/data_glossary.js ===== */
 /* ============================================================
    SIGNAL DICTIONARY — part A: Basics, C++, Memory.
@@ -8892,7 +10908,7 @@ DICT.push(
     mistake: 'Resetting phase to 0 when it passes 2π instead of subtracting 2π — the lost fraction detunes the pitch.',
     remember: 'An oscillator is a phase that advances and wraps, tracing a shape.',
     related: ['phase', 'frequency', 'waveform', 'lfo', 'voice'],
-    appears: [{ z: 1, node: 'p2' }, { z: 4, node: 'd6' }, { z: 5, label: 'unison & detune' }],
+    appears: [{ z: 1, node: 'p2' }, { z: 4, node: 'd6' }, { z: 5, node: 'n14' }],
     aka: ['osc'],
     search: ['sound source', 'tone', 'generator'],
   },
@@ -8943,7 +10959,7 @@ DICT.push(
     mistake: 'Jumping levels instantly at stage changes — envelopes glide between stages, or they click.',
     remember: 'An envelope is a value with a life cycle: rise, fall, hold, fade.',
     related: ['attack', 'decay', 'sustain', 'release', 'amplitude', 'voice'],
-    appears: [{ z: 4, node: 'd9' }, { z: 5, label: 'per-voice envelopes' }],
+    appears: [{ z: 4, node: 'd9' }, { z: 5, node: 'n5' }],
     aka: ['ADSR', 'eg', 'envelope generator'],
     search: ['adsr', 'shape over time', 'note shape'],
   },
@@ -8980,7 +10996,7 @@ DICT.push(
     mistake: 'Implementing sustain as a duration. It\'s a level held indefinitely — until note-off starts the release.',
     remember: 'Sustain is a level, not a time.',
     related: ['envelope', 'decay', 'release', 'midi'],
-    appears: [{ z: 4, node: 'd9' }, { z: 5, label: 'sustain pedal handling' }],
+    appears: [{ z: 4, node: 'd9' }, { z: 5, node: 'n10' }],
     search: ['hold', 'held level'],
   },
   {
@@ -8992,7 +11008,7 @@ DICT.push(
     mistake: 'Freeing a voice at note-off instead of at end-of-release — audible clicks as tails get cut.',
     remember: 'A note ends when release finishes, not when the finger lifts.',
     related: ['envelope', 'sustain', 'voice', 'voice-stealing'],
-    appears: [{ z: 4, node: 'd9' }, { z: 5, label: 'voice lifecycle' }],
+    appears: [{ z: 4, node: 'd9' }, { z: 5, node: 'n9' }],
     search: ['tail', 'fade out', 'let go'],
   },
   {
@@ -9044,7 +11060,7 @@ DICT.push(
     mistake: 'Updating LFO-modulated values once per block — fast LFOs need per-sample (or smoothed) application to avoid stair-stepping.',
     remember: 'An LFO is an oscillator aimed at a knob instead of a speaker.',
     related: ['oscillator', 'frequency', 'cutoff', 'automation'],
-    appears: [{ z: 4, node: 'd14' }, { z: 5, label: 'mod matrices' }, { z: 7, label: 'tremolo mission' }],
+    appears: [{ z: 4, node: 'd14' }, { z: 5, node: 'n13' }, { z: 7, label: 'tremolo mission' }],
     search: ['wobble', 'vibrato', 'tremolo', 'modulation'],
   },
   {
@@ -9093,7 +11109,7 @@ DICT.push(
     mistake: 'Sharing one envelope or phase across voices — every voice needs its own complete state.',
     remember: 'A voice is one self-contained note machine; polyphony is a team of them.',
     related: ['polyphony', 'voice-stealing', 'object', 'envelope', 'oscillator'],
-    appears: [{ z: 5, label: 'voices & allocation' }],
+    appears: [{ z: 5, node: 'n5' }, { z: 5, node: 'n7' }],
     search: ['note', 'polysynth', 'simultaneous'],
   },
   {
@@ -9105,7 +11121,7 @@ DICT.push(
     mistake: 'Unbounded polyphony "so notes never cut" — each voice costs CPU; every real synth caps the pool.',
     remember: 'Polyphony is a fixed pool of voices and a plan for when it runs out.',
     related: ['voice', 'voice-stealing', 'cpu', 'midi'],
-    appears: [{ z: 5, label: 'polyphony' }, { z: 7, label: 'poly synth mission' }],
+    appears: [{ z: 5, node: 'n6' }, { z: 7, label: 'poly synth mission' }],
     search: ['chords', 'multiple notes', 'mono poly'],
   },
   {
@@ -9118,7 +11134,7 @@ DICT.push(
     mistake: 'Hard-cutting the stolen voice — steal with a millisecond fade, or every busy passage clicks.',
     remember: 'When voices run out, steal gracefully — fade, then reassign.',
     related: ['voice', 'polyphony', 'release', 'midi'],
-    appears: [{ z: 5, label: 'voice stealing' }],
+    appears: [{ z: 5, node: 'n8' }, { z: 5, node: 'boss5' }],
     search: ['too many notes', 'cut off', 'note priority'],
   }
 );
@@ -9270,7 +11286,7 @@ DICT.push(
     mistake: 'Renaming or renumbering parameters between versions without a migration path — old sessions load scrambled.',
     remember: 'A preset is the promise that state can always come back.',
     related: ['apvts', 'automation', 'parameter'],
-    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, label: 'preset management' }, { z: 6, label: 'version migration' }],
+    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, node: 'n12' }, { z: 6, label: 'version migration' }],
     aka: ['patch'],
     search: ['save', 'recall', 'snapshot', 'patch'],
   },
@@ -9359,7 +11375,7 @@ DICT.push(
     mistake: 'Treating MIDI as audio — it\'s events with timestamps. A note-on at sample 240 must start the voice mid-block, not at the block edge.',
     remember: 'MIDI is messages about music, never the sound itself.',
     related: ['velocity', 'cc', 'pitch-bend', 'processblock', 'voice'],
-    appears: [{ z: 3, label: 'MIDI buffers' }, { z: 5, label: 'note handling' }],
+    appears: [{ z: 3, label: 'MIDI buffers' }, { z: 5, node: 'n1' }],
     search: ['notes', 'keyboard', 'piano roll', 'messages'],
   },
   {
@@ -9371,7 +11387,7 @@ DICT.push(
     mistake: 'Mapping velocity to gain linearly — perception is curved; most instruments apply a velocity curve.',
     remember: 'Velocity is strike strength: 1–127, curved before it hits the gain.',
     related: ['midi', 'gain', 'envelope', 'voice'],
-    appears: [{ z: 5, label: 'velocity & expression' }],
+    appears: [{ z: 5, node: 'n2' }],
     search: ['hit strength', 'how hard', 'dynamics'],
   },
   {
@@ -9383,7 +11399,7 @@ DICT.push(
     mistake: 'Applying bend only to new notes — it must retune already-sounding voices live.',
     remember: 'Pitch bend retunes sounding voices in real time — center means no bend.',
     related: ['midi', 'frequency', 'mod-wheel', 'voice'],
-    appears: [{ z: 5, label: 'pitch bend' }],
+    appears: [{ z: 5, node: 'n11' }, { z: 5, node: 'nc4' }],
     search: ['bend wheel', 'slide', 'whammy'],
   },
   {
@@ -9395,7 +11411,7 @@ DICT.push(
     mistake: 'Hard-wiring mod wheel to one destination forever — make it a routable source from the start.',
     remember: 'Mod wheel is CC 1: a knob whose meaning the patch decides.',
     related: ['cc', 'midi', 'lfo'],
-    appears: [{ z: 5, label: 'mod routing' }],
+    appears: [{ z: 5, node: 'n12' }],
     search: ['modulation', 'expression wheel'],
   },
   {
@@ -9407,7 +11423,7 @@ DICT.push(
     mistake: 'Ignoring CC 64 — with sustain down, note-offs must be deferred until pedal-up, or held chords cut dead.',
     remember: 'CC = numbered controller + value; CC 64 (sustain) changes note-off logic.',
     related: ['midi', 'mod-wheel', 'sustain'],
-    appears: [{ z: 5, label: 'CC & sustain handling' }],
+    appears: [{ z: 5, node: 'n10' }],
     aka: ['control change', 'cc64', 'midi cc'],
     search: ['controller', 'knob messages', 'sustain pedal'],
   },
@@ -9420,7 +11436,7 @@ DICT.push(
     mistake: 'Swapping state abruptly on the audio thread — preset changes should be handed over safely, tails respected.',
     remember: 'Program change = "preset N, please" — switch it glitch-free.',
     related: ['preset', 'midi', 'cc'],
-    appears: [{ z: 5, label: 'preset management' }],
+    appears: [{ z: 5, node: 'n12' }],
     search: ['preset switch', 'patch change'],
   },
 
@@ -9861,7 +11877,7 @@ DICT.push(
     mistake: 'Handling all events at the block start "for simplicity" — that quantizes timing by up to a block and players feel it.',
     remember: 'MIDI arrives sample-stamped — deliver each event at its exact sample.',
     related: ['midi', 'processblock', 'block', 'velocity'],
-    appears: [{ z: 3, node: 'j9' }, { z: 5, label: 'the synth engine' }],
+    appears: [{ z: 3, node: 'j9' }, { z: 5, node: 'n3' }],
     aka: ['midi buffer', 'samplePosition'],
     search: ['midi events', 'note on position', 'midi in block'],
   }
@@ -10019,9 +12035,180 @@ DICT.push(
     mistake: 'Wiring a raw −1..+1 LFO straight into a gain: half of every cycle the polarity flips and the sound fully mutes at the crossings. Re-range to 0..1 and scale by depth first.',
     remember: 'Rate, depth, destination — every mod routing ever, three words.',
     related: ['lfo', 'envelope', 'oscillator', 'parameter'],
-    appears: [{ z: 4, node: 'd14' }, { z: 4, node: 'dr2' }, { z: 5, label: 'mod matrices' }],
+    appears: [{ z: 4, node: 'd14' }, { z: 4, node: 'dr2' }, { z: 5, node: 'n13' }],
     aka: ['mod routing', 'mod matrix', 'control signal'],
     search: ['movement', 'wobble', 'tremolo', 'vibrato', 'lfo to filter'],
+  }
+);
+
+;
+/* ===== src/js/data_glossary_g.js ===== */
+/* ============================================================
+   SIGNAL DICTIONARY — part G: terms introduced by Zone 5.
+   ============================================================ */
+
+DICT.push(
+  {
+    id: 'note-event', t: 'note-on / note-off', c: 'MIDI',
+    plain: 'The two messages that bracket every note: note-on says “this key went down, this hard” (channel + note number + velocity); note-off says “that key came up.” A note has no stored length — it lasts exactly until its off arrives.',
+    why: 'Everything a synth does starts from these two events: allocation on the on, release on the off. And the classic bugs — stuck notes, wrong victims — are all failures to pair them correctly.',
+    studio: 'The dots in your piano roll: each dot\'s left edge is a note-on, its right edge the note-off, its lane the note number. You\'ve been editing these messages for years.',
+    uses: ['Starting voices', 'Releasing voices', 'Piano roll editing', 'Arpeggiators & sequencers'],
+    viz: { t: 'keys', pressed: [7], msg: 'NOTE ON · note 60 · vel 100' },
+    mistake: 'Forgetting the 1983 convention: a note-on with velocity 0 officially means note-OFF. Controllers still send it; JUCE\'s isNoteOff() honors it — raw-byte parsers get stuck notes.',
+    remember: 'On starts a life, off starts its ending — and velocity 0 is an off in disguise.',
+    related: ['midi', 'velocity', 'voice-allocation', 'release'],
+    appears: [{ z: 5, node: 'n1' }, { z: 5, node: 'n3' }, { z: 5, node: 'p12' }],
+    aka: ['note on', 'note off', 'key event'],
+    search: ['key press', 'key release', 'note message', 'stuck note'],
+  },
+  {
+    id: 'aftertouch', t: 'aftertouch', c: 'MIDI',
+    plain: 'Pressure applied to a key AFTER it bottoms out — lean into a held note and the synth responds. Channel pressure sends one value for the whole keyboard; polyphonic aftertouch (rare, glorious) sends pressure per key.',
+    why: 'It\'s expression for the note you\'re already holding — swells, brightness, vibrato — without touching a wheel. Route it like any control signal: another source in the matrix.',
+    studio: 'A violinist adding bow pressure mid-note. The strike happened; the LEANING is a second, continuous gesture on top.',
+    uses: ['Swells on held notes', 'Vibrato without the wheel', 'Per-finger expression (poly AT / MPE)'],
+    mistake: 'Confusing aftertouch with velocity. Velocity is the strike — captured once, at the start. Aftertouch is pressure DURING the note — continuous, and a separate message type entirely.',
+    remember: 'Velocity is how you hit; aftertouch is how you lean.',
+    related: ['velocity', 'cc', 'mod-matrix', 'mod-wheel'],
+    appears: [{ z: 5, node: 'n12' }],
+    aka: ['channel pressure', 'poly aftertouch', 'key pressure'],
+    search: ['pressure', 'lean into key', 'expression', 'mpe'],
+  },
+  {
+    id: 'sustain-pedal', t: 'sustain pedal (CC 64)', c: 'MIDI',
+    plain: 'The hold pedal, spoken as Continuous Controller 64: value ≥64 means down, <64 means up. While down, the synth defers note-offs — released keys keep ringing; pedal-up fires all the deferred releases at once.',
+    why: 'It\'s pure bookkeeping with famous failure modes: stuck notes come from lost pedal-up handling or stale “sustained” marks on reused voices. Every synth and piano plugin implements this deferral.',
+    studio: 'A bartender holding tabs open: every “I\'m leaving” goes on the tab instead of being settled. Foot up = last call — all tabs settle in one instant.',
+    uses: ['Piano-style playing', 'Pad washes', 'Every keyboard patch you ship'],
+    viz: { t: 'pedalviz' },
+    mistake: 'Implementing pedal-down (notes hang — demos great!) and forgetting pedal-up\'s release loop. The wash grows forever. Both halves or neither.',
+    remember: 'The pedal defers goodbyes: down = mark instead of release, up = fire every mark.',
+    related: ['cc', 'release', 'note-event', 'panic'],
+    appears: [{ z: 5, node: 'n10' }, { z: 5, node: 'nc3' }, { z: 5, node: 'boss5' }],
+    aka: ['hold pedal', 'damper pedal', 'cc64'],
+    search: ['pedal', 'hold notes', 'notes hang', 'damper'],
+  },
+  {
+    id: 'monophonic', t: 'monophonic vs polyphonic', c: 'SYNTHS',
+    plain: 'Monophonic: one note at a time — new keys replace the current pitch by a priority rule (last-note is the modern default). Polyphonic: multiple simultaneous notes, one voice each. Neither is “better”: mono is a personality, poly is a capacity.',
+    why: 'Mono needs held-note tracking (release a key, fall back to the one still held); poly needs allocation, ownership and stealing. The two designs share voices but not government.',
+    studio: 'A solo horn player versus a choir. The horn player has technique for overlapping requests (slides, restatements); the choir just assigns another singer.',
+    uses: ['Mono basses & leads', 'Poly pads & keys', 'Legato/portamento modes'],
+    mistake: 'Building mono as “poly with one voice” and skipping the held-notes list — then every overlapped release chops the phrase instead of falling back to the held key.',
+    remember: 'Mono = one voice + rules; poly = many voices + management.',
+    related: ['voice', 'polyphony', 'legato', 'retrigger'],
+    appears: [{ z: 5, node: 'n4' }],
+    aka: ['mono', 'poly', 'note priority'],
+    search: ['one note at a time', 'mono mode', 'note priority', 'fall back'],
+  },
+  {
+    id: 'legato', t: 'legato', c: 'SYNTHS',
+    plain: 'A mono mode where overlapped notes share one envelope ride: press a new key while holding another and the pitch changes but no new attack fires — notes bind into one phrase. Add a pitch glide and it becomes portamento.',
+    why: 'It\'s the difference between a mono line that flows and one that stutters. One if-statement (retrigger only when the synth was silent) implements the entire feel.',
+    studio: 'A singer moving between words without taking a breath. Same voice, new pitch, unbroken phrase — the breath (attack) only happens when a phrase starts.',
+    uses: ['Mono leads & basses', '303-style lines', 'Portamento (legato + glide)'],
+    mistake: 'Calling noteOn() unconditionally on every note — legato becomes impossible, and every overlapped note stabs a fresh attack: typewriter fire where a phrase should be.',
+    remember: 'Legato = new pitch, same breath. The retrigger if IS the mono feel switch.',
+    related: ['retrigger', 'monophonic', 'envelope'],
+    appears: [{ z: 5, node: 'n4' }],
+    aka: ['legato mode', 'portamento', 'glide'],
+    search: ['smooth notes', 'no retrigger', 'slide between notes', 'glide'],
+  },
+  {
+    id: 'retrigger', t: 'retrigger', c: 'SYNTHS',
+    plain: 'Restarting the envelope from its attack when a new note arrives — every note gets a fresh strike. The opposite of legato. In poly synths, also what happens when a stolen or repeated voice starts its new note.',
+    why: 'Punchy and rhythmic where legato is smooth — and in voice stealing, the restart is where clicks are born: a fresh attack slammed onto a mid-level waveform needs a quick fade first.',
+    studio: 'A guitarist picking every note versus hammering-on. Picking = retrigger: each note gets its own transient attack.',
+    uses: ['Rhythmic mono lines', 'Voice stealing restarts', 'Vibrato LFOs that reset per note'],
+    mistake: 'Restarting a stolen voice instantly at full attack from wherever its waveform sat — a vertical step, a click, on every steal. Fade the victim a few ms first.',
+    remember: 'Retrigger = fresh attack per note. Punch for phrases, care for steals.',
+    related: ['legato', 'envelope', 'voice-stealing', 'attack'],
+    appears: [{ z: 5, node: 'n4' }, { z: 5, node: 'boss5' }],
+    aka: ['re-trigger', 'envelope restart'],
+    search: ['fresh attack', 'restart envelope', 'punchy notes'],
+  },
+  {
+    id: 'voice-allocation', t: 'voice allocation', c: 'SYNTHS',
+    plain: 'The bookkeeping that seats notes at voices: note-on hunts the pool for a free card (note == −1), stamps ownership, and starts it; note-off hunts by that stamp to release exactly the right voice.',
+    why: 'The two classic synth bugs live here: the stuck note (an off that finds no owner) and the wrong victim (an off that ignores stamps). Allocation is small code with enormous audible consequences.',
+    studio: 'A stage manager with a clipboard: gig in → first free player takes the chart, name goes on the board. Song ends → the manager checks the BOARD, not the seating order, to know who stops.',
+    uses: ['Every note-on/off pair', 'Voice stealing (its overflow path)', 'Duplicate-note policies'],
+    viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }, { note: 'E4', state: 'busy' }, { note: '—', state: 'alloc' }, { note: '—', state: 'free' }] },
+    mistake: 'Testing by releasing keys in reverse press order — which accidentally works even with broken ownership. Release the MIDDLE note of a chord: that\'s the test that catches clipboard-free code.',
+    remember: 'Every note-off is a search. The note field is the clipboard; −1 means for hire.',
+    related: ['voice', 'voice-stealing', 'polyphony', 'note-event'],
+    appears: [{ z: 5, node: 'n7' }, { z: 5, node: 'nr3' }, { z: 5, node: 'p13' }],
+    aka: ['note assignment', 'voice management'],
+    search: ['assign notes', 'which voice', 'free voice', 'ownership'],
+  },
+  {
+    id: 'panic', t: 'panic (all notes off)', c: 'MIDI',
+    plain: 'The emergency brake: release every voice, clear every pedal mark, reset all performance state. MIDI dedicates CC 123 (All Notes Off) to it; hosts send it on stop, and synth UIs add a panic button that calls the same code.',
+    why: 'Note-offs get lost — cables drop, loops truncate, sequencers crash — and the result is a note that never ends. Panic is the guaranteed way out, and it must reset ALL state or it just schedules the next emergency.',
+    studio: 'The house lights: one switch that ends every scene at once, no exceptions, no waiting for anyone\'s foot or fingers.',
+    uses: ['Host stop handling (CC 123)', 'UI panic buttons', 'Recovering from stuck notes'],
+    mistake: 'Releasing envelopes but leaving sustained marks and pedalDown untouched — the voices go quiet, the stale state sticks the NEXT notes. Panic means everything.',
+    remember: 'Panic is a state reset wearing a mute button — marks, pedal, envelopes, all of it.',
+    related: ['sustain-pedal', 'note-event', 'cc'],
+    appears: [{ z: 5, node: 'n15' }, { z: 5, node: 'p15' }],
+    aka: ['all notes off', 'cc123', 'midi panic'],
+    search: ['stuck notes', 'kill all notes', 'emergency stop', 'reset synth'],
+  },
+  {
+    id: 'mod-matrix', t: 'modulation matrix', c: 'SYNTHS',
+    plain: 'Routing as data: a table where each row says source → destination × amount (LFO → pitch × 0.3). One loop applies every row; multiple rows aimed at one destination ADD, like a control-signal mix bus.',
+    why: 'It replaces a pile of hand-wired ifs with rows you can add, remove and automate — and it\'s how every serious synth\'s mod page works. Reading rows as sentences is reading any synth.',
+    studio: 'A patchbay for invisible hands: every row is one cable — from a mover, to a knob, with an attenuator in line. The synth walks the bay top to bottom, every sample.',
+    uses: ['LFO→pitch (vibrato)', 'Velocity→gain', 'Wheel→depth', 'Key track→brightness'],
+    viz: { t: 'modmatrix', rows: [['LFO 1', 'PITCH', 0.3], ['WHEEL', 'LFO DEPTH', 1.0], ['VELOCITY', 'GAIN', 0.8]] },
+    mistake: 'Forgetting negative amounts — half of sound design is routing things DOWN (wheel closes the filter, tracking darkens high notes). A matrix without minus signs is half a matrix.',
+    remember: 'Source, destination, amount. Rows are sentences; sums make them music.',
+    related: ['modulation', 'lfo', 'keyboard-tracking', 'mod-wheel'],
+    appears: [{ z: 5, node: 'n13' }],
+    aka: ['mod matrix', 'routing matrix', 'mod page'],
+    search: ['routing', 'source destination', 'modulation page', 'assign lfo'],
+  },
+  {
+    id: 'keyboard-tracking', t: 'keyboard tracking', c: 'SYNTHS',
+    plain: 'Using the note number itself as a modulation source: higher keys push a destination up, lower keys pull it down, normalized around an anchor (usually middle C). Classic destination: filter brightness.',
+    why: 'Real instruments change character across their range — one fixed cutoff flatters C2 and strangles C6. Tracking makes a single patch playable across the whole keyboard.',
+    studio: 'A lighting rig that follows the singer across the stage: nobody moves a spotlight per note — POSITION drives the light.',
+    uses: ['Filter cutoff across the range', 'Envelope times (shorter up high, like a piano)', 'Level compensation'],
+    viz: { t: 'keytrack' },
+    mistake: 'Tracking only upward. Amounts can be negative — darkening high notes is as musical as brightening them, and middle-C-anchored tracking pushes BOTH directions.',
+    remember: 'The keyboard is a mod source: position in, parameter out, anchored at middle C.',
+    related: ['mod-matrix', 'cutoff', 'frequency'],
+    appears: [{ z: 5, node: 'n13' }],
+    aka: ['key tracking', 'key follow', 'kbd track'],
+    search: ['brighter high notes', 'filter follows keyboard', 'key follow'],
+  },
+  {
+    id: 'unison', t: 'unison', c: 'SYNTHS',
+    plain: 'One key, several voice copies: each detuned a few cents from its neighbors and panned across the stereo field. Their slow interference is the shimmer in every supersaw lead and anthem pad.',
+    why: 'It\'s the biggest “expensive sound” trick in synthesis — and it has a bill: N-voice unison multiplies voice demand by N, so an 8-voice pool plays less than two 5-copy notes before stealing begins.',
+    studio: 'A string section: twelve players on one line, each humanly imperfect, seated across the stage. One perfect violin is a soloist; twelve imperfect ones are a SECTION.',
+    uses: ['Supersaw leads', 'Anthem pads', 'Thickening any patch'],
+    viz: { t: 'unisonviz' },
+    mistake: 'Detuning every copy off-center with none at 0 cents — the note loses its pitch anchor and reads as out of tune rather than wide. Keep one copy honest.',
+    remember: 'Detune in cents, spread across the stage, keep one copy at zero — and pay the polyphony bill.',
+    related: ['detune', 'polyphony', 'voice-stealing', 'stereo'],
+    appears: [{ z: 5, node: 'n14' }, { z: 5, node: 'p15' }],
+    aka: ['unison mode', 'supersaw', 'voice stacking'],
+    search: ['thick lead', 'wide sound', 'supersaw', 'stack voices'],
+  },
+  {
+    id: 'detune', t: 'detune (cents)', c: 'SYNTHS',
+    plain: 'Deliberate small pitch offsets, measured in cents — hundredths of a semitone. Ratio = 2^(cents/1200). A few cents between stacked copies creates slow, animated beating: the chorus/unison shimmer.',
+    why: 'Cents are the working currency of thickness: ±5 is subtle warmth, ±15 is a supersaw, ±50 is out-of-tune. And the /1200 in the formula is a classic bug site (÷12 turns shimmer into an octave catastrophe).',
+    studio: 'A 12-string guitar: paired strings tuned almost-but-not-quite together. The almost is the instrument\'s entire personality.',
+    uses: ['Unison stacks', 'Chorus effects', 'Oscillator “fatness” knobs'],
+    mistake: 'Reading cents as semitones in code — dividing by 12 instead of 1200. Your ±12-cent shimmer becomes ±a whole octave, and the patch becomes performance art.',
+    remember: '100 cents to the semitone, 1200 to the octave: 2^(cents/1200).',
+    related: ['unison', 'frequency', 'phase'],
+    appears: [{ z: 5, node: 'n14' }, { z: 5, node: 'p15' }],
+    aka: ['cents', 'fine tune', 'detuning'],
+    search: ['cents', 'fine tuning', 'slightly out of tune', 'fat sound'],
   }
 );
 
@@ -10042,7 +12229,7 @@ const Engine = (() => {
   const QINDEX = {};
 
   function indexAll() {
-    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES, ...ZONE4_LESSONS, ...ZONE4_CHALLENGES];
+    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES, ...ZONE4_LESSONS, ...ZONE4_CHALLENGES, ...ZONE5_LESSONS, ...ZONE5_CHALLENGES];
     for (const node of all) {
       NODES[node.id] = node;
       const qs = questionsOf(node);
@@ -10413,9 +12600,11 @@ const Store = (() => {
       if (id === 'boss2') grant('zone2_clear');
       if (id === 'boss3') grant('zone3_clear');
       if (id === 'boss4') grant('zone4_clear');
+      if (id === 'boss5') grant('zone5_clear');
       if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
       if (['p6', 'p7', 'p8'].every(isDone)) grant('first_signal');
       if (['p9', 'p10', 'p11'].every(isDone)) grant('first_sound');
+      if (['p12', 'p13', 'p14', 'p15'].every(isDone)) grant('playable_synth');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }
@@ -11444,6 +13633,202 @@ const Viz = (() => {
       s.push(txt(326, 74, 'audio — breathing', C.phos, 8, 'end'));
       s.push(txt(170, 126, 'you hear the effect, never the LFO itself — that\'s tremolo', C.faint, 9, 'middle'));
       return { svg: s.join(''), h: 132 };
+    },
+
+    // Piano keyboard: pressed keys glow (with velocity bars), optional message.
+    keys(o) {
+      const s = [];
+      const pressed = o.pressed || [];
+      const vels = o.vels || [];
+      const x0 = 26, kw = 21, nWhite = 14, y = 14, kh = 46;
+      for (let i = 0; i < nWhite; i++) {
+        const x = x0 + i * kw;
+        const hit = pressed.indexOf(i);
+        s.push(`<rect x="${x}" y="${y}" width="${kw - 2}" height="${kh}" rx="2" fill="${hit >= 0 ? 'rgba(93,232,148,0.18)' : '#10141A'}" stroke="${hit >= 0 ? C.phos : C.line}" stroke-width="1.2"${hit >= 0 ? ' class="viz-pulse"' : ''}/>`);
+        if (hit >= 0 && vels[hit] !== undefined) {
+          const vh = Math.round((vels[hit] / 127) * (kh - 8));
+          s.push(`<rect x="${x + 4}" y="${y + kh - 4 - vh}" width="${kw - 10}" height="${vh}" rx="1.5" fill="${C.amber}" opacity="0.85"/>`);
+          s.push(txt(x + (kw - 2) / 2, y + kh + 12, String(vels[hit]), C.amber, 8, 'middle'));
+        }
+      }
+      // black keys (skip after white indices 2 and 6 in each 7-key octave)
+      for (let i = 0; i < nWhite - 1; i++) {
+        const pos = i % 7;
+        if (pos === 2 || pos === 6) continue;
+        s.push(`<rect x="${x0 + i * kw + kw - 8}" y="${y}" width="12" height="${Math.round(kh * 0.58)}" rx="2" fill="#05070A" stroke="${C.line}" stroke-width="1"/>`);
+      }
+      let hy = y + kh + (vels.length ? 20 : 8);
+      if (o.msg) {
+        s.push(box(52, hy, 236, 22, C.amber, false, 'rgba(240,180,80,0.05)'));
+        s.push(txt(170, hy + 14, o.msg, C.amber, 9, 'middle'));
+        hy += 30;
+      }
+      if (o.caption) { s.push(txt(170, hy + 8, o.caption, C.faint, 9, 'middle')); hy += 16; }
+      return { svg: s.join(''), h: hy + 4 };
+    },
+
+    // Voice cards: pool with note owners and states (free/busy/rel/alloc/steal).
+    voicecards(o) {
+      const cards = o.cards || [];
+      const s = [];
+      if (o.zoom && cards.length === 1) {
+        const c = cards[0];
+        s.push(box(96, 10, 148, 96, C.phosDim, false, 'rgba(93,232,148,0.04)'));
+        s.push(txt(170, 28, 'VOICE 1 · ' + (c.note || '—'), C.phos, 10, 'middle', 1.5));
+        ['int note', 'double phase', 'double increment', 'juce::ADSR adsr', 'float velGain · age'].forEach((m, i) => {
+          s.push(txt(170, 44 + i * 13, m, i === 0 ? C.amber : C.dim, 8.5, 'middle'));
+        });
+        if (o.caption) s.push(txt(170, 122, o.caption, C.faint, 9, 'middle'));
+        return { svg: s.join(''), h: o.caption ? 128 : 112 };
+      }
+      const n = cards.length || 4;
+      const cw = Math.min(76, (324 - 8 * (n - 1)) / n);
+      const total = cw * n + 8 * (n - 1);
+      let x = (340 - total) / 2;
+      const STATE = {
+        free:  { col: C.line,    fill: 'none',                    tag: 'FREE' },
+        busy:  { col: C.phosDim, fill: 'rgba(93,232,148,0.06)',   tag: 'BUSY' },
+        rel:   { col: C.amber,   fill: 'rgba(240,180,80,0.05)',   tag: 'RELEASING' },
+        alloc: { col: C.phos,    fill: 'rgba(93,232,148,0.12)',   tag: '← TAKES IT' },
+        steal: { col: C.red,     fill: 'rgba(240,120,98,0.07)',   tag: 'STOLEN' },
+      };
+      cards.forEach((c, i) => {
+        const st = STATE[c.state] || STATE.free;
+        const anim = c.state === 'alloc' || c.state === 'steal' ? ' class="viz-pulse"' : '';
+        s.push(`<rect x="${x}" y="18" width="${cw}" height="52" rx="5" fill="${st.fill}" stroke="${st.col}" stroke-width="1.3"${anim}/>`);
+        s.push(txt(x + cw / 2, 38, c.note || '—', c.state === 'free' ? C.faint : C.ink, 11, 'middle'));
+        s.push(txt(x + cw / 2, 56, st.tag, st.col, 7.5, 'middle', 1));
+        s.push(txt(x + cw / 2, 84, 'v' + (i + 1), C.faint, 8, 'middle'));
+        x += cw + 8;
+      });
+      if (o.caption) s.push(txt(170, 104, o.caption, C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: o.caption ? 112 : 94 };
+    },
+
+    // Voice lifecycle: idle → A → D → S → R → idle, with who drives each hop.
+    voicelife(o) {
+      const s = [];
+      const stages = [['idle', C.faint], ['attack', C.phos], ['decay', C.phos], ['sustain', C.phos], ['release', C.amber], ['idle', C.faint]];
+      const w = 47, gap = 8;
+      let x = 6;
+      stages.forEach(([label, col], i) => {
+        s.push(box(x, 30, w, 26, col === C.faint ? C.line : col, false, col === C.phos ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(x + w / 2, 46, label, col, 8, 'middle'));
+        if (i < stages.length - 1) s.push(arrow(x + w + 1, 43, x + w + gap - 1, 43));
+        x += w + gap;
+      });
+      s.push(txt(34, 20, 'note-on ↓', C.phos, 8, 'middle'));
+      s.push(txt(226, 20, 'note-off ↓', C.amber, 8, 'middle'));
+      s.push(txt(292, 70, '↑ envelope finishes', C.faint, 8, 'end'));
+      s.push(txt(170, 86, 'the player drives on/off; the envelope drives everything between — and the FREE flip', C.faint, 8.5, 'middle'));
+      if (o && o.caption) { s.push(txt(170, 102, o.caption, C.faint, 9, 'middle')); return { svg: s.join(''), h: 108 }; }
+      return { svg: s.join(''), h: 94 };
+    },
+
+    // Sustain pedal: deferred note-offs queueing while down.
+    pedalviz(o) {
+      const s = [];
+      s.push(`<path d="M 30 76 L 78 76 L 88 56 L 30 56 Z" fill="rgba(93,232,148,0.08)" stroke="${C.phos}" stroke-width="1.4"/>`);
+      s.push(txt(56, 92, 'CC 64 · DOWN', C.phos, 8.5, 'middle', 1));
+      s.push(box(116, 20, 130, 64, C.line));
+      s.push(txt(181, 34, 'DEFERRED GOODBYES', C.dim, 8, 'middle', 1));
+      ['C4 off — held', 'E4 off — held', 'G4 off — held'].forEach((t, i) => {
+        s.push(box(126, 40 + i * 14, 110, 11, C.amber, true, 'rgba(240,180,80,0.04)'));
+        s.push(txt(181, 48.5 + i * 14, t, C.amber, 7.5, 'middle'));
+      });
+      s.push(arrow(252, 52, 288, 52, C.phosDim));
+      s.push(txt(302, 44, 'pedal', C.faint, 8, 'middle'));
+      s.push(txt(302, 55, 'up →', C.faint, 8, 'middle'));
+      s.push(txt(302, 68, 'ALL fire', C.phos, 8, 'middle'));
+      s.push(txt(170, (o && o.caption) ? 112 : 104, (o && o.caption) || 'while down, note-offs queue as marks — pedal-up releases them together', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 118 };
+    },
+
+    // Pitch-bend or mod wheel with value scale.
+    bendwheel(o) {
+      const s = [];
+      const mod = o.mode === 'mod';
+      s.push(box(40, 12, 56, 92, C.line, false, '#0A0D11'));
+      const wy = mod ? 76 : 58;
+      s.push(`<rect x="46" y="${wy - 9}" width="44" height="18" rx="4" fill="rgba(93,232,148,0.15)" stroke="${C.phos}" stroke-width="1.4"${mod ? '' : ' class="viz-snap"'}/>`);
+      s.push(txt(68, 118, mod ? 'MOD (CC 1)' : 'PITCH BEND', C.dim, 8.5, 'middle', 1));
+      if (mod) {
+        [[20, '127', 'full depth'], [58, '64', 'half'], [96, '0', 'no vibrato']].forEach(([y, v, l]) => {
+          s.push(txt(112, y, v, C.amber, 8.5, 'start'));
+          s.push(txt(136, y, l, C.faint, 8.5, 'start'));
+        });
+        s.push(txt(226, 56, 'no spring — it stays put', C.dim, 9, 'middle'));
+        s.push(txt(226, 70, 'value → a mod DEPTH', C.phos, 9, 'middle'));
+      } else {
+        [[20, '16383', '+2 st'], [58, '8192', 'HOME · ratio 1.0'], [96, '0', '−2 st']].forEach(([y, v, l]) => {
+          s.push(txt(112, y, v, C.amber, 8.5, 'start'));
+          s.push(txt(152, y, l, C.faint, 8.5, 'start'));
+        });
+        s.push(txt(232, 56, 'spring-loaded: always', C.dim, 9, 'middle'));
+        s.push(txt(232, 70, 'snaps back to 8192', C.phos, 9, 'middle'));
+      }
+      if (o.caption) { s.push(txt(170, 138, o.caption, C.faint, 9, 'middle')); return { svg: s.join(''), h: 144 }; }
+      return { svg: s.join(''), h: 128 };
+    },
+
+    // Mod matrix: source → destination × amount rows.
+    modmatrix(o) {
+      const rows = o.rows || [['LFO 1', 'PITCH', 0.3], ['WHEEL', 'LFO DEPTH', 1.0]];
+      const s = [];
+      s.push(txt(60, 16, 'SOURCE', C.dim, 8, 'middle', 1.5));
+      s.push(txt(196, 16, 'DESTINATION', C.dim, 8, 'middle', 1.5));
+      s.push(txt(298, 16, 'AMOUNT', C.dim, 8, 'middle', 1.5));
+      rows.forEach(([src, dst, amt], i) => {
+        const y = 26 + i * 26;
+        s.push(box(14, y, 92, 20, C.phosDim, false, 'rgba(93,232,148,0.04)'));
+        s.push(txt(60, y + 13, src, C.phos, 8.5, 'middle'));
+        s.push(arrow(108, y + 10, 148, y + 10));
+        s.push(box(150, y, 92, 20, C.line));
+        s.push(txt(196, y + 13, dst, C.dim, 8.5, 'middle'));
+        s.push(box(268, y, 60, 20, C.amber, false, 'rgba(240,180,80,0.04)'));
+        s.push(txt(298, y + 13, (amt >= 0 ? '+' : '') + amt, C.amber, 8.5, 'middle'));
+      });
+      const hy = 26 + rows.length * 26 + 6;
+      s.push(txt(170, hy + 6, o.caption || 'each row: one invisible hand — rows aimed at one destination ADD', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: hy + 14 };
+    },
+
+    // Keyboard tracking: key position drives a parameter slope.
+    keytrack() {
+      const s = [];
+      const x0 = 26, kw = 21, nWhite = 14, ky = 62, kh = 34;
+      for (let i = 0; i < nWhite; i++) {
+        const mid = i === 7;
+        s.push(`<rect x="${x0 + i * kw}" y="${ky}" width="${kw - 2}" height="${kh}" rx="2" fill="${mid ? 'rgba(240,180,80,0.12)' : '#10141A'}" stroke="${mid ? C.amber : C.line}" stroke-width="1.1"/>`);
+      }
+      s.push(txt(x0 + 7 * kw + 9, ky + kh + 12, 'middle C — anchor (0)', C.amber, 8, 'middle'));
+      s.push(`<line x1="${x0}" y1="52" x2="${x0 + nWhite * kw - 2}" y2="16" stroke="${C.phos}" stroke-width="1.6"/>`);
+      s.push(txt(x0 + 4, 40, '−', C.phos, 12, 'middle'));
+      s.push(txt(x0 + nWhite * kw - 8, 14, '+', C.phos, 12, 'middle'));
+      s.push(txt(170, 30, 'parameter value', C.faint, 8.5, 'middle'));
+      s.push(txt(170, 124, 'the key POSITION is the mod source: low keys pull down, high keys push up', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 130 };
+    },
+
+    // Unison: one key fans into detuned, panned copies.
+    unisonviz() {
+      const s = [];
+      s.push(box(24, 40, 44, 30, C.phosDim, false, 'rgba(93,232,148,0.07)'));
+      s.push(txt(46, 59, 'C4', C.phos, 10.5, 'middle'));
+      s.push(txt(46, 84, 'one key', C.faint, 8, 'middle'));
+      const copies = [['−12¢', 'L', 18], ['−6¢', 'L½', 36], ['0¢', 'C', 54], ['+6¢', 'R½', 72], ['+12¢', 'R', 90]];
+      copies.forEach(([cents, pan, y], i) => {
+        const center = i === 2;
+        s.push(`<path d="M 68 55 C 110 55, 120 ${y} , 152 ${y}" fill="none" stroke="${center ? C.phos : C.phosDim}" stroke-width="1.2"/>`);
+        s.push(box(154, y - 8, 74, 16, center ? C.phos : C.line, false, center ? 'rgba(93,232,148,0.08)' : 'none'));
+        s.push(txt(191, y + 3.5, cents + '  ·  ' + pan, center ? C.phos : C.dim, 8, 'middle'));
+      });
+      s.push(txt(268, 22, 'detuned copies,', C.dim, 8.5, 'start'));
+      s.push(txt(268, 34, 'panned wide —', C.dim, 8.5, 'start'));
+      s.push(txt(268, 46, 'center stays', C.phos, 8.5, 'start'));
+      s.push(txt(268, 58, 'in tune', C.phos, 8.5, 'start'));
+      s.push(txt(170, 118, 'the shimmer is their interference — five near-misses, one anchor', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 124 };
     },
   };
 
@@ -12901,7 +15286,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS].map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),

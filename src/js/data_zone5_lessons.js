@@ -1,0 +1,678 @@
+/* ============================================================
+   ZONE 5 — SYNTH ENGINEERING: lessons n1–n8.
+   First Signal learns to listen: MIDI, velocity, voices,
+   polyphony, allocation, stealing.
+   ============================================================ */
+
+const ZONE5_LESSONS = [
+
+  /* ------------------------------------------------------ N1 */
+  {
+    id: 'n1', kind: 'lesson', title: 'The Language of Keys', short: 'What MIDI actually says',
+    concepts: ['midi-basics'], time: '~5 MIN', diff: 1,
+    hook: 'You press middle C on your controller and First Signal — as shipped in Zone 4 — ignores you completely. It plays its own note, forever. The keyboard has been talking this whole time; your synth just doesn\'t speak the language yet. That language is MIDI, and it\'s simpler than any patch you\'ve ever saved.',
+    objective: 'Know what a MIDI message actually contains — and why MIDI carries instructions, never sound.',
+    sections: [
+      {
+        h: 'Messages, not audio',
+        body: '**Musical Instrument Digital Interface (MIDI)** carries *instructions*: “key 60 went down, this hard,” “key 60 came up,” “the wheel moved.” No audio travels down that cable — which is why one performance can play a piano patch today and a bass patch tomorrow. The recording is the *gesture*, not the sound.',
+        viz: { t: 'keys', pressed: [7], msg: 'NOTE ON  ·  note 60  ·  velocity 100', caption: 'one key press = one tiny message — three numbers, no sound' },
+      },
+      {
+        h: 'The anatomy of a note',
+        body: 'A **note-on** carries three numbers: which **channel** (1–16, like console channels for separate instruments), which **note** (0–127, middle C = 60, each step one semitone — the d3 map turns this into Hz), and how hard — the **velocity** (next lesson). A **note-off** for the same note number ends it. Everything your synth will do in this zone starts from these two events.',
+        code: '// what actually arrives, as JUCE sees it:\nmsg.getChannel();      // 1..16  — whose message is this?\nmsg.getNoteNumber();   // 0..127 — which key (60 = middle C)\nmsg.getVelocity();     // 0..127 — how hard',
+        codeTitle: 'three questions per key press',
+        breakdown: [
+          ['getChannel()', 'one cable, 16 lanes — a drum machine and a bass line can share it'],
+          ['getNoteNumber()', 'the key as a number: 60 = middle C, 69 = A440 — d3\'s formula eats this'],
+          ['getVelocity()', 'strike strength 0–127 — the player\'s dynamics, one byte'],
+        ],
+      },
+      {
+        h: 'Why this design won',
+        body: 'MIDI is from 1983 and still runs every studio, because instructions are tiny and universal. A note-on is 3 bytes; a second of CD audio is 176,400. Your DAW\'s piano roll IS a MIDI editor — every dot a note-on with a length, every lane a note number. You\'ve been *reading* this language for years; this zone teaches your plugin to read it too.',
+        analogy: 'MIDI is sheet music over a wire. The page tells the pianist what to play and how hard — it never makes a sound itself. Swap the pianist (the patch) and the same page plays a whole new performance.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'What does a MIDI cable actually carry?',
+        options: [
+          { t: 'Small instruction messages — key down, key up, wheel moved. Never audio', why: '' },
+          { t: 'A compressed audio stream', why: 'No audio at all — that\'s why the same MIDI clip can drive a piano patch or an 808 without re-recording.' },
+          { t: 'The synth\'s output signal', why: 'Output leaves through audio cables/buffers. MIDI flows the other way: performer → instrument.' },
+          { t: 'Preset data only', why: 'Presets can travel over MIDI (SysEx), but the moment-to-moment traffic is performance events.' },
+        ],
+        answer: 0,
+        explain: 'MIDI = the gesture, audio = the sound. Keeping them separate is why you can fix a wrong note in the piano roll without re-recording a take.',
+      },
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'Which three numbers ride inside a note-on message?',
+        options: [
+          { t: 'Channel, note number, velocity', why: '' },
+          { t: 'Frequency, amplitude, phase', why: 'Those are DSP quantities the *synth* computes FROM the message — d3\'s formula turns note number into frequency.' },
+          { t: 'Note number, duration, volume', why: 'MIDI has no duration — length is simply the gap until the matching note-off arrives.' },
+          { t: 'Sample rate, note, pan', why: 'Sample rate belongs to the audio engine; MIDI knows nothing about the grid it will be rendered on.' },
+        ],
+        answer: 0,
+        explain: 'Channel (whose lane), note (which key), velocity (how hard). Duration isn\'t stored anywhere — a note lasts until its note-off shows up.',
+      },
+      {
+        type: 'fill', concept: 'midi-basics',
+        prompt: 'The d3 map meets its input: convert the incoming key to Hertz.',
+        code: 'float hz = midiToHz(msg.___());',
+        accept: ['getNoteNumber'],
+        placeholder: 'method',
+        hint: 'Which key was pressed?',
+        explain: 'getNoteNumber() hands d3\'s formula its input: 69 → 440 Hz, 60 → ~261.63 Hz. The bridge between the player\'s hands and the oscillator\'s math is one method call.',
+      },
+    ],
+    recap: [
+      'MIDI (Musical Instrument Digital Interface) carries instructions, never audio.',
+      'A note-on = channel + note number + velocity; a note-off ends that note.',
+      'Note numbers are semitones: 60 = middle C, 69 = A440 — d3\'s formula converts.',
+      'Notes have no stored duration — they last until the matching note-off.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'the MidiBuffer it has ignored since Zone 3 is about to be read' },
+      { name: 'Your DAW\'s piano roll', use: 'a MIDI editor wearing a grid — every dot is a note-on' },
+    ],
+    analogyPanel: 'MIDI is sheet music over a wire: what to play, how hard, when to stop — never the sound itself. The patch is the musician; the message is the page.',
+    beginnerMistake: 'Recording a synth\'s audio when you meant to record its MIDI — then discovering you can\'t fix one wrong note without redoing the take. Gestures are editable; rendered audio is baked.',
+    remember: 'MIDI says what happened at the keys. Making it sound like something is entirely your synth\'s job.',
+    builds: ['midi', 'midibuffer', 'daw'],
+    leads: ['note-event', 'velocity'],
+  },
+
+  /* ------------------------------------------------------ N2 */
+  {
+    id: 'n2', kind: 'lesson', title: 'Velocity: How Hard You Hit', short: 'Dynamics as a number',
+    concepts: ['midi-basics'], time: '~5 MIN', diff: 1,
+    hook: 'Play a piano patch with everything at velocity 100 and it sounds like a robot doing data entry. Play the same notes with real dynamics and it breathes. The entire difference travels in one byte per note — and your synth decides what that byte *means*.',
+    objective: 'Use velocity musically in code — and learn the one strange rule: velocity 0 means note-off.',
+    sections: [
+      {
+        h: 'One byte of feel',
+        body: '**Velocity** is how fast the key was moving when it hit bottom — 1 (barely) to 127 (hammered). What it *controls* is your design decision: loudness is the classic mapping, but real instruments also get brighter when struck harder, so pro synths route velocity to filter cutoff, envelope attack, even sample layers. Velocity is a per-note control signal — d14\'s idea, delivered by the player\'s hands.',
+        viz: { t: 'keys', pressed: [4, 9], vels: [40, 118], caption: 'same two keys, different strikes — the byte that separates a lullaby from a stab' },
+      },
+      {
+        h: 'From byte to gain',
+        body: 'The straightforward mapping: divide by 127 to get 0..1, use it as a per-voice gain. JUCE will even do the division for you. One honest nuance: ears are logarithmic (d4), so pros often *curve* the value — squaring it is a common start — but linear is a fine first instrument.',
+        code: 'float vel = msg.getFloatVelocity();   // 0.0 .. 1.0 — JUCE divides for you\nvoice.velocityGain = vel * vel;       // curved: quiet strikes stay quiet\n// later, in the render:  sample * env * voice.velocityGain',
+        codeTitle: 'dynamics, wired in',
+        breakdown: [
+          ['getFloatVelocity()', 'the 0–127 byte, pre-divided into 0..1 — one less magic number'],
+          ['vel * vel', 'a square curve: 64 → ~0.25 instead of 0.5 — closer to how dynamics feel'],
+          ['per-VOICE gain', 'stored on the voice, not globally — each note keeps the strike it was born with'],
+        ],
+      },
+      {
+        h: 'The strange rule: velocity zero',
+        body: 'A **note-on with velocity 0** officially means *note-off*. It\'s a 1983 wire-efficiency trick (running status) that never went away, and controllers still send it. Miss this rule and some keyboards leave your synth with notes that never end. JUCE has your back — `isNoteOff()` returns true for velocity-0 note-ons by default — but only if you use the message queries instead of poking raw bytes.',
+        warn: 'This is the first of several “stuck note” traps in this zone. A synth that only *starts* notes correctly is half a synth — ending them correctly is where the engineering lives.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'What does velocity measure, physically?',
+        options: [
+          { t: 'How fast the key was moving when pressed — strike strength, 1–127', why: '' },
+          { t: 'How long the key is held', why: 'Hold time is the note-on → note-off gap. Velocity is captured in the first instant of the strike.' },
+          { t: 'The note\'s frequency', why: 'That\'s the note *number*. Velocity is the how-hard, not the which-key.' },
+          { t: 'The synth\'s output level', why: 'Only if you route it there! Velocity is player data — what it controls is your synth\'s design choice.' },
+        ],
+        answer: 0,
+        explain: 'Strike speed in one byte. Loudness is the classic destination, but brightness (cutoff) and attack are what make patches feel expensive.',
+      },
+      {
+        type: 'predict', concept: 'midi-basics',
+        prompt: 'A note-on arrives with velocity 0. What should your synth do?',
+        code: '// incoming: NOTE ON, note 64, velocity 0',
+        options: [
+          { t: 'Treat it as a note-off for note 64', why: '' },
+          { t: 'Play note 64 silently', why: 'A silent voice still burns a voice card — and never receiving a real note-off, it would sit there forever.' },
+          { t: 'Ignore it', why: 'Ignoring it loses the note\'s END on controllers that use this convention — the classic stuck-note bug.' },
+          { t: 'Reset the synth', why: 'Far too dramatic — it\'s a routine message with a historical costume on.' },
+        ],
+        answer: 0,
+        explain: 'Velocity 0 = note-off, by MIDI convention. JUCE\'s isNoteOff() honors this automatically — one of many reasons to query messages instead of parsing bytes.',
+      },
+      {
+        type: 'fill', concept: 'midi-basics',
+        prompt: 'Store the strike on the voice, using JUCE\'s pre-divided form.',
+        code: 'voice.velocityGain = msg.___();   // 0.0 .. 1.0',
+        accept: ['getFloatVelocity'],
+        placeholder: 'method',
+        hint: 'The velocity, already scaled to 0..1.',
+        mistakes: [
+          { match: '^getVelocity$', msg: 'getVelocity() returns the raw 0–127 byte — usable, but you\'d divide by 127 yourself. The float version arrives pre-scaled.' },
+        ],
+        explain: 'getFloatVelocity() → 0..1, ready to multiply. Stored per voice so every note keeps its own dynamics for its whole life.',
+      },
+    ],
+    recap: [
+      'Velocity = strike speed, 1–127; what it controls is your design decision.',
+      'Classic routing: per-voice gain (getFloatVelocity, optionally curved).',
+      'Pro routings: cutoff, attack, layers — velocity is a per-note control signal.',
+      'Note-on with velocity 0 = note-off. JUCE\'s isNoteOff() handles it.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p12 wires velocity into the voice gain' },
+      { name: 'Sample libraries', use: 'velocity switches whole recordings — pp and ff are different samples' },
+    ],
+    analogyPanel: 'Velocity is the difference between brushing a snare and rimshotting it — same drum, same stick, different energy in the first millisecond. One byte captures that millisecond.',
+    beginnerMistake: 'Mapping velocity to nothing. A patch where 30 and 127 sound identical feels dead under the hands no matter how good the oscillators are — dynamics are the cheapest realism you\'ll ever add.',
+    remember: 'Velocity is the player\'s energy in one byte — and velocity 0 secretly means “stop.”',
+    builds: ['velocity', 'note-event', 'gain'],
+    leads: ['cc', 'aftertouch'],
+  },
+
+  /* ------------------------------------------------------ N3 */
+  {
+    id: 'n3', kind: 'lesson', title: 'Reading the MIDI Inbox', short: 'The MidiBuffer loop',
+    concepts: ['midi-basics'], time: '~6 MIN', diff: 2,
+    hook: 'Zone 3 told you processBlock receives TWO deliveries: the audio buffer, and a MidiBuffer you\'ve politely ignored for two zones. Inside it: every key event that happened during this block, each stamped with exactly *when*. Time to open the mail.',
+    objective: 'Iterate the MidiBuffer, dispatch each message by type, and understand sample-position timing.',
+    sections: [
+      {
+        h: 'The inbox, opened',
+        body: 'The **MidiBuffer** holds this block\'s events in time order. The modern JUCE loop reads each one and asks what it is — note-on, note-off, or something else. Dispatch is a chain of questions:',
+        code: 'void processBlock(juce::AudioBuffer<float>& buffer,\n                  juce::MidiBuffer& midiMessages)\n{\n    for (const auto metadata : midiMessages)\n    {\n        const auto msg = metadata.getMessage();\n\n        if (msg.isNoteOn())\n            startNote(msg.getNoteNumber(),\n                      msg.getFloatVelocity());\n        else if (msg.isNoteOff())\n            stopNote(msg.getNoteNumber());\n    }\n    // ... then render audio as usual\n}',
+        codeTitle: 'First Signal reads its mail',
+        breakdown: [
+          ['for (const auto metadata : …)', 'walks every event this block, in time order — the Zone 1 loop pattern on a new container'],
+          ['metadata.getMessage()', 'unwraps the actual MidiMessage from its delivery envelope'],
+          ['isNoteOn() / isNoteOff()', 'ask, don\'t parse — these queries also handle the velocity-0 rule from n2'],
+          ['startNote / stopNote', 'OUR functions, coming in p12 — the dispatch calls the synth we\'re building'],
+        ],
+      },
+      {
+        h: 'When, exactly?',
+        body: 'Each event also carries `metadata.samplePosition` — *which sample within this block* it landed on. A note struck mid-block starts at sample 137, not at the block edge. Handling everything at position 0 quantizes your timing by up to a whole block (~10 ms at 512/48k) — real players feel that. First Signal starts simple (handle events, render after), and tightens timing when it matters; the pro move is splitting the block at each event.',
+        analogy: 'The MidiBuffer is a bar of your DAW timeline: events sit at exact ticks inside it, not just at bar lines. A synth that rounds everything to the bar line swings like a drum machine with quantize at 100% — technically right, humanly wrong.',
+      },
+      {
+        h: 'The other mail',
+        body: 'The same loop will grow more questions as the zone proceeds: `isPitchWheel()` (n11), `isController()` for the sustain pedal and mod wheel (n10, n12), `isChannelPressure()` for aftertouch (n12). One inbox, one loop, many message types — the dispatch chain IS your synth\'s ear.',
+        warn: 'Never assume an event *order* inside a block beyond time order: a note-off for a key can arrive in the same block as its note-on — a 5 ms stab from a tight player. Your voice logic (n7) has to survive that.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-basics',
+        prompt: 'What does metadata.samplePosition tell you?',
+        options: [
+          { t: 'Which sample inside THIS block the event lands on', why: '' },
+          { t: 'The event\'s position in the whole song', why: 'Blocks don\'t know the song — the position is relative to this block\'s first sample.' },
+          { t: 'The MIDI channel', why: 'Channel rides inside the message itself (getChannel()); the stamp is about time.' },
+          { t: 'How many events are in the buffer', why: 'It\'s per-event timing, not a count — each event carries its own stamp.' },
+        ],
+        answer: 0,
+        explain: 'Sample-accurate timing is what separates tight instruments from mushy ones: a note at sample 137 should start at sample 137.',
+      },
+      {
+        type: 'fill', concept: 'midi-basics',
+        prompt: 'Unwrap the actual message from its metadata envelope.',
+        code: 'for (const auto metadata : midiMessages)\n{\n    const auto msg = metadata.___();\n    if (msg.isNoteOn()) { /* ... */ }\n}',
+        accept: ['getMessage'],
+        placeholder: 'method',
+        hint: 'The envelope holds a message and a time stamp.',
+        explain: 'getMessage() unwraps the MidiMessage; samplePosition is the stamp on the envelope. Iterate, unwrap, ask, dispatch — the whole inbox routine.',
+      },
+      {
+        type: 'predict', concept: 'midi-basics',
+        prompt: 'A player stabs a key so fast that note-on AND note-off land in the same block. What does the loop see?',
+        code: 'for (const auto metadata : midiMessages) { /* ? */ }',
+        options: [
+          { t: 'Both events, in time order — the note starts and releases within one block', why: '' },
+          { t: 'Only the note-on; the off waits for the next block', why: 'The buffer holds everything that happened this block — both events are already inside.' },
+          { t: 'The events cancel out', why: 'Nothing cancels — a real (short) note happened, and the envelope\'s attack + release will sound it.' },
+          { t: 'Undefined behavior', why: 'Perfectly defined: two ordinary events, microseconds apart. Your voice logic just has to handle ON then OFF honestly.' },
+        ],
+        answer: 0,
+        explain: 'Short notes are legal and common. The loop sees ON then OFF in order; the voice starts, then enters release — a tiny note, rendered honestly.',
+      },
+    ],
+    recap: [
+      'MidiBuffer = this block\'s events, time-ordered, each with a samplePosition.',
+      'Iterate with for (const auto metadata : midi); unwrap with getMessage().',
+      'Dispatch by asking: isNoteOn / isNoteOff / isPitchWheel / isController.',
+      'Same-block on+off pairs are normal — voice logic must survive them.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p12 installs exactly this loop — the synth\'s ear' },
+      { name: 'juce::Synthesiser', use: 'JUCE\'s stock synth class splits blocks at each event for sample-tight starts' },
+    ],
+    analogyPanel: 'processBlock gets two deliveries every few milliseconds: a crate of audio to fill, and an envelope of stage directions. The synth you\'re building is the performer who reads the directions and fills the crate.',
+    beginnerMistake: 'Handling MIDI *after* rendering audio — the notes you just received then start one block late, every time. Read the mail first, then perform.',
+    remember: 'One loop, one unwrap, a chain of questions. The dispatch chain is your synth\'s ear.',
+    builds: ['midibuffer', 'processblock', 'block'],
+    leads: ['voice', 'note-event'],
+  },
+
+  /* ------------------------------------------------------ N4 */
+  {
+    id: 'n4', kind: 'lesson', title: 'Mono: One Key at a Time', short: 'Last-note, retrigger, legato',
+    concepts: ['voices-mono'], time: '~6 MIN', diff: 2,
+    hook: 'Hold a bass note, then tap a higher one without letting go. On a classic mono synth the pitch jumps up — release, and it falls back to the held key. That falling-back is a *decision someone programmed*. Mono synths aren\'t poly synths minus features: they\'re a personality, built from rules.',
+    objective: 'Build mono note logic: last-note priority, and the retrigger-vs-legato choice that defines mono feel.',
+    sections: [
+      {
+        h: 'The mono contract',
+        body: 'First Signal today is accidentally mono: one phase, one envelope — n5 names that bundle a **voice**. A *deliberate* mono synth adds a rule for overlapping keys. **Last-note priority** is the modern default: the newest key always wins. To fall back when it\'s released, the synth keeps a small list of held notes — press adds, release removes, and the pitch follows the list\'s newest entry.',
+        code: 'std::vector<int> heldNotes;             // pressed keys, oldest → newest\n\nvoid noteOn(int note)  { heldNotes.push_back(note); playPitch(note); }\nvoid noteOff(int note)\n{\n    heldNotes.erase(std::remove(heldNotes.begin(),\n                    heldNotes.end(), note), heldNotes.end());\n    if (!heldNotes.empty()) playPitch(heldNotes.back());  // fall back\n    else                    adsr.noteOff();               // truly done\n}',
+        codeTitle: 'last-note priority, honestly',
+        breakdown: [
+          ['heldNotes', 'the fingers currently down — Zone 1\'s vector, doing musical bookkeeping'],
+          ['back()', 'the newest held key: last-note priority in one call'],
+          ['fall back, not off', 'release the top key and the pitch returns to the one still held — the mono bassline feel'],
+          ['adsr.noteOff() only when empty', 'the envelope releases when the LAST finger lifts, not the first'],
+        ],
+      },
+      {
+        h: 'Retrigger or legato: the personality switch',
+        body: 'When a new key arrives while one is held, does the envelope restart? **Retrigger**: yes — every note gets a fresh attack, punchy and rhythmic. **Legato**: no — the pitch changes but the envelope keeps riding, notes bind into one phrase (add a pitch glide and you have portamento, d13\'s ramp used musically). Same messages, different `if`:',
+        code: 'void playPitch(int note)\n{\n    setIncrementFor(note);                    // d5 machinery\n    bool wasSilent = !adsr.isActive();\n    if (retrigger || wasSilent)\n        adsr.noteOn();                        // fresh attack\n    // legato + already sounding: pitch moves, envelope rides on\n}',
+        codeTitle: 'one if = the mono feel switch',
+        mistake: { code: 'void playPitch(int note)\n{\n    setIncrementFor(note);\n    adsr.noteOn();   // ✗ always retriggers\n}', text: 'Unconditional noteOn() makes legato impossible — every overlapped note stabs a new attack, and smooth mono lines turn into typewriter fire. The if IS the feature.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'voices-mono',
+        prompt: 'Last-note priority. You hold C2, press G2, then release G2. What sounds?',
+        code: 'heldNotes: [C2] → [C2, G2] → release G2 → ?',
+        options: [
+          { t: 'C2 again — the pitch falls back to the still-held key', why: '' },
+          { t: 'Silence — a key was released', why: 'C2 is still down! Only when the LAST finger lifts does the envelope release.' },
+          { t: 'G2 continues', why: 'G2\'s key is up and it\'s gone from the list — the newest *held* note is C2.' },
+          { t: 'Both notes', why: 'Mono means one voice, always — the list only decides WHICH one pitch wins.' },
+        ],
+        answer: 0,
+        explain: 'The held-notes list makes fall-back automatic: remove G2, back() says C2, the bassline walks home. This exact feel is why mono basses groove.',
+      },
+      {
+        type: 'mcq', concept: 'voices-mono',
+        prompt: 'What\'s the difference between retrigger and legato mode?',
+        options: [
+          { t: 'Retrigger restarts the envelope on every new note; legato lets overlapped notes share one envelope ride', why: '' },
+          { t: 'Legato adds more voices', why: 'Both are mono — one voice throughout. The difference is entirely in envelope behavior.' },
+          { t: 'Retrigger changes the waveform', why: 'The oscillator doesn\'t care — this is an envelope decision, not a timbre one.' },
+          { t: 'Legato is just portamento', why: 'Close cousins: portamento = legato + a pitch glide. Legato alone changes pitch instantly but keeps the envelope riding.' },
+        ],
+        answer: 0,
+        explain: 'Punchy stabs vs bound phrases — one if statement. Add d13\'s ramp to the pitch change and legato becomes portamento.',
+      },
+      {
+        type: 'bugspot', concept: 'voices-mono',
+        prompt: 'This mono synth goes silent when ANY key lifts, even mid-phrase. Tap the bug.',
+        code: [
+          'void noteOff(int note)',
+          '{',
+          '    removeFromHeld(note);',
+          '    adsr.noteOff();',
+          '    if (!heldNotes.empty())',
+          '        playPitch(heldNotes.back());',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'noteOff() fires unconditionally — the envelope starts dying even when fingers are still down. Release the envelope only when heldNotes is empty; otherwise just fall back to the newest held pitch.',
+        fix: 'if (heldNotes.empty()) adsr.noteOff(); else playPitch(heldNotes.back());',
+      },
+    ],
+    recap: [
+      'Mono is a personality: last-note priority via a held-notes list.',
+      'Fall-back: release the top key, pitch returns to back() of the list.',
+      'Retrigger = fresh attack per note; legato = shared envelope ride.',
+      'Envelope releases only when the LAST finger lifts.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'gets a mono mode before polyphony — walk, then run' },
+      { name: 'Classic mono basses', use: 'their famous feel IS these rules — priority + legato + glide' },
+    ],
+    analogyPanel: 'A mono synth is a session player who owns one instrument: hand them a new chart mid-note and they slide to it (legato) or restate it (retrigger) — but they never become two players.',
+    beginnerMistake: 'Releasing the envelope on every note-off. Mono players *overlap* keys constantly — the synth must track what\'s still held, or every phrase gets chopped at the first finger-lift.',
+    remember: 'Mono = one voice + rules. The held-notes list is the memory; the retrigger if is the feel.',
+    builds: ['monophonic', 'legato', 'retrigger'],
+    leads: ['voice', 'polyphony'],
+  },
+
+  /* ------------------------------------------------------ N5 */
+  {
+    id: 'n5', kind: 'lesson', title: 'The Voice: A Synth Within a Synth', short: 'One note\'s machinery',
+    concepts: ['voices-poly'], time: '~6 MIN', diff: 2,
+    hook: 'Play a C major triad. Three pitches, three envelopes at different points in their journey, maybe three strike strengths. Everything Zone 4 built — phase, increment, envelope — exists *once* in First Signal. A chord needs it three times. The fix is the most Zone-1 idea imaginable: put the machinery in a box and stamp copies.',
+    objective: 'Design the Voice — the bundle of state that renders exactly one note — and meet the fixed voice pool.',
+    sections: [
+      {
+        h: 'Everything one note needs',
+        body: 'A **voice** is one note\'s complete render kit: which note it\'s playing, its phase bookmark, its pitch step, its own envelope, its strike gain. Zone 1 taught classes as blueprint→units; this is that lesson earning its keep. Each voice is a tiny mono synth — the full instrument is several of them plus a manager.',
+        viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }], zoom: true, caption: 'one voice card: everything Zone 4 built, boxed — note, phase, increment, envelope, gain' },
+        code: 'struct Voice\n{\n    int    note      = -1;      // which key owns me (-1 = nobody)\n    double phase     = 0.0;     // d5\'s bookmark — mine alone\n    double increment = 0.0;     // my pitch\n    float  velGain   = 1.0f;    // my strike (n2)\n    juce::ADSR adsr;            // my envelope — mine alone\n    juce::uint32 age = 0;       // when I was allocated (n8 will need this)\n};',
+        codeTitle: 'the voice card',
+        breakdown: [
+          ['note = -1', 'the ownership tag: −1 means free — n7 lives on this field'],
+          ['own phase, own increment', 'three voices = three bookmarks; shared phase would be one blurred pitch'],
+          ['own adsr', 'chords only work because each note dies on its own schedule'],
+          ['age', 'an allocation timestamp — the stealing lesson (n8) will sort by it'],
+        ],
+      },
+      {
+        h: 'The pool: fixed, pre-built, waiting',
+        body: 'A real synth doesn\'t create voices when keys arrive — Zone 2 burned “never allocate on the audio thread” into you. Instead: a **fixed pool**, built once, reused forever. Eight is a classic number (entire legendary polysynths shipped with it). A silent voice costs almost nothing to keep around; a mid-note allocation can cost you a glitch.',
+        code: 'std::array<Voice, 8> voices;   // built with the plugin, reused forever\n// no push_back. no new. not ever — not on the audio thread.',
+        codeTitle: 'the voice rack',
+        analogy: 'The pool is a backline of eight identical session players, hired for the whole show. Notes don\'t hire new musicians — they hand charts to players already seated. That\'s why the show never stops to recruit.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'Why must each voice own its OWN phase and envelope?',
+        options: [
+          { t: 'Three simultaneous notes are three different pitches at three different envelope moments — shared state would blur them into nonsense', why: '' },
+          { t: 'JUCE requires it', why: 'JUCE doesn\'t care — *music* does: a chord is several independent journeys happening at once.' },
+          { t: 'It\'s faster', why: 'Cost is similar — correctness is the reason. One shared envelope would chop every held note when any new key hit.' },
+          { t: 'Voices sound warmer with their own state', why: '“Warm” isn\'t the issue — *possible* is. Independent notes need independent machinery, full stop.' },
+        ],
+        answer: 0,
+        explain: 'A voice is one note\'s whole world. Zone 1\'s blueprint→units idea (one class, many objects) is the entire foundation of polyphony.',
+      },
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'Why a fixed std::array of 8 voices instead of a std::vector that grows per note?',
+        options: [
+          { t: 'Growing a vector allocates memory — forbidden on the audio thread (Zone 2). The pool is built once and reused', why: '' },
+          { t: 'Arrays sound better', why: 'Containers don\'t touch the audio — the issue is WHEN memory gets allocated, and the answer must be “never, during rendering.”' },
+          { t: 'Vectors can\'t hold structs', why: 'They can. The problem is push_back\'s possible reallocation landing inside processBlock\'s deadline.' },
+          { t: 'Eight is a MIDI limit', why: 'MIDI happily reports 10 fingers and more. Eight is a *design budget* — a classic CPU/richness tradeoff, not a protocol rule.' },
+        ],
+        answer: 0,
+        explain: 'Pre-allocate, reuse, never grow mid-render: Zone 2\'s real-time rule shaping Zone 5\'s architecture. The pool IS that rule made of voices.',
+      },
+      {
+        type: 'fill', concept: 'voices-poly',
+        prompt: 'Mark a voice as unowned when its note fully dies.',
+        code: 'if (!v.adsr.isActive())\n    v.note = ___;   // free — nobody owns this card',
+        accept: ['-1'],
+        placeholder: 'value',
+        hint: 'The “no owner” tag from the struct.',
+        explain: '-1 is the agreed “free” tag (no real key is negative). Allocation (n7) hunts for exactly this value. One int field is the entire ownership system.',
+      },
+    ],
+    recap: [
+      'A voice = one note\'s full render kit: note, phase, increment, envelope, gain, age.',
+      'Polyphony is Zone 1\'s blueprint→units applied to sound: one struct, N copies.',
+      'Fixed pre-built pool (std::array) — never allocate voices mid-render.',
+      'note = -1 marks a free voice; that tag drives allocation and ownership.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13 refactors Zone 4\'s single machinery into the Voice struct' },
+      { name: 'juce::SynthesiserVoice', use: 'JUCE\'s stock voice class — same idea with virtuals: startNote, stopNote, renderNextBlock' },
+    ],
+    analogyPanel: 'A voice card is one channel strip in a rack of eight: its own input (note), its own fader ride (envelope), its own tuning. The synth is the rack plus a patch engineer deciding which strip takes the next signal.',
+    beginnerMistake: 'Giving voices their own phase but SHARING one envelope “to save code.” First chord: every held note chops to the new note\'s attack. If notes can overlap, every per-note thing must live per-voice.',
+    remember: 'One voice, one note, one world. The synth is a rack of worlds plus a manager.',
+    builds: ['voice', 'class', 'envelope'],
+    leads: ['polyphony', 'voice-allocation'],
+  },
+
+  /* ------------------------------------------------------ N6 */
+  {
+    id: 'n6', kind: 'lesson', title: 'Polyphony: Two Keys, Two Voices', short: 'Rendering a chord',
+    concepts: ['voices-poly'], time: '~6 MIN', diff: 2,
+    hook: 'You press two keys. The synth now needs two independent voices — and one output. You already know both halves: n5 built the independent voices, and d11 taught you what happens when signals meet: they add. Polyphony is a for-loop around Zone 4.',
+    objective: 'Render the voice pool: loop the active voices, sum their samples, keep the gain plan honest.',
+    sections: [
+      {
+        h: 'The polyphonic render loop',
+        body: 'Per sample: start at silence, let every **active** voice add its contribution, then stage the sum. Each voice runs its own d5/d6/d9 machinery; the mix bus is d11\'s plus sign; the 1/8 trim is d11\'s worst-case guarantee for eight full voices.',
+        viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }, { note: 'E4', state: 'busy' }, { note: 'G4', state: 'rel' }, { note: '—', state: 'free' }], caption: 'three sounding voices flow to one bus — the free card costs nothing' },
+        code: 'for (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float mix = 0.0f;\n    for (auto& v : voices)\n    {\n        if (! v.adsr.isActive()) continue;      // silent card: skip, free\n        float raw = oscSample(waveform, v.phase);\n        mix += raw * v.adsr.getNextSample() * v.velGain;\n        v.phase += v.increment;                 // d5, per voice\n        if (v.phase >= juce::MathConstants<double>::twoPi)\n            v.phase -= juce::MathConstants<double>::twoPi;\n    }\n    float s = mix * 0.125f * g;                 // 8 voices → ×1/8 guarantee\n    // ... clamp and write to channels as in d15\n}',
+        codeTitle: 'First Signal v5 — the chord engine',
+        breakdown: [
+          ['mix = 0.0f each sample', 'the bus starts at silence every tick — sums don\'t carry over'],
+          ['isActive() → continue', 'released-and-finished voices cost one if — that\'s why idle cards are cheap'],
+          ['mix +=', 'd11\'s entire lesson as an operator: a chord is addition'],
+          ['per-voice advance & wrap', 'every voice walks its own bookmark — d5 machinery ×8'],
+          ['× 0.125f', '8 full-scale voices worst-case = 8.0 → trimmed to 1.0; the d11 gain plan, scaled up'],
+        ],
+      },
+      {
+        h: 'Mono was a special case all along',
+        body: 'Notice what polyphony did to the architecture: the *render* barely changed — it grew a loop. The hard new work is all in *management*: which voice takes which note (n7), what happens when the pool runs dry (n8), when is a voice truly done (n9). Sound generation was Zone 4; Zone 5 is government.',
+        warn: 'The ×1/8 trim is the guaranteed-safe floor, and it parks single notes at −18 dBFS — 6 dB below the mono synth\'s −12. Real synths run hotter (÷√N, or a fixed voice level plus a limiter) because eight worst-case peaks almost never align — d11\'s statistics argument, now with stakes. First Signal ships the guarantee first; taste can come later.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'voices-poly',
+        prompt: 'How do eight voices become one output signal?',
+        options: [
+          { t: 'Per sample: each active voice\'s output is added into a mix, then the sum is gain-staged', why: '' },
+          { t: 'Each voice writes its own audio channel', why: 'Channels are speakers (d12), not notes — 8-voice polyphony on a stereo bus means summing, then writing the same mix to both lanes.' },
+          { t: 'Voices take turns, one per block', why: 'Turn-taking would arpeggiate every chord — all active voices contribute to every single sample.' },
+          { t: 'The loudest voice wins', why: 'That\'s how some 80s video game chips worked — synths add, exactly like air (d11).' },
+        ],
+        answer: 0,
+        explain: 'Polyphony = per-sample summing of independent voices. The bus is d11\'s plus sign; the trim is d11\'s gain plan with N = 8.',
+      },
+      {
+        type: 'bugspot', concept: 'voices-poly',
+        prompt: 'Chords play wrong pitches that change with what else is held. Tap the shared-state bug.',
+        code: [
+          'float renderVoice(Voice& v)',
+          '{',
+          '    float raw = oscSample(waveform, phase);',
+          '    phase += v.increment;',
+          '    return raw * v.adsr.getNextSample();',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'It reads the PROCESSOR\'s old global phase, not v.phase — every voice advances one shared bookmark by its own increment. Each voice must read and advance its OWN phase: oscSample(waveform, v.phase), then v.phase += v.increment.',
+        fix: 'float raw = oscSample(waveform, v.phase);  // and advance v.phase',
+      },
+      {
+        type: 'predict', concept: 'voices-poly',
+        prompt: 'With the ×0.125f trim, all 8 voices peak at the same instant at full scale. The bus value just before the trim, and just after?',
+        code: 'float s = mix * 0.125f;   // worst case?',
+        options: [
+          { t: '8.0 before, 1.0 after — the guarantee holds exactly at the ceiling', why: '' },
+          { t: '1.0 before, 0.125 after', why: 'Eight full-scale voices SUM to 8.0 before the trim — that\'s the whole reason it exists.' },
+          { t: '8.0 before, 8.0 after', why: 'The multiply happens: 8.0 × 0.125 = 1.0. Skipping it is how the d10 flat-tops arrive.' },
+          { t: 'It depends on the waveform', why: 'Shape changes WHEN peaks align, not the worst case: N voices at ±1 can always reach N.' },
+        ],
+        answer: 0,
+        explain: '8 × 1.0 × 0.125 = 1.0: worst case lands exactly at full scale. d11\'s 1/N rule, deployed at synth scale.',
+      },
+    ],
+    recap: [
+      'Polyphonic render: per sample, sum every active voice, then gain-stage the sum.',
+      'Inactive voices cost one if — an idle pool is nearly free.',
+      'Each voice advances its OWN phase — shared state is the classic poly bug.',
+      '×1/N is the guaranteed trim; real synths run hotter on d11\'s statistics.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'v5: the chord engine — p13 makes you build it' },
+      { name: 'juce::Synthesiser', use: 'its renderNextBlock does exactly this loop over SynthesiserVoice objects' },
+    ],
+    analogyPanel: 'Eight players read eight charts into one mixer. The mix bus doesn\'t know or care how many are playing — it adds whatever arrives, and the engineer (your gain plan) keeps the master out of the red.',
+    beginnerMistake: 'Testing polyphony with single notes and shipping. The bugs live in COMBINATIONS: shared state, sum overloads, voices that never free. Test with fists on the keyboard, not fingers.',
+    remember: 'The render grew a loop; the hard part is management. Sound was Zone 4 — Zone 5 is government.',
+    builds: ['polyphony', 'mixing', 'voice'],
+    leads: ['voice-allocation', 'voice-stealing'],
+  },
+
+  /* ------------------------------------------------------ N7 */
+  {
+    id: 'n7', kind: 'lesson', title: 'Allocation: Who Plays What', short: 'Ownership & the free hunt',
+    concepts: ['allocation'], time: '~6 MIN', diff: 2,
+    hook: 'You press three keys; three voices light up. You release the MIDDLE key — and exactly the right note stops. Nobody\'s amazed at a piano for this. In code, that precision has a name: ownership. Every note-off is a search for the one voice that owns that key.',
+    objective: 'Implement note-on allocation (find a free voice) and note-off ownership lookup (find MY voice).',
+    sections: [
+      {
+        h: 'Note-on: hunt for a free card',
+        body: 'When a note-on arrives, scan the pool for an unowned voice, hand it the note, and stamp its paperwork. The `note` field does double duty: −1 means free; otherwise it IS the ownership record.',
+        viz: { t: 'voicecards', cards: [{ note: 'C4', state: 'busy' }, { note: 'E4', state: 'busy' }, { note: '—', state: 'alloc' }, { note: '—', state: 'free' }], caption: 'G4 arrives: scan left to right, first free card takes the gig' },
+        code: 'void startNote(int note, float vel)\n{\n    for (auto& v : voices)\n    {\n        if (v.note == -1)                    // free?\n        {\n            v.note      = note;              // ownership stamp\n            v.increment = twoPi * midiToHz(note) / getSampleRate();\n            v.velGain   = vel;\n            v.age       = ++ageCounter;      // n8 will thank us\n            v.adsr.noteOn();\n            return;                          // one note, one voice\n        }\n    }\n    // pool full → n8: stealing\n}',
+        codeTitle: 'allocation with paperwork',
+        breakdown: [
+          ['v.note == -1', 'the free test — allocation is a linear hunt for the tag'],
+          ['ownership stamp', 'from here on, this card answers for that key'],
+          ['age = ++ageCounter', 'a birth certificate: stealing (n8) will pick victims by it'],
+          ['return', 'ONE voice per note-on — forget this and one press lights the whole pool'],
+        ],
+      },
+      {
+        h: 'Note-off: find MY voice',
+        body: 'A note-off doesn\'t say “stop a voice” — it says “stop **note 64**.” The synth must find the voice whose ownership stamp matches, and release *that one*. Get the search wrong and you meet the two classic bugs: the **stuck note** (off never finds its voice — it rings forever) and the **wrong-victim** (off silences someone else\'s note).',
+        code: 'void stopNote(int note)\n{\n    for (auto& v : voices)\n        if (v.note == note && v.adsr.isActive())\n            v.adsr.noteOff();      // release — n9: not dead yet!\n}',
+        codeTitle: 'the ownership lookup',
+        mistake: { code: 'void stopNote(int note)\n{\n    voices[0].adsr.noteOff();   // ✗ always releases card 0\n}', text: 'Releasing a fixed voice ignores ownership entirely: whichever note happens to sit on card 0 dies — usually the OLDEST held note — while the key you actually lifted rings on. Stuck note + wrong victim, one line.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'match', concept: 'allocation',
+        prompt: 'Keys arrive in order: C4, E4, G4 — then C4\'s note-off. Match each event to what the pool does (voices scanned left to right, all start free).',
+        left: ['C4 note-on', 'E4 note-on', 'G4 note-on', 'C4 note-off'],
+        right: ['voice 1 takes it (first free)', 'voice 2 takes it (next free)', 'voice 3 takes it (next free)', 'voice 1 releases — its stamp matches'],
+        explain: 'Allocation fills the first free card; note-off hunts by ownership stamp, not by position or order. The middle chord tone releasing correctly is this lookup working.',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'Press one key: EVERY voice fires the same note, ff. Tap the missing discipline.',
+        code: [
+          'void startNote(int note, float vel)',
+          '{',
+          '    for (auto& v : voices)',
+          '        if (v.note == -1)',
+          '        {',
+          '            claimVoice(v, note, vel);',
+          '        }',
+          '}',
+        ],
+        buggy: 5,
+        explain: 'The loop keeps running after claiming — with a fresh pool, ALL free voices claim the same note: one press, eight unison copies, +18 dB of surprise. After claiming, stop: return (or break). One note-on, one voice.',
+        fix: 'claimVoice(v, note, vel); return;',
+      },
+      {
+        type: 'predict', concept: 'allocation',
+        prompt: 'C4 is held on voice 2. A SECOND C4 note-on arrives (same key retriggered fast — the off hasn\'t come yet). With the code above, what happens?',
+        code: '// pool: v1 free, v2 owns C4 (held), v3 free ...',
+        options: [
+          { t: 'Voice 1 also starts C4 — two voices now own the same note number', why: '' },
+          { t: 'Voice 2 restarts its envelope', why: 'The hunt looks for note == -1, so it never even glances at v2 — it claims the first FREE card.' },
+          { t: 'The message is rejected', why: 'Nothing rejects it — allocation happily hands the same note to a second card. The next note-off gets interesting…' },
+          { t: 'The synth crashes', why: 'No crash — just two owners with the same stamp, and stopNote() releasing both at once (or the wrong one, in fancier designs).' },
+        ],
+        answer: 0,
+        explain: 'Duplicate ownership is legal and common (fast repeats, sustain pedal overlaps). Our stopNote releases ALL matching active voices — a defensible call. Pro synths choose policies here; knowing the case exists is the lesson.',
+      },
+    ],
+    recap: [
+      'Note-on: hunt for note == -1, stamp ownership, start the envelope, RETURN.',
+      'Note-off: hunt by stamp (v.note == note), release the match.',
+      'The note field is the whole ownership system: −1 free, otherwise owner.',
+      'Classic failures: stuck note (off finds nobody), wrong victim (off ignores stamps).',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13\'s centerpiece: allocation + ownership in your own pool' },
+      { name: 'juce::Synthesiser', use: 'findFreeVoice() + per-voice getCurrentlyPlayingNote() — same hunt, stock form' },
+    ],
+    analogyPanel: 'Allocation is a stage manager with a clipboard: gig comes in, first free player gets the chart, and their name goes next to the song. When the song ends, the manager checks the clipboard — not the seating order — to know who stops playing.',
+    beginnerMistake: 'Testing note-off by releasing keys in reverse order of pressing (last pressed, first released) — which accidentally works even with broken ownership. Release the MIDDLE note of a chord: that\'s the test that catches clipboard-free code.',
+    remember: 'Every note-off is a search. The note field is the clipboard; −1 means “for hire.”',
+    builds: ['voice-allocation', 'voice', 'note-event'],
+    leads: ['voice-stealing', 'release'],
+  },
+
+  /* ------------------------------------------------------ N8 */
+  {
+    id: 'n8', kind: 'lesson', title: 'Voice Stealing: The 9th Note', short: 'When the pool runs dry',
+    concepts: ['allocation'], time: '~6 MIN', diff: 2,
+    hook: 'Eight voices, and you play a sustained ninth note — or just hold the damper pedal through two bars of arpeggio. The pool is full and a new gig walks in. A real synth doesn\'t drop the new note (the player JUST played it). It quietly retires someone. Choosing whom is a musical judgment call encoded in C++.',
+    objective: 'Implement voice stealing — and understand the priority policies that decide who dies.',
+    sections: [
+      {
+        h: 'Somebody has to go',
+        body: 'Dropping the newest note is almost always wrong: it\'s the one the player just asked for, so its absence is *instantly* heard. Stealing works because the victim, done well, is the note ears have already filed away. The classic priority ladder: steal a voice already in **release** first (it\'s dying anyway) — otherwise steal the **oldest** sounding voice.',
+        viz: { t: 'voicecards', cards: [{ note: 'C2', state: 'steal' }, { note: 'E3', state: 'busy' }, { note: 'G3', state: 'rel' }, { note: 'B3', state: 'busy' }], caption: '9th note arrives: the releasing G3 would go first — here, with no releases, the oldest (C2) pays' },
+        code: 'Voice* findVictim()\n{\n    Voice* oldest = nullptr;\n    for (auto& v : voices)\n    {\n        if (! v.adsr.isActive()) return &v;        // free — not a steal at all\n        if (isReleasing(v))       return &v;        // dying anyway: perfect victim\n        if (oldest == nullptr || v.age < oldest->age)\n            oldest = &v;                            // track the elder\n    }\n    return oldest;                                  // full pool: the oldest pays\n}',
+        codeTitle: 'the priority ladder',
+        breakdown: [
+          ['!isActive() → free', 'the hunt naturally finds true frees first — stealing is the fallback, not the norm'],
+          ['releasing first', 'a note in release is already leaving — nobody mourns it'],
+          ['v.age < oldest->age', 'n5\'s birth certificate cashes in: smallest age = longest-sounding'],
+          ['return oldest', 'the honest worst case: a note the ear has had the longest to absorb'],
+        ],
+      },
+      {
+        h: 'Stealing without the click',
+        body: 'The victim is mid-waveform at some level; slamming a new note onto it makes a d13-style cliff — a click on every steal. Pro synths retire the victim with a *very fast fade* (a few ms) before restarting, or crossfade into the new note. First Signal starts with the simplest honest version — call noteOff() with a short release and start the new note on the next free scan — and the boss will test whether you know *why* the fade exists.',
+        warn: 'Policies are a personality, not a law: some synths protect the LOWEST note (the bass anchor) rather than the newest, and many protect the most recently played. What\'s universal is having a deliberate policy — the bug is not having one.',
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'allocation',
+        prompt: 'Pool of 4. Sounding: C2 (age 1, held), E3 (age 2, held), G3 (age 3, RELEASING), B3 (age 4, held). A 5th note arrives. Who\'s stolen?',
+        code: '// ladder: free → releasing → oldest',
+        options: [
+          { t: 'G3 — it\'s already in release, the perfect victim', why: '' },
+          { t: 'C2 — it\'s the oldest', why: 'Oldest is the FALLBACK. The ladder checks for releasing voices first, and G3 is already on its way out.' },
+          { t: 'B3 — newest goes first', why: 'Backwards: the newest is the note the player just asked for — stealing it is the most audible choice possible.' },
+          { t: 'The new note is dropped', why: 'Dropping the incoming note is the one policy everyone notices immediately — the player JUST played it.' },
+        ],
+        answer: 0,
+        explain: 'Releasing voices are gifts to the allocator: already dying, already fading. Only a pool with zero releases makes the oldest pay.',
+      },
+      {
+        type: 'bugspot', concept: 'allocation',
+        prompt: 'This “steal the oldest” hunt reliably steals the NEWEST voice. Tap the backwards line.',
+        code: [
+          'Voice* victim = &voices[0];',
+          'for (auto& v : voices)',
+          '    if (v.age > victim->age)',
+          '        victim = &v;',
+          'return victim;',
+        ],
+        buggy: 2,
+        explain: 'age counts UP as notes start — the biggest age is the YOUNGEST voice. The comparison must find the smallest: v.age < victim->age. One flipped comparison turns polite stealing into eating the note the player just played.',
+        fix: 'if (v.age < victim->age) victim = &v;',
+      },
+      {
+        type: 'mcq', concept: 'allocation',
+        prompt: 'Why do pro synths fade a stolen voice for a few ms instead of instantly restarting it?',
+        options: [
+          { t: 'An instant restart is a vertical step mid-waveform — a corner, i.e. an audible click on every steal (d13)', why: '' },
+          { t: 'To give the CPU time', why: 'A steal is a few assignments — nanoseconds. The fade is for EARS, not processors.' },
+          { t: 'MIDI requires it', why: 'MIDI ended at the inbox — stealing and its manners are entirely the synth\'s internal business.' },
+          { t: 'It makes stealing reversible', why: 'The stolen note is gone either way — the fade just makes its exit polite instead of clicky.' },
+        ],
+        answer: 0,
+        explain: 'd13\'s law, third appearance: jumps are corners, corners click. A steal is a forced jump — the fade rounds it off.',
+      },
+    ],
+    recap: [
+      'Stealing priority: free → releasing → oldest. Never drop the incoming note.',
+      'age (allocation stamp) finds the elder: smallest age = longest-sounding.',
+      'Steals click without a fast fade — d13\'s corner rule at allocation scale.',
+      'Policies vary (protect bass, protect newest) — having ONE deliberately is the point.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'p13 installs the ladder; the boss breaks it for you to fix' },
+      { name: 'juce::Synthesiser', use: 'setNoteStealingEnabled(true) — its ladder also prefers dying voices' },
+    ],
+    analogyPanel: 'A maître d\' with a full room and a VIP at the door: he never turns away the arrival. He looks for a table already paying the check (releasing), then the party that\'s lingered longest (oldest) — and he moves them *quietly*. The fade is the quiet.',
+    beginnerMistake: 'Assuming 8 voices means “I\'ll never notice stealing.” One held damper pedal and every arpeggio floods the pool in two bars. Stealing isn\'t an edge case — on real material it\'s constant, which is why its manners matter.',
+    remember: 'Free, then releasing, then oldest — and always fade the victim. The player must never catch the theft.',
+    builds: ['voice-stealing', 'voice-allocation', 'release'],
+    leads: ['sustain-pedal', 'panic'],
+  },
+];
