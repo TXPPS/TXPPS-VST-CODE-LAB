@@ -653,7 +653,7 @@ const Views = (() => {
     if (node.kind === 'lesson') return 'Lesson · ' + node.short;
     if (node.kind === 'project') return 'Mini-project mission';
     if (node.kind === 'boss') return 'Boss challenge';
-    const map = { completion: 'Code completion', bugfix: 'Bug hunt', ordering: 'Code ordering', compiler: 'Compiler challenge' };
+    const map = { completion: 'Code completion', bugfix: 'Bug hunt', ordering: 'Code ordering', compiler: 'Compiler challenge', reading: 'Reading the signal path' };
     return 'Challenge · ' + (map[node.ctype] || 'Challenge');
   }
 
@@ -661,7 +661,7 @@ const Views = (() => {
     if (node.kind === 'lesson') return '§';
     if (node.kind === 'project') return '◆';
     if (node.kind === 'boss') return '☠';
-    const map = { completion: '{}', bugfix: '✗', ordering: '≡', compiler: '⚠' };
+    const map = { completion: '{}', bugfix: '✗', ordering: '≡', compiler: '⚠', reading: '⇆' };
     return map[node.ctype] || '?';
   }
 
@@ -989,7 +989,7 @@ const Views = (() => {
         el('div', { class: 'row wrap mt-s' },
           el('span', { class: 'chip' }, node.stages.length + ' stages'),
           el('span', { class: 'chip' }, '1 retry per stage'),
-          el('span', { class: 'chip' }, 'clear 4+ to win'),
+          el('span', { class: 'chip' }, 'clear ' + (node.passNeed || 4) + '+ to win'),
           el('span', { class: 'chip' }, '+' + XP_RULES.boss + ' XP max')),
         el('button', { class: 'btn danger block', style: 'margin-top:6px', onclick: start }, 'Enter the session')));
     main.appendChild(intro);
@@ -1005,7 +1005,7 @@ const Views = (() => {
         baseXp: alreadyDone ? 0 : XP_RULES.boss,
         nodeId: node.id,
         onFinish: (result) => {
-          const passed = result.correct >= 4;
+          const passed = result.correct >= (node.passNeed || 4);
           if (passed) {
             if (result.earned > 0) App.awardXp(result.earned);
             Store.completeNode(node.id, result.firstTry, result.total);
@@ -1016,7 +1016,7 @@ const Views = (() => {
               el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
                 el('div', { class: 'eyebrow red', style: 'justify-content:center' }, 'SESSION FAILED'),
                 el('div', { class: 'h-display' }, result.correct + ' / ' + result.total + ' stages cleared'),
-                el('p', { class: 'small dim' }, 'You need 4. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
+                el('p', { class: 'small dim' }, 'You need ' + (node.passNeed || 4) + '. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
               el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
               el('button', { class: 'btn block', onclick: () => App.go('boss', { id: node.id }) }, 'Try again'),
               el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
@@ -1238,7 +1238,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS].map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),

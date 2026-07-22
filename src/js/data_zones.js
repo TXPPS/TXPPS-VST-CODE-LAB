@@ -27,10 +27,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z3', num: 3, title: 'JUCE PLUGIN FOUNDATION', status: 'planned',
-    tagline: 'AudioProcessor to a loadable VST3',
-    desc: 'The JUCE plugin lifecycle, APVTS parameters, state, MIDI and audio buffers, buses, and CMake builds.',
-    topics: ['AudioProcessor', 'AudioProcessorEditor', 'prepareToPlay / processBlock / releaseResources', 'APVTS & parameter layouts', 'ValueTree state', 'attachments', 'MIDI & audio buffers', 'buses & formats', 'standalone + VST3 builds', 'CMake structure'],
+    id: 'z3', num: 3, title: 'JUCE PLUGIN FOUNDATION', status: 'live',
+    tagline: 'From AudioProcessor to a loadable VST3',
+    desc: 'The real plugin architecture: lifecycle, buffers, APVTS parameters, editors, attachments, state, and the CMake build — culminating in TXPPS First Signal.',
+    nodeOrder: [
+      'j1', 'j2', 'j3', 'j4', 'jr1', 'j5', 'jo1', 'j6', 'j7', 'jb2',
+      'j8', 'jc2', 'jb1', 'p6', 'j9', 'j10', 'j11', 'jc3', 'jr2',
+      'j12', 'jc1', 'j13', 'je2', 'j14', 'jc4', 'jb3', 'jr3', 'p7',
+      'j15', 'jb4', 'j16', 'je1', 'j17', 'p8', 'boss3',
+    ],
   },
   {
     id: 'z4', num: 4, title: 'DSP WORKSHOP', status: 'planned',
@@ -81,6 +86,8 @@ const ACHIEVEMENTS = [
   { id: 'zone1_clear', name: 'ZONE 1 CLEARED', desc: 'Defeat the Zone 1 boss.' },
   { id: 'zone2_clear', name: 'ZONE 2 CLEARED', desc: 'Exorcise the Haunted Synth.' },
   { id: 'modern_hands', name: 'MODERN HANDS', desc: 'Complete all three Zone 2 missions.' },
+  { id: 'zone3_clear', name: 'ZONE 3 CLEARED', desc: 'Make the Silent Plugin sing.' },
+  { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -100,4 +107,6 @@ const DAILY_POOL = [
   'l11.q2', 'l12.q1', 'l12.q2', 'c1.q1', 'b1.q1', 'e1.q1', 'o1.q1', 'b4.q1',
   'm1.q1', 'm3.q1', 'm4.q2', 'm6.q1', 'm8.q3', 'm9.q2', 'm13.q1', 'm14.q3',
   'mc1.q1', 'mb4.q1', 'me1.q1', 'mb2.q1',
+  'j1.q1', 'j4.q1', 'j5.q2', 'j7.q2', 'j8.q1', 'j10.q1', 'j11.q2', 'j14.q1',
+  'jc2.q1', 'jb2.q1', 'je2.q1', 'jo1.q1',
 ];

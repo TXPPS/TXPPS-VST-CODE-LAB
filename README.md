@@ -6,9 +6,9 @@ syntax. Learning is structured as a progression game: short lessons, code challe
 bug hunts, simulated compiler errors, mini-project missions, and zone boss fights, with
 XP, levels, streaks, mastery stars and a practice queue.
 
-**Zone 1 — C++ Signal Path** is fully playable (12 lessons, 16 standalone challenges,
-2 mini-projects, 1 boss — ~70 interactive questions). Zones 2–7 are mapped in the
-curriculum and ship in future updates.
+**Zones 1–3 are fully playable**: Zone 1 (C++ Signal Path), Zone 2 (Modern C++
+for Audio) and Zone 3 (JUCE Plugin Foundation — building the TXPPS First Signal
+gain plugin). Zones 4–7 are mapped in the curriculum and ship in future updates.
 
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
@@ -63,6 +63,12 @@ adding data objects and a `nodeOrder` entry — no view code.
 
 The data shapes are deliberately framework-neutral so the app can be migrated to a
 Vite + TypeScript + React PWA without rewriting content.
+
+## Backlog
+
+- Zone 2/3 challenge and boss nodes are not yet shown in the profile mastery
+  table (lessons are).
+- Daily-challenge selection could weight toward the learner's weak concepts.
 
 ## Build & test
 

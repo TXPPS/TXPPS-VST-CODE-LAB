@@ -778,10 +778,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z3', num: 3, title: 'JUCE PLUGIN FOUNDATION', status: 'planned',
-    tagline: 'AudioProcessor to a loadable VST3',
-    desc: 'The JUCE plugin lifecycle, APVTS parameters, state, MIDI and audio buffers, buses, and CMake builds.',
-    topics: ['AudioProcessor', 'AudioProcessorEditor', 'prepareToPlay / processBlock / releaseResources', 'APVTS & parameter layouts', 'ValueTree state', 'attachments', 'MIDI & audio buffers', 'buses & formats', 'standalone + VST3 builds', 'CMake structure'],
+    id: 'z3', num: 3, title: 'JUCE PLUGIN FOUNDATION', status: 'live',
+    tagline: 'From AudioProcessor to a loadable VST3',
+    desc: 'The real plugin architecture: lifecycle, buffers, APVTS parameters, editors, attachments, state, and the CMake build — culminating in TXPPS First Signal.',
+    nodeOrder: [
+      'j1', 'j2', 'j3', 'j4', 'jr1', 'j5', 'jo1', 'j6', 'j7', 'jb2',
+      'j8', 'jc2', 'jb1', 'p6', 'j9', 'j10', 'j11', 'jc3', 'jr2',
+      'j12', 'jc1', 'j13', 'je2', 'j14', 'jc4', 'jb3', 'jr3', 'p7',
+      'j15', 'jb4', 'j16', 'je1', 'j17', 'p8', 'boss3',
+    ],
   },
   {
     id: 'z4', num: 4, title: 'DSP WORKSHOP', status: 'planned',
@@ -832,6 +837,8 @@ const ACHIEVEMENTS = [
   { id: 'zone1_clear', name: 'ZONE 1 CLEARED', desc: 'Defeat the Zone 1 boss.' },
   { id: 'zone2_clear', name: 'ZONE 2 CLEARED', desc: 'Exorcise the Haunted Synth.' },
   { id: 'modern_hands', name: 'MODERN HANDS', desc: 'Complete all three Zone 2 missions.' },
+  { id: 'zone3_clear', name: 'ZONE 3 CLEARED', desc: 'Make the Silent Plugin sing.' },
+  { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -851,6 +858,8 @@ const DAILY_POOL = [
   'l11.q2', 'l12.q1', 'l12.q2', 'c1.q1', 'b1.q1', 'e1.q1', 'o1.q1', 'b4.q1',
   'm1.q1', 'm3.q1', 'm4.q2', 'm6.q1', 'm8.q3', 'm9.q2', 'm13.q1', 'm14.q3',
   'mc1.q1', 'mb4.q1', 'me1.q1', 'mb2.q1',
+  'j1.q1', 'j4.q1', 'j5.q2', 'j7.q2', 'j8.q1', 'j10.q1', 'j11.q2', 'j14.q1',
+  'jc2.q1', 'jb2.q1', 'je2.q1', 'jo1.q1',
 ];
 
 ;
@@ -4297,6 +4306,1979 @@ const ZONE2_CHALLENGES = [
 ];
 
 ;
+/* ===== src/js/data_zone3_lessons.js ===== */
+/* ============================================================
+   ZONE 3 — JUCE PLUGIN FOUNDATION: lessons j1–j9.
+   Reference project throughout: TXPPS First Signal (gain plugin).
+   Same lesson shape as Zone 2 (time/diff/builds/leads included).
+   ============================================================ */
+
+const ZONE3_LESSONS = [
+
+  /* ------------------------------------------------------ J1 */
+  {
+    id: 'j1', kind: 'lesson', title: 'What JUCE Actually Is', short: 'The framework, honestly',
+    concepts: ['juce-basics'], time: '~5 MIN', diff: 1,
+    hook: 'Two zones of C++ later, you could write a synth engine — but a DAW still couldn\'t load it. The missing piece isn\'t more C++. It\'s the framework that speaks to hosts for you: JUCE.',
+    objective: 'Know exactly what JUCE (Jules\' Utility Class Extensions) provides, what it doesn\'t, and how your code fits into it.',
+    sections: [
+      {
+        h: 'A framework, not a language',
+        body: 'JUCE is a **C++ framework**: a huge library of pre-built classes plus a build recipe. Everything you learned still applies — JUCE just supplies the pieces you shouldn\'t write yourself: the plugin-format wrappers (VST3, AU), audio device handling, UI components, and parameter plumbing.',
+        viz: { t: 'chain', nodes: ['your C++', '+ JUCE classes', '= loadable plugin'], accent: 1 },
+      },
+      {
+        h: 'What it does — and doesn\'t — do',
+        body: 'JUCE gives you: `juce::AudioProcessor` to inherit, buffers, sliders, and one build that outputs every format. It does **not** write your DSP, design your sound, or make bad real-time code safe. You write two classes and one CMake file; JUCE wraps them into something a DAW can scan and load.',
+        warn: 'Everything in JUCE lives in the `juce::` namespace — Zone 2\'s namespace lesson, now load-bearing on every line.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'juce-basics',
+        prompt: 'What is JUCE?',
+        options: [
+          { t: 'A C++ framework: pre-built classes plus a build system for audio apps and plugins', why: '' },
+          { t: 'A new programming language', why: 'It\'s plain modern C++ — every Zone 1 and 2 skill applies directly.' },
+          { t: 'A DAW', why: 'JUCE builds the plugins that DAWs load — it isn\'t a host itself.' },
+          { t: 'A compiler', why: 'Your normal compiler builds JUCE code; JUCE supplies classes and build recipes, not compilation.' },
+        ],
+        answer: 0,
+        explain: 'JUCE = library + build tooling. You supply the processor, editor and CMake description; it supplies everything between your code and the DAW.',
+      },
+      {
+        type: 'mcq', concept: 'juce-basics',
+        prompt: 'Which of these does JUCE do for you automatically?',
+        options: [
+          { t: 'Wrap your processor so hosts can load it as VST3, AU or standalone', why: '' },
+          { t: 'Write your DSP', why: 'The sound is entirely yours — JUCE hands you buffers, not algorithms.' },
+          { t: 'Make allocation in processBlock safe', why: 'The real-time rules from Zone 2 are still your responsibility — no framework can suspend physics.' },
+          { t: 'Design your interface', why: 'It provides Slider and Label components; what you build with them is up to you.' },
+        ],
+        answer: 0,
+        explain: 'The format wrappers are the superpower: one AudioProcessor, every format. The DSP, the design, and the discipline remain yours.',
+      },
+      {
+        type: 'fill', concept: 'juce-basics',
+        prompt: 'JUCE classes live in a namespace. Complete the type name.',
+        code: '___::AudioProcessor',
+        accept: ['juce'],
+        placeholder: 'namespace',
+        hint: 'Four letters — the framework\'s own group prefix.',
+        explain: '`juce::` before everything: AudioProcessor, Slider, AudioBuffer. Zone 2\'s namespace lesson pays off on every single line of Zone 3.',
+      },
+    ],
+    recap: [
+      'JUCE = C++ framework: classes + build recipe, not a language.',
+      'It wraps your code into VST3/AU/standalone.',
+      'DSP, design and real-time discipline stay yours.',
+      'Everything is juce::-prefixed.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'the gain plugin we build this zone is pure JUCE + your C++' },
+      { name: 'Commercial plugins', use: 'a huge share of the plugins you own are built on it' },
+    ],
+    analogyPanel: 'JUCE is the pro studio you move into: patchbays wired, monitors aligned, formats handled. You still have to make the record.',
+    beginnerMistake: 'Copy-pasting JUCE examples as incantations. Every line is ordinary C++ you can now read — classes, namespaces, unique_ptr, atomics. Read it; don\'t chant it.',
+    remember: 'JUCE is the bridge between your C++ and every DAW — you still write both ends.',
+    builds: ['juce', 'namespace', 'class'],
+    leads: ['audioprocessor', 'cmake'],
+  },
+
+  /* ------------------------------------------------------ J2 */
+  {
+    id: 'j2', kind: 'lesson', title: 'Anatomy of a Plugin Project', short: 'The five files',
+    concepts: ['juce-basics'], time: '~6 MIN', diff: 1,
+    hook: 'Open any JUCE plugin repo — including the one we\'re about to build — and the same five files greet you. Learn this map once and no plugin codebase will ever look foreign again.',
+    objective: 'Know each core file of TXPPS First Signal and exactly what belongs in it.',
+    sections: [
+      {
+        h: 'The file map',
+        body: 'Four source files and one build recipe. **PluginProcessor.h/.cpp** — the audio engine (Zone 1\'s panel/circuit split). **PluginEditor.h/.cpp** — the interface. **CMakeLists.txt** — the build recipe that turns them into a plugin. The `build/` folder is *generated* — machine output you never edit and never commit.',
+        viz: { t: 'filemap' },
+      },
+      {
+        h: 'Who includes whom',
+        body: 'The editor includes the processor\'s header (it displays the engine\'s state) — **never the other way around**. The processor must compile, run, and make sound with no editor at all. That one-way street is the architecture rule this whole zone enforces.',
+        code: '// PluginEditor.h\n#pragma once\n#include "PluginProcessor.h"   // editor sees engine ✓\n\n// PluginProcessor.h NEVER includes PluginEditor.h ✗',
+        codeTitle: 'the one-way street',
+      },
+    ],
+    checks: [
+      {
+        type: 'match', concept: 'juce-basics',
+        prompt: 'Match each file to its responsibility.',
+        left: ['PluginProcessor.cpp', 'PluginEditor.cpp', 'CMakeLists.txt', 'build/'],
+        right: ['the audio engine\'s implementation', 'the interface\'s implementation', 'the build recipe', 'generated output — never edited'],
+        explain: 'Engine, panel, recipe, output. Every JUCE project you\'ll ever read is a variation of this map.',
+      },
+      {
+        type: 'mcq', concept: 'juce-basics',
+        prompt: 'Which include direction is correct?',
+        options: [
+          { t: 'PluginEditor.h includes PluginProcessor.h', why: '' },
+          { t: 'PluginProcessor.h includes PluginEditor.h', why: 'That couples the engine to its panel — the engine must run headless (no window, no editor) in every host.' },
+          { t: 'Both include each other', why: 'Circular includes fail to build — and the design is wrong in one direction anyway.' },
+          { t: 'Neither — they communicate by file', why: 'They communicate by direct C++ references (editor holds a reference to the processor), set up at editor creation.' },
+        ],
+        answer: 0,
+        explain: 'The editor is a temporary window onto a permanent engine — so the window knows the engine, never the reverse. Hosts run processors with no editor open constantly.',
+      },
+      {
+        type: 'fill', concept: 'juce-basics',
+        prompt: 'Give the editor sight of the engine.',
+        code: '// PluginEditor.h\n#pragma once\n#include "___"',
+        accept: ['PluginProcessor.h'],
+        placeholder: 'header',
+        hint: 'The engine\'s panel file, in quotes.',
+        explain: 'The editor includes the processor\'s header. Zone 1\'s quotes-for-your-own-headers rule, in its natural habitat.',
+      },
+    ],
+    recap: [
+      'Five files: Processor .h/.cpp, Editor .h/.cpp, CMakeLists.txt.',
+      'build/ is generated — never edit, never commit.',
+      'Editor includes processor; never the reverse.',
+      'The engine must work with no editor at all.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'exactly these five files — nothing more' },
+      { name: 'Every JUCE repo', use: 'the same map, sometimes with dsp/ and ui/ folders added' },
+    ],
+    analogyPanel: 'The processor is the rack unit; the editor is a remote control for it. You can unplug the remote any time — the rack keeps playing.',
+    beginnerMistake: 'Editing or committing files inside build/. It\'s machine output — regenerating erases your changes. Source lives in Source/; the recipe lives in CMakeLists.txt.',
+    remember: 'Engine, panel, recipe — and the editor looks at the engine, never the reverse.',
+    builds: ['header-file', 'source-file', 'cmake'],
+    leads: ['audioprocessor', 'audioprocessoreditor'],
+  },
+
+  /* ------------------------------------------------------ J3 */
+  {
+    id: 'j3', kind: 'lesson', title: 'Plugin Formats, Honestly', short: 'VST3, AU, AAX, standalone',
+    concepts: ['formats'], time: '~5 MIN', diff: 1,
+    hook: 'One codebase, many doorways: the same First Signal source can enter Ableton as a VST3, Logic as an AU, and your desktop as its own app. But not every doorway exists on every platform — and pretending otherwise ships broken promises.',
+    objective: 'Know which formats exist, where each one works, and which ones First Signal will target.',
+    sections: [
+      {
+        h: 'The doorways',
+        body: '**VST3** — Steinberg\'s format: the standard on Windows, widely supported everywhere except Apple\'s own DAWs. **AU** (Audio Units) — Apple\'s format: what Logic and GarageBand load; **macOS only**. **AUv3** — the sandboxed, App Store generation (iOS/iPadOS and mac). **AAX** — Pro Tools only, requiring Avid\'s SDK and signing. **Standalone** — your plugin as its own app, no DAW needed: the fastest way to test.',
+      },
+      {
+        h: 'What First Signal targets',
+        body: 'One line in CMake decides: `FORMATS VST3 Standalone` (plus `AU` when building on a Mac — CMake simply skips formats a platform can\'t build). JUCE compiles your one AudioProcessor into each wrapper. AAX stays out of scope: its SDK and signing process are a shipping-stage concern, not a first-plugin one.',
+        code: 'juce_add_plugin(FirstSignal\n    FORMATS VST3 Standalone   # add AU on macOS\n    ...)',
+        codeTitle: 'formats, chosen in one line',
+      },
+    ],
+    checks: [
+      {
+        type: 'match', concept: 'formats',
+        prompt: 'Match the format to its home.',
+        left: ['VST3', 'AU', 'AAX', 'Standalone'],
+        right: ['Windows standard, wide support elsewhere', 'Logic & GarageBand — macOS only', 'Pro Tools only, Avid SDK + signing', 'your plugin as its own app'],
+        explain: 'Same source, different doorways — and each doorway has a landlord. Knowing whose is whose prevents impossible promises.',
+      },
+      {
+        type: 'mcq', concept: 'formats',
+        prompt: 'Why build the Standalone format at all?',
+        options: [
+          { t: 'It\'s the fastest test loop: run your plugin as an app, no DAW scan needed', why: '' },
+          { t: 'DAWs require a standalone to exist', why: 'Hosts only care about their own format — standalone is purely for you (and users without a DAW).' },
+          { t: 'It sounds better', why: 'Identical audio code — the wrapper differs, the sound doesn\'t.' },
+          { t: 'It\'s required for VST3 to work', why: 'Formats are independent doorways into the same engine.' },
+        ],
+        answer: 0,
+        explain: 'Build → double-click → hear it. No scanning, no host quirks. Standalone-first testing is the professional development rhythm you\'ll use from Mission 3 on.',
+      },
+      {
+        type: 'mcq', concept: 'formats',
+        prompt: 'You\'re on Windows. Which format list can your machine actually build?',
+        options: [
+          { t: 'VST3 and Standalone — AU is macOS-only', why: '' },
+          { t: 'All formats everywhere', why: 'AU requires Apple\'s frameworks; AAX requires Avid\'s SDK. Platforms and licenses are real constraints.' },
+          { t: 'Only VST3', why: 'Standalone builds fine on Windows too — it\'s just an app.' },
+          { t: 'None without a license fee', why: 'VST3 and standalone builds are free (VST3 under Steinberg\'s dual license, GPL/proprietary via agreement). AAX is the gated one.' },
+        ],
+        answer: 0,
+        explain: 'AU needs macOS frameworks; AAX needs Avid\'s SDK and signing. Listing a format in CMake that the platform can\'t build is simply skipped — but promising it to users is another matter.',
+      },
+    ],
+    recap: [
+      'VST3: Windows standard, broad support. AU: Apple DAWs, macOS.',
+      'AUv3: App Store / mobile. AAX: Pro Tools, gated by Avid.',
+      'Standalone = your plugin as an app: the fast test loop.',
+      'One FORMATS line in CMake; platforms build what they can.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'FORMATS VST3 Standalone (+ AU on a Mac)' },
+      { name: 'Shipping', use: 'commercial releases add AU + AAX with proper signing' },
+    ],
+    analogyPanel: 'Formats are connector standards: the same synth with XLR, jack and USB outputs. You don\'t solder three synths — one engine, several output stages.',
+    beginnerMistake: 'Assuming every format works everywhere. AU on Windows doesn\'t exist; AAX without Avid\'s blessing doesn\'t ship. Honest format lists save support tickets.',
+    remember: 'One engine, many doorways — and each doorway has a landlord.',
+    builds: ['vst3', 'au', 'aax', 'plugin'],
+    leads: ['cmake', 'host'],
+  },
+
+  /* ------------------------------------------------------ J4 */
+  {
+    id: 'j4', kind: 'lesson', title: 'AudioProcessor: The Engine', short: 'Your plugin\'s core class',
+    concepts: ['processor'], time: '~7 MIN', diff: 2,
+    hook: 'Here it is — the class your entire plugin IS. The host constructs it, owns it, and speaks to it only through methods you override. Zone 2\'s Synth Skeleton was secretly a rehearsal for this exact moment.',
+    objective: 'Read First Signal\'s processor declaration and know who owns it, who calls it, and why it must never depend on its editor.',
+    sections: [
+      {
+        h: 'Inheriting the engine',
+        body: 'Your plugin is a class **inheriting** `juce::AudioProcessor` — it *is-a* processor, and fills in the framework\'s blanks. The **host owns the object**: it constructs your processor when the user loads the plugin, calls its methods on its schedule, and destroys it on removal. You never write `main()` — you are the guest, not the program.',
+        code: '// PluginProcessor.h  (First Signal, v1)\n#pragma once\n#include <juce_audio_processors/juce_audio_processors.h>\n\nclass FirstSignalProcessor : public juce::AudioProcessor\n{\npublic:\n    FirstSignalProcessor();\n    void prepareToPlay(double sampleRate, int samplesPerBlock) override;\n    void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;\n    void releaseResources() override;\n    juce::AudioProcessorEditor* createEditor() override;\n    bool hasEditor() const override { return true; }\n    // ...plus the remaining required overrides\n    //    (name, programs, state, midi flags)\n};',
+        codeTitle: 'First Signal\'s engine, declared',
+        breakdown: [
+          [': public juce::AudioProcessor', 'inherit the engine contract — your class IS a processor'],
+          ['override', 'each method fills a blank the host will call'],
+          ['processBlock(...)', 'the audio callback — Zone 2\'s deadline lives here'],
+          ['createEditor()', 'the host asks for a panel; the engine never needs one'],
+        ],
+      },
+      {
+        h: 'Independent of its panel',
+        body: 'The processor also declares the audio doors — stereo in, stereo out for First Signal — and owns all state: parameters, smoothers, DSP. What it must never do: reference the editor. Hosts render entire sessions with every window closed; an engine that leans on its panel silences itself.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'processor',
+        prompt: 'Who constructs and owns your AudioProcessor object?',
+        options: [
+          { t: 'The host — it creates one per loaded instance and destroys it on removal', why: '' },
+          { t: 'You, in main()', why: 'Plugins have no main() — the host is the program; your processor is its guest.' },
+          { t: 'The editor', why: 'Backwards: the *processor* outlives and never depends on the editor.' },
+          { t: 'JUCE, once, globally', why: 'Load First Signal on eight tracks: eight independent processor objects — Zone 1\'s class/object lesson at work.' },
+        ],
+        answer: 0,
+        explain: 'Host constructs, host calls, host destroys. Eight tracks = eight instances, each with its own members — which is why state lives in members, never globals.',
+      },
+      {
+        type: 'fill', concept: 'processor',
+        prompt: 'Declare the inheritance: First Signal IS a JUCE processor.',
+        code: 'class FirstSignalProcessor : public ___\n{\n    // ...\n};',
+        accept: ['juce::AudioProcessor'],
+        placeholder: 'base class',
+        hint: 'namespace::EngineClass.',
+        mistakes: [
+          { match: '^AudioProcessor$', msg: 'Close — but JUCE types need their namespace: juce::AudioProcessor.' },
+        ],
+        explain: '`: public juce::AudioProcessor` — the inheritance that turns your class into something every DAW knows how to talk to.',
+      },
+      {
+        type: 'mcq', concept: 'processor',
+        prompt: 'Why must the processor never depend on the editor?',
+        options: [
+          { t: 'Hosts run audio with editors closed (or never created) — the engine must work headless', why: '' },
+          { t: 'Editors are too slow to link against', why: 'It\'s not performance — it\'s lifetime: the editor may simply not exist.' },
+          { t: 'It\'s only a style preference', why: 'It\'s structural: renderers, headless hosts and closed windows are everyday reality.' },
+          { t: 'The compiler forbids it', why: 'It compiles fine — and crashes or silences the plugin in real sessions. Discipline, not syntax.' },
+        ],
+        answer: 0,
+        explain: 'The panel is optional; the engine is not. Every architecture decision in this zone flows downhill from this one fact.',
+      },
+    ],
+    recap: [
+      'Your plugin = a class inheriting juce::AudioProcessor.',
+      'The host owns it: constructs, calls, destroys.',
+      'Multiple instances = multiple objects, independent state.',
+      'The engine never references its editor.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'FirstSignalProcessor — the class the rest of the zone completes' },
+      { name: 'Every plugin', use: 'same inheritance, same contract, any complexity' },
+    ],
+    analogyPanel: 'The processor is a rack unit installed in the venue\'s system: the house engineer (host) powers it, routes it and strikes it. It plays whether or not anyone is looking at its front panel.',
+    beginnerMistake: 'Storing audio state in the editor "because that\'s where the knob is." The knob is a remote control; the state lives in the engine — always.',
+    remember: 'The host owns the engine; the engine owns the state; the editor just visits.',
+    builds: ['audioprocessor', 'class', 'host'],
+    leads: ['audioprocessoreditor', 'preparetoplay'],
+  },
+
+  /* ------------------------------------------------------ J5 */
+  {
+    id: 'j5', kind: 'lesson', title: 'The Plugin Lifecycle', short: 'Scan to destruction',
+    concepts: ['lifecycle'], time: '~7 MIN', diff: 2,
+    hook: 'From the moment a DAW boots to the moment a session closes, your plugin lives a precise, host-scripted life. Learn the script once and every mysterious bug gets an address: "which lifecycle stage broke?"',
+    objective: 'Follow every call the host makes, in order — and know what your code must do at each stage.',
+    sections: [
+      {
+        h: 'The script',
+        body: '**Scan**: the DAW finds your binary and briefly interrogates it. **Construct**: user loads it → your constructor runs (Zone 2: power on valid). **prepareToPlay(sampleRate, maxBlockSize)**: allocate and reset. **processBlock(...)**: called repeatedly, on the audio thread, until playback stops. **releaseResources()**: teardown of heavy scratch state. **Destruction**: instance removed. prepare/release can cycle *many times* — sample-rate changes, device switches.',
+        viz: { t: 'lifecycle' },
+      },
+      {
+        h: 'The side quests',
+        body: 'Alongside the audio spine: **createEditor()** whenever the user opens your window (and the editor dies when they close it — the engine plays on); **getStateInformation() / setStateInformation()** when the host saves or loads the session — your settings ride inside the user\'s project file. Miss those two and every session reopens with a factory-reset plugin.',
+      },
+    ],
+    checks: [
+      {
+        type: 'order', concept: 'lifecycle',
+        prompt: 'Arrange the audio spine of the lifecycle, first event on top.',
+        lines: [
+          'host scans and finds the binary',
+          'constructor runs (instance created)',
+          'prepareToPlay(sampleRate, maxBlockSize)',
+          'processBlock(...) — repeatedly',
+          'releaseResources()',
+          'destructor runs (instance removed)',
+        ],
+        explain: 'Scan → construct → prepare → process → release → destroy. Editors and state calls weave in and out, but this spine never reorders.',
+      },
+      {
+        type: 'mcq', concept: 'lifecycle',
+        prompt: 'The user closes your plugin\'s window mid-playback. What happens?',
+        options: [
+          { t: 'The editor is destroyed; the processor keeps making sound untouched', why: '' },
+          { t: 'Audio stops until the window reopens', why: 'That would make mixing impossible — engines run headless as a matter of course.' },
+          { t: 'The processor is destroyed too', why: 'Only removal from the track destroys the processor. The window is a visitor.' },
+          { t: 'The plugin saves state and unloads', why: 'State saves happen on host save — closing a window is just closing a window.' },
+        ],
+        answer: 0,
+        explain: 'Editor lifetime ⊂ processor lifetime, strictly. Every session has closed windows over playing plugins — this is the rule that makes j4\'s independence law non-negotiable.',
+      },
+      {
+        type: 'mcq', concept: 'lifecycle',
+        prompt: 'How many times can prepareToPlay run over one plugin instance\'s life?',
+        options: [
+          { t: 'Many — sample-rate changes, device switches, transport restarts can each re-trigger it', why: '' },
+          { t: 'Exactly once', why: 'Assuming once is a classic bug: change the buffer size in preferences and watch a once-only prepare fall over.' },
+          { t: 'Once per block', why: 'That\'s processBlock. Prepare runs at configuration changes, not per block.' },
+          { t: 'Only if the plugin requests it', why: 'The host decides — your job is to make prepare safely re-runnable.' },
+        ],
+        answer: 0,
+        explain: 'Write prepareToPlay as "reset the world to a valid state for THIS rate and size" — idempotent, allocation-friendly, callable forever.',
+      },
+    ],
+    recap: [
+      'Spine: scan → construct → prepare → process → release → destroy.',
+      'prepare/release can cycle many times per instance.',
+      'Editors are created/destroyed freely; the engine plays on.',
+      'get/setStateInformation carry your settings inside the session.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'each stage becomes real code across this zone' },
+      { name: 'Debugging', use: '"which stage broke?" is the first diagnostic question' },
+    ],
+    analogyPanel: 'A touring rig\'s day: load-in (construct), soundcheck (prepare), the show (process, song after song), strike (release), truck (destroy) — and the tour manager\'s notebook (state) remembers every setting for the next city.',
+    beginnerMistake: 'Doing setup work in the constructor that needs the sample rate. The constructor doesn\'t know it yet — the rate arrives at prepareToPlay. Construct valid; configure in prepare.',
+    remember: 'The host runs the script; your overrides play the parts. Prepare can always run again.',
+    builds: ['preparetoplay', 'releaseresources', 'constructor'],
+    leads: ['processblock', 'preset'],
+  },
+
+  /* ------------------------------------------------------ J6 */
+  {
+    id: 'j6', kind: 'lesson', title: 'prepareToPlay: Soundcheck', short: 'Setup before audio',
+    concepts: ['lifecycle'], time: '~6 MIN', diff: 2,
+    hook: 'Two numbers arrive backstage before every show: the sample rate and the biggest block you\'ll ever be handed. Everything your plugin will need on stage gets built from those two numbers, right here, right now.',
+    objective: 'Implement First Signal\'s prepareToPlay: size what allocates, reset what remembers, assume nothing about block sizes.',
+    sections: [
+      {
+        h: 'Two numbers, all your setup',
+        body: 'The host passes `sampleRate` (converts time↔samples: Zone 2\'s delay-line math) and `samplesPerBlock` — the **maximum** block size, not a promise. Real blocks vary, and can be *smaller* at any moment. Here — and only here on the audio path — allocation is legal: size vectors, build tables, prepare smoothers.',
+        code: 'void FirstSignalProcessor::prepareToPlay(\n        double sampleRate, int samplesPerBlock)\n{\n    gainSmoothed.reset(sampleRate, 0.05); // 50 ms glide\n    gainSmoothed.setCurrentAndTargetValue(1.0f);\n}',
+        codeTitle: 'First Signal\'s soundcheck',
+        breakdown: [
+          ['sampleRate', 'time↔samples conversion for everything downstream'],
+          ['samplesPerBlock', 'the MAXIMUM you\'ll see — real blocks vary'],
+          ['gainSmoothed.reset(rate, 0.05)', 'teach the smoother the rate: 50 ms of glide'],
+          ['setCurrentAndTargetValue', 'start settled — no glide-from-zero on first play'],
+        ],
+      },
+      {
+        h: 'Reset what remembers',
+        body: 'Prepare also **resets state**: phases to 0, delay lines to silence, envelopes to idle. Why? Prepare re-runs — after a rate change, a stale delay line holds audio at the *wrong rate*. The mantra: *size for the maximum, reset to silence, assume nothing.*',
+        mistake: { code: 'jassert(numSamples == samplesPerBlock); // ✗ fires constantly\n// hosts send SMALLER blocks whenever they like', text: 'samplesPerBlock is a ceiling, not a constant. Loops read the real count from the buffer, every block.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'lifecycle',
+        prompt: 'What does the samplesPerBlock argument actually promise?',
+        options: [
+          { t: 'An upper bound — real blocks can be smaller at any time', why: '' },
+          { t: 'The exact size of every block', why: 'Hosts routinely send short blocks (loop points, automation edges, plugin deltas). Fixed-size assumptions are a classic crash.' },
+          { t: 'The minimum block size', why: 'It\'s the ceiling, not the floor.' },
+          { t: 'Nothing — it\'s deprecated', why: 'It\'s essential: it\'s what you size worst-case scratch buffers from.' },
+        ],
+        answer: 0,
+        explain: 'Size buffers for it; never loop by it. The real count comes from buffer.getNumSamples() each block.',
+      },
+      {
+        type: 'fill', concept: 'lifecycle',
+        prompt: 'Teach the gain smoother the session\'s rate — 50 milliseconds of glide.',
+        code: 'void prepareToPlay(double sampleRate, int samplesPerBlock)\n{\n    gainSmoothed.___(sampleRate, 0.05);\n}',
+        accept: ['reset'],
+        placeholder: 'method',
+        hint: 'The smoother\'s own soundcheck call.',
+        explain: 'SmoothedValue::reset(sampleRate, seconds) converts your ramp time into per-sample steps. A never-reset smoother has no ramp at all — values snap instantly and the clicks come back.',
+      },
+      {
+        type: 'mcq', concept: 'lifecycle',
+        prompt: 'The user switches the session from 44.1k to 96k. Your delay line still holds old audio. Why must prepare reset it?',
+        options: [
+          { t: 'The stored samples were recorded at the old rate — played back now, they\'re at the wrong pitch/time', why: '' },
+          { t: 'Old samples corrupt memory', why: 'Memory is fine — the *meaning* of the samples changed with the rate.' },
+          { t: 'JUCE requires empty buffers', why: 'JUCE doesn\'t check — physics does. Rate changes invalidate time-based state.' },
+          { t: 'No reason — keeping it is fine', why: 'A 500 ms echo becomes a 230 ms chipmunk echo. Reset to silence.' },
+        ],
+        answer: 0,
+        explain: 'Time-based state is rate-relative. Prepare = "make everything valid for THIS rate": resize, recompute, and clear what remembers.',
+      },
+    ],
+    recap: [
+      'Two gifts: sampleRate, and samplesPerBlock (a maximum!).',
+      'Allocate and prepare smoothers here — the sanctioned spot.',
+      'Reset phases, lines and envelopes: prepare re-runs.',
+      'Never assume fixed block sizes anywhere.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'one smoother reset — small plugin, same discipline' },
+      { name: 'Delay/Reverb', use: 'lines resized to rate × max-time, cleared to silence' },
+    ],
+    analogyPanel: 'Soundcheck: you learn the room (rate), the largest song in the set (max block), then tune, patch and zero the desk. When doors open, everything is already true.',
+    beginnerMistake: 'Preparing once and assuming forever. Rates change, devices change, hosts re-prepare — write it to be safely run a hundred times.',
+    remember: 'Size for the maximum, reset to silence, assume nothing.',
+    builds: ['preparetoplay', 'sample-rate', 'allocation'],
+    leads: ['processblock', 'parameter-smoothing'],
+  },
+
+  /* ------------------------------------------------------ J7 */
+  {
+    id: 'j7', kind: 'lesson', title: 'processBlock: The Show', short: 'The real audio callback',
+    concepts: ['processblock'], time: '~7 MIN', diff: 2,
+    hook: 'Every rule you\'ve learned since Zone 1 was preparation for this method. The host hands you audio and MIDI, starts the clock, and expects the block back before the deadline — hundreds of times a second, on the audio thread, forever.',
+    objective: 'Implement First Signal\'s processBlock: in-place processing under the full real-time contract.',
+    sections: [
+      {
+        h: 'The signature, for real',
+        body: 'Two arguments: the **AudioBuffer** (this block\'s samples, all channels — you process it *in place*) and the **MidiBuffer** (this block\'s events). First Signal\'s complete v1:',
+        code: 'void FirstSignalProcessor::processBlock(\n        juce::AudioBuffer<float>& buffer,\n        juce::MidiBuffer& midi)\n{\n    juce::ScopedNoDenormals noDenormals;\n\n    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n    {\n        float* data = buffer.getWritePointer(ch);\n        for (int i = 0; i < buffer.getNumSamples(); ++i)\n            data[i] *= 0.5f;          // v1: fixed -6 dB\n    }\n}',
+        codeTitle: 'First Signal v1 — it makes sound quieter!',
+        breakdown: [
+          ['AudioBuffer<float>&', 'the block, by reference — you edit the host\'s actual audio'],
+          ['ScopedNoDenormals', 'RAII guard flushing denormals for this scope (Zone 2, twice over)'],
+          ['getWritePointer(ch)', 'a float* into one channel — Zone 1\'s pointer, employed'],
+          ['getNumSamples()', 'the REAL count this block — never samplesPerBlock'],
+        ],
+      },
+      {
+        h: 'The contract, consolidated',
+        body: 'Audio thread. Hard deadline. Therefore — the complete list, now with a home: **no allocation, no locks, no file access, no logging, no throwing, no UI calls.** Parameters arrive by atomic (Zone 2\'s bridge — formalized next lessons). Everything the block needs must already exist. This is the exam Zone 2 was studying for.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'processblock',
+        prompt: 'Which thread calls processBlock, and what does that imply?',
+        options: [
+          { t: 'The audio thread — so only bounded, non-blocking work is legal inside', why: '' },
+          { t: 'The UI thread — so repainting there is fine', why: 'Never — the editor\'s thread and this one are the two lanes from Zone 2\'s race lesson.' },
+          { t: 'A new thread each call', why: 'One real-time thread calls it serially, block after block.' },
+          { t: 'Whatever thread is free', why: 'Hosts dedicate a high-priority audio thread — that\'s what makes the deadline enforceable.' },
+        ],
+        answer: 0,
+        explain: 'processBlock IS Zone 2\'s audio callback with its real name. Same deadline, same rules, no exceptions — literally.',
+      },
+      {
+        type: 'fill', concept: 'processblock',
+        prompt: 'Loop over the block\'s true length — the count that\'s actually in the buffer.',
+        code: 'for (int i = 0; i < buffer.___(); ++i)\n    data[i] *= 0.5f;',
+        accept: ['getNumSamples'],
+        placeholder: 'method',
+        hint: 'Ask the buffer, not prepareToPlay.',
+        mistakes: [
+          { match: 'samplesPerBlock', msg: 'That was the *maximum*, captured at prepare. This block\'s real size lives in the buffer: getNumSamples().' },
+        ],
+        explain: 'buffer.getNumSamples() — per block, every block. The fixed-size assumption bug dies here.',
+      },
+      {
+        type: 'bugspot', concept: 'processblock',
+        prompt: 'One line breaks the contract. Tap it.',
+        code: [
+          'void processBlock(juce::AudioBuffer<float>& buffer,',
+          '                  juce::MidiBuffer& midi)',
+          '{',
+          '    auto preset = loadPresetFromDisk("warm.pst");',
+          '    applyGain(buffer, currentGain);',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'Disk access on the audio thread: unbounded, blocking, glitch-guaranteed. Preset loads belong on the UI/background side, handed over lock-free (Zone 2\'s FIFO). The gain line? Perfectly legal.',
+        fix: 'Load on the UI thread; hand results across via atomics/FIFO',
+      },
+    ],
+    recap: [
+      'processBlock(AudioBuffer&, MidiBuffer&) — in place, audio thread.',
+      'ScopedNoDenormals guards the scope, RAII-style.',
+      'Loop by getNumSamples(), never samplesPerBlock.',
+      'The full contract: no alloc/locks/files/logs/throws/UI.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'v1 ships a fixed gain; the zone upgrades it to a real parameter' },
+      { name: 'Every plugin ever', use: 'this signature, this contract, any DSP inside' },
+    ],
+    analogyPanel: 'The show itself: reels arrive on the conveyor, the deadline never blinks, and nobody restocks the warehouse mid-song. Everything you touch was placed backstage.',
+    beginnerMistake: '"Just one quick file read / lock / print" inside processBlock. There is no quick on the deadline thread — there is only bounded and unbounded.',
+    remember: 'processBlock is Zone 2\'s exam: bounded work on pre-built state, every block, forever.',
+    builds: ['processblock', 'audio-thread', 'denormals'],
+    leads: ['audio-buffer', 'midibuffer'],
+  },
+
+  /* ------------------------------------------------------ J8 */
+  {
+    id: 'j8', kind: 'lesson', title: 'AudioBuffer, Channel by Channel', short: 'The block, dissected',
+    concepts: ['buffers'], time: '~6 MIN', diff: 2,
+    hook: 'The buffer isn\'t one stream — it\'s a grid: channels down, samples across. Stereo at 512 samples is a 2×512 grid, handed to you whole. Most first-plugin bugs are grid bugs: wrong channel, wrong length, wrong assumption.',
+    objective: 'Navigate AudioBuffer safely: channels vs samples, read vs write pointers, and the outputs you must clear.',
+    sections: [
+      {
+        h: 'The grid',
+        body: '`getNumChannels()` × `getNumSamples()` — that\'s the block. `getWritePointer(ch)` hands you a mutable float* into one channel row; `getReadPointer(ch)` a read-only one (const correctness, employed). Channel counts follow the *track*, not your assumptions: mono tracks send one channel.',
+        viz: { t: 'audioGrid' },
+        code: 'for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n{\n    float* data = buffer.getWritePointer(ch);\n    for (int i = 0; i < buffer.getNumSamples(); ++i)\n        data[i] *= gain;\n}\n// or, the built-in for exactly this job:\nbuffer.applyGain(gain);',
+        codeTitle: 'walking the grid — and the shortcut',
+      },
+      {
+        h: 'Clear what you don\'t fill',
+        body: 'Hosts can hand you **more output channels than inputs** (mono→stereo insert). Unwritten output channels contain *whatever was left in memory* — garbage that plays as noise. The standard prologue clears them:',
+        code: 'for (int ch = getTotalNumInputChannels();\n         ch < getTotalNumOutputChannels(); ++ch)\n    buffer.clear(ch, 0, buffer.getNumSamples());',
+        codeTitle: 'the standard prologue',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'buffers',
+        prompt: 'A stereo block of 512 samples. What is buffer\'s shape?',
+        options: [
+          { t: '2 channels × 512 samples — two rows of floats', why: '' },
+          { t: '1024 interleaved samples in one row', why: 'JUCE buffers are per-channel (planar): one contiguous float row per channel — cache-friendly, Zone 2 style.' },
+          { t: '512 channels × 2 samples', why: 'Channels down, samples across — two rows, 512 long.' },
+          { t: 'It depends on the DAW', why: 'The AudioBuffer layout is JUCE\'s own, host-independent: always planar rows.' },
+        ],
+        answer: 0,
+        explain: 'Planar rows: getWritePointer(0) is the left row, (1) the right. Each row is contiguous — the cache lesson made real.',
+      },
+      {
+        type: 'fill', concept: 'buffers',
+        prompt: 'Get a writable pointer into channel ch.',
+        code: 'float* data = buffer.___(ch);',
+        accept: ['getWritePointer'],
+        placeholder: 'method',
+        hint: 'Write access to one channel row.',
+        mistakes: [
+          { match: '^getReadPointer$', msg: 'That\'s the const, read-only row — fine for metering. To *change* samples: getWritePointer.' },
+        ],
+        explain: 'getWritePointer(ch): a raw float* into the host\'s actual audio for that channel. Read-only paths take getReadPointer — say what you mean.',
+      },
+      {
+        type: 'bugspot', concept: 'buffers',
+        prompt: 'This works on stereo tracks and crashes on mono ones. Tap why.',
+        code: [
+          'void processBlock(juce::AudioBuffer<float>& buffer,',
+          '                  juce::MidiBuffer&)',
+          '{',
+          '    float* left  = buffer.getWritePointer(0);',
+          '    float* right = buffer.getWritePointer(1);',
+          '    applyGain(left, right, buffer.getNumSamples());',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'On a mono track there IS no channel 1 — getWritePointer(1) indexes a nonexistent row: out-of-bounds, undefined behavior, host crash. Loop over getNumChannels() and let the count be whatever it is.',
+        fix: 'for (int ch = 0; ch < buffer.getNumChannels(); ++ch)',
+      },
+    ],
+    recap: [
+      'The block is a grid: channels × samples, planar rows.',
+      'getWritePointer to change; getReadPointer to inspect.',
+      'applyGain() exists for the everyday case.',
+      'Clear output channels you didn\'t write — or they play garbage.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'the channel loop + clear prologue = its whole DSP' },
+      { name: 'Meters', use: 'getReadPointer + getMagnitude on the read-only path' },
+    ],
+    analogyPanel: 'A multitrack tape frame: channels are the lanes, samples the inches. You process lane by lane — and blank the lanes you didn\'t record, or the tape plays whatever was on it before.',
+    beginnerMistake: 'Hard-coding channels 0 and 1. Mono tracks, surround buses and instrument-only outputs all exist. The buffer tells you its shape — believe it.',
+    remember: 'Ask the buffer its shape every block: channels, samples, and clear the rest.',
+    builds: ['audio-buffer', 'pointer', 'const'],
+    leads: ['midibuffer', 'dsp'],
+  },
+
+  /* ------------------------------------------------------ J9 */
+  {
+    id: 'j9', kind: 'lesson', title: 'MIDI in the Block', short: 'MidiBuffer, previewed',
+    concepts: ['midi-io'], time: '~5 MIN', diff: 2,
+    hook: 'That second argument you\'ve been ignoring? It\'s the piano roll, delivered: every note-on, note-off and knob twist that lands inside this block, stamped to the sample. Zone 5 builds the synth — today you learn to read the mail.',
+    objective: 'Know what a MidiBuffer carries, how events sit at sample positions inside the block, and what a synth will eventually do with them.',
+    sections: [
+      {
+        h: 'Events, stamped to samples',
+        body: 'A **MidiBuffer** holds this block\'s MIDI events — each with a **sample position**: "note-on for C4 at sample 137 of this block." Iterating is plain modern C++ (range-for, Zone 2):',
+        code: 'for (const auto metadata : midi)\n{\n    auto msg = metadata.getMessage();\n    int  at  = metadata.samplePosition;   // 0..numSamples-1\n\n    if (msg.isNoteOn())\n        startVoice(msg.getNoteNumber(),\n                   msg.getVelocity(), at);\n}',
+        codeTitle: 'reading the mail',
+        breakdown: [
+          ['for (const auto metadata : midi)', 'range-for over this block\'s events'],
+          ['samplePosition', 'WHERE in the block it happens — sample-accurate'],
+          ['isNoteOn()', 'the message asks itself what it is'],
+          ['getNoteNumber(), getVelocity()', 'the dictionary\'s MIDI facts, live'],
+        ],
+      },
+      {
+        h: 'Why the position matters',
+        body: 'A note-on at sample 137 means the voice starts *mid-block* — samples 0–136 render without it. Quantize every event to block starts and timing wobbles by up to a block (~10 ms at 512/48k): audibly sloppy. Effects like First Signal pass MIDI through untouched; instruments consume it. That\'s the whole Zone 5 preview.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'midi-io',
+        prompt: 'What does a MidiBuffer contain?',
+        options: [
+          { t: 'This block\'s MIDI events, each stamped with a sample position', why: '' },
+          { t: 'Audio rendered from MIDI', why: 'MIDI stays messages — turning them into audio is your synth\'s job (Zone 5).' },
+          { t: 'The whole song\'s MIDI', why: 'Only this block\'s slice — the host feeds events block by block, like audio.' },
+          { t: 'Only note-ons', why: 'Note-offs, CCs, pitch bend, program changes — the full mail, all stamped.' },
+        ],
+        answer: 0,
+        explain: 'Events + positions, scoped to the block. The dictionary\'s MIDI messages, arriving through the same conveyor as audio.',
+      },
+      {
+        type: 'predict', concept: 'midi-io',
+        prompt: 'A note-on sits at samplePosition 137 in a 512-sample block. When should the voice start sounding?',
+        code: '// block: samples 0..511\n// event: note-on at sample 137',
+        options: [
+          { t: 'At sample 137 — samples 0–136 render without it', why: '' },
+          { t: 'At sample 0 of this block', why: 'That\'s block-quantizing: up to ~10 ms of timing slop that tight producers absolutely hear.' },
+          { t: 'At the next block', why: 'Even worse — a full block late, every note.' },
+          { t: 'Whenever is convenient', why: 'Sample-accurate handling is the difference between tight and mushy instruments.' },
+        ],
+        answer: 0,
+        explain: 'Sample-accurate events: render up to the position, start the voice, render the rest. Zone 5 turns this sentence into a synth.',
+      },
+      {
+        type: 'fill', concept: 'midi-io',
+        prompt: 'Ask the message whether it starts a note.',
+        code: 'if (msg.___())\n    startVoice(msg.getNoteNumber(), msg.getVelocity(), at);',
+        accept: ['isNoteOn', 'isNoteOn()'],
+        placeholder: 'method',
+        hint: 'The message classifies itself.',
+        explain: 'isNoteOn() — with isNoteOff(), isController(), isPitchWheel() beside it. The MidiMessage class answers so you don\'t parse bytes.',
+      },
+    ],
+    recap: [
+      'MidiBuffer = this block\'s events, sample-stamped.',
+      'Range-for iterates; messages classify themselves.',
+      'Positions make instruments tight; quantizing makes them mushy.',
+      'Effects pass MIDI through; synths consume it (Zone 5).',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'ignores midi — an honest gain plugin' },
+      { name: 'Zone 5 synth', use: 'this exact loop feeds the voice allocator you built in p3' },
+    ],
+    analogyPanel: 'The block is a bar of the song; MIDI events are cue marks written at exact beats within it. A good player hits the cue mid-bar — not at the next barline.',
+    beginnerMistake: 'Handling all MIDI at the top of the block "to keep it simple." That bakes in up-to-a-block timing error. Read positions now, even before you need them.',
+    remember: 'MIDI arrives as sample-stamped mail — deliver each event at its exact sample.',
+    builds: ['midi', 'velocity', 'block'],
+    leads: ['voice', 'polyphony'],
+  },
+];
+
+;
+/* ===== src/js/data_zone3_lessons_b.js ===== */
+/* ============================================================
+   ZONE 3 — lessons j10–j17 (appended to ZONE3_LESSONS).
+   ============================================================ */
+
+ZONE3_LESSONS.push(
+
+  /* ------------------------------------------------------ J10 */
+  {
+    id: 'j10', kind: 'lesson', title: 'Parameters: Knobs the Host Can See', short: 'IDs, ranges, automation',
+    concepts: ['parameters'], time: '~6 MIN', diff: 2,
+    hook: 'A member variable is a knob only you know about. A *parameter* is a knob the DAW can see, automate, and save. The difference is a declaration — and a promise you can never take back.',
+    objective: 'Declare First Signal\'s gain parameter properly: stable ID, honest range, sensible default.',
+    sections: [
+      {
+        h: 'What a parameter declares',
+        body: 'Five decisions per knob: an **ID** (machine name — permanent!), a display **name**, a **range** (with skew for knobs ears use logarithmically), a **default**, and formatting. Hosts see parameters as **normalized 0–1** values under the hood; the range maps them to real units.',
+        code: 'std::make_unique<juce::AudioParameterFloat>(\n    juce::ParameterID { "gain", 1 },   // ID + version hint\n    "Gain",                            // display name\n    juce::NormalisableRange<float>(-60.0f, 6.0f, 0.01f),\n    0.0f)                              // default: unity dB',
+        codeTitle: 'First Signal\'s one knob',
+        breakdown: [
+          ['ParameterID { "gain", 1 }', 'the permanent machine name (+ version hint for hosts)'],
+          ['"Gain"', 'what humans read — renameable anytime'],
+          ['NormalisableRange(-60, 6, 0.01)', 'dB range, 0.01 steps — the map from 0–1 to real units'],
+          ['0.0f', 'default: 0 dB, unity — plugins should wake transparent'],
+        ],
+      },
+      {
+        h: 'The promise you can\'t take back',
+        body: 'Automation lanes and saved sessions reference parameters **by ID**. Change `"gain"` to `"outputGain"` in v1.1 and every existing session\'s automation detaches — user projects break. IDs are *forever*; names are cosmetic. This is why the ID gets one extra minute of thought and zero future edits.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'parameters',
+        prompt: 'What breaks if you change a parameter\'s ID after release?',
+        options: [
+          { t: 'Saved sessions and automation lanes lose the parameter — user projects break', why: '' },
+          { t: 'Nothing — IDs are internal', why: 'IDs are exactly what hosts store in sessions and automation. They are your public contract.' },
+          { t: 'Only the display name changes', why: 'That\'s backwards: names are cosmetic, IDs are structural.' },
+          { t: 'The plugin fails to build', why: 'It builds fine — and quietly breaks every existing project. The worst kind of bug.' },
+        ],
+        answer: 0,
+        explain: 'The ID is how the outside world addresses your knob. Names can change with every redesign; the ID is carved once.',
+      },
+      {
+        type: 'fill', concept: 'parameters',
+        prompt: 'Give the gain parameter its permanent machine name (with version hint 1).',
+        code: 'juce::ParameterID { "___", 1 }',
+        accept: ['gain'],
+        placeholder: 'id',
+        hint: 'Lowercase, short, forever.',
+        explain: '"gain", version 1. Short, lowercase, stable — and never edited again. (The version hint helps hosts distinguish parameter generations.)',
+      },
+      {
+        type: 'mcq', concept: 'parameters',
+        prompt: 'Why does the host see your parameter as a 0–1 normalized value?',
+        options: [
+          { t: 'A uniform scale lets any host automate any parameter without knowing its units', why: '' },
+          { t: 'Floats can\'t hold values above 1', why: 'They can — normalization is a protocol convention, not a float limit.' },
+          { t: 'To save memory', why: 'Same float either way — it\'s about a universal contract, not size.' },
+          { t: 'Only gain parameters normalize', why: 'Every parameter of every plugin: one 0–1 lane format, mapped by each parameter\'s range.' },
+        ],
+        answer: 0,
+        explain: 'The host draws one kind of lane; your NormalisableRange translates 0–1 into dB, Hz, or anything — including skewed maps for log-shaped ears.',
+      },
+    ],
+    recap: [
+      'Parameter = ID + name + range + default + formatting.',
+      'IDs are permanent; names are cosmetic.',
+      'Hosts speak normalized 0–1; ranges translate.',
+      'Defaults should wake the plugin transparent.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'one AudioParameterFloat: "gain", −60..+6 dB, default 0' },
+      { name: 'Every plugin', use: 'every automatable knob is exactly this declaration' },
+    ],
+    analogyPanel: 'A parameter is a labeled patch point on the desk\'s automation bus: the tape machine records moves by channel number — renumber a channel and yesterday\'s automation plays into the wrong knob.',
+    beginnerMistake: 'Treating IDs like variable names you can refactor. The moment version 1.0 ships, every ID is a public API frozen in users\' sessions.',
+    remember: 'Parameter IDs are forever; everything else about a knob can change.',
+    builds: ['parameter', 'automation', 'float'],
+    leads: ['apvts', 'preset'],
+  },
+
+  /* ------------------------------------------------------ J11 */
+  {
+    id: 'j11', kind: 'lesson', title: 'APVTS, Demystified', short: 'The parameter brain',
+    concepts: ['apvts'], time: '~8 MIN', diff: 3,
+    hook: 'Every JUCE tutorial hands you one giant magic line and says "don\'t worry about it." Worry about it. AudioProcessorValueTreeState is three jobs in one object — and after two zones, you already understand every part of the machinery.',
+    objective: 'Build First Signal\'s APVTS: the layout, the member, and thread-safe raw access — with no unexplained magic.',
+    sections: [
+      {
+        h: 'Three jobs, one object',
+        body: '**AudioProcessorValueTreeState** (APVTS) does: ① own your parameters and sync them with the host, ② expose each value as an atomic for the audio thread (Zone 2\'s bridge, institutionalized), ③ hold state as a **ValueTree** — a saveable named-value tree — for sessions and presets. The pieces:',
+        code: '// PluginProcessor.h — the member (lives with the engine)\njuce::AudioProcessorValueTreeState apvts {\n    *this, nullptr, "PARAMS", createParameterLayout() };\n\n// PluginProcessor.cpp — the layout\njuce::AudioProcessorValueTreeState::ParameterLayout\nFirstSignalProcessor::createParameterLayout()\n{\n    juce::AudioProcessorValueTreeState::ParameterLayout layout;\n    layout.add(std::make_unique<juce::AudioParameterFloat>(\n        juce::ParameterID { "gain", 1 }, "Gain",\n        juce::NormalisableRange<float>(-60.0f, 6.0f, 0.01f),\n        0.0f));\n    return layout;\n}',
+        codeTitle: 'the "magic line", disassembled',
+        breakdown: [
+          ['*this', 'the processor it belongs to — APVTS lives with the engine'],
+          ['nullptr', 'no undo manager (a later-course feature)'],
+          ['"PARAMS"', 'the ValueTree\'s type name — used when validating loaded state'],
+          ['createParameterLayout()', 'your knob list, built with Zone 2\'s make_unique'],
+        ],
+      },
+      {
+        h: 'The audio thread\'s doorway',
+        body: 'The engine reads knobs through **raw parameter access**: `apvts.getRawParameterValue("gain")` returns a `std::atomic<float>*` — cache the pointer once in the constructor, then `->load()` per block. Zone 2\'s handoff, now with the host automating the store side. (Attachments — the UI side — arrive in j14.)',
+        code: '// constructor:\ngainParam = apvts.getRawParameterValue("gain");\n// processBlock:\nfloat gainDb = gainParam->load();',
+        codeTitle: 'atomic access, cached once',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'apvts',
+        prompt: 'What are APVTS\'s three jobs?',
+        options: [
+          { t: 'Own/sync parameters with the host, expose atomic values to audio, hold saveable state', why: '' },
+          { t: 'Draw sliders, play audio, save files', why: 'It draws nothing and plays nothing — it\'s the state and parameter brain the UI and DSP both consult.' },
+          { t: 'Only save presets', why: 'State is one third — host sync and atomic access are the other two.' },
+          { t: 'Replace the AudioProcessor', why: 'It\'s a member OF the processor — the engine owns its brain.' },
+        ],
+        answer: 0,
+        explain: 'Host sync + atomic bridge + saveable tree. Three lessons of machinery (parameters, atomics, state) in one well-named object.',
+      },
+      {
+        type: 'fill', concept: 'apvts',
+        prompt: 'Cache the audio thread\'s doorway to the gain value.',
+        code: '// constructor:\ngainParam = apvts.___("gain");',
+        accept: ['getRawParameterValue'],
+        placeholder: 'method',
+        hint: 'Raw, atomic, audio-thread-legal access.',
+        explain: 'getRawParameterValue returns std::atomic<float>* — cache it once (string lookups per block are wasteful), load() it per block. The Zone 2 bridge with a host on the other end.',
+      },
+      {
+        type: 'predict', concept: 'apvts',
+        prompt: 'Host automation moves Gain mid-playback. What does the audio thread see?',
+        code: '// audio thread, each block:\nfloat gainDb = gainParam->load();',
+        options: [
+          { t: 'The new value, safely — whole or old, never torn', why: '' },
+          { t: 'A possibly half-written float', why: 'That\'s the plain-float race APVTS exists to prevent — the value is atomic.' },
+          { t: 'Nothing until the editor opens', why: 'Automation flows host→APVTS→atomic regardless of any window — the engine never needs the panel.' },
+          { t: 'A crash', why: 'This exact path is the sanctioned, lock-free design.' },
+        ],
+        answer: 0,
+        explain: 'Host writes, atomic carries, audio loads. Indivisible values, no locks, editor irrelevant — every Zone 2 threading lesson, productized.',
+      },
+    ],
+    recap: [
+      'APVTS = host sync + atomic access + saveable ValueTree.',
+      'Constructor args: *this, nullptr, "PARAMS", layout().',
+      'Layout = your knob list via make_unique.',
+      'Cache getRawParameterValue once; load() per block.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'one APVTS, one parameter — full architecture, small scale' },
+      { name: 'Big synths', use: 'the same object holding 400 parameters' },
+    ],
+    analogyPanel: 'APVTS is the desk\'s patch memory + automation brain: every knob registered once, readable by the machine room (atomics), recordable by the tape (host), recallable tomorrow (state).',
+    beginnerMistake: 'Calling getRawParameterValue("gain") inside processBlock every block — a string lookup on the deadline thread. Cache the pointer in the constructor; load per block.',
+    remember: 'APVTS is three jobs you already understand, wearing one long name.',
+    builds: ['apvts', 'atomic', 'unique-ptr'],
+    leads: ['valuetree', 'slider-attachment'],
+  },
+
+  /* ------------------------------------------------------ J12 */
+  {
+    id: 'j12', kind: 'lesson', title: 'Smoothing the Gain', short: 'SmoothedValue in practice',
+    concepts: ['smoothing'], time: '~6 MIN', diff: 2,
+    hook: 'Wire the atomic straight into the multiply and First Signal works — and clicks on every knob move and automation step. The last DSP gap between "works" and "professional" is one small class: SmoothedValue.',
+    objective: 'Add per-sample gain smoothing to First Signal — prepared with the sample rate, gliding to every new target.',
+    sections: [
+      {
+        h: 'Why raw values click',
+        body: 'A gain jump from 1.0 to 0.5 between two samples is a cliff in the waveform — a click (Zone 2 predicted this; Zone 4 explains the spectrum of it). **juce::SmoothedValue<float>** glides instead: set a *target*, then pull one stepped value per sample.',
+        code: '// PluginProcessor.h\njuce::SmoothedValue<float> gainSmoothed;\n\n// prepareToPlay:\ngainSmoothed.reset(sampleRate, 0.05);   // 50 ms ramp\n\n// processBlock:\nfloat db = gainParam->load();\ngainSmoothed.setTargetValue(\n    juce::Decibels::decibelsToGain(db));\n\nfor (int i = 0; i < buffer.getNumSamples(); ++i)\n{\n    float g = gainSmoothed.getNextValue();\n    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n        buffer.getWritePointer(ch)[i] *= g;\n}',
+        codeTitle: 'First Signal, de-clicked',
+        breakdown: [
+          ['reset(sampleRate, 0.05)', 'soundcheck: 50 ms of glide, in this session\'s samples'],
+          ['setTargetValue(...)', 'per block: where the knob wants to be'],
+          ['decibelsToGain(db)', 'JUCE\'s own dB→linear (your c1 formula, library edition)'],
+          ['getNextValue()', 'per sample: one step of the glide'],
+        ],
+      },
+      {
+        h: 'Per-sample vs per-block',
+        body: 'Pulling getNextValue() **per sample** is the clean default for gain. Cheaper per-block application (one value per block) can be fine for slow-moving things — but steps at block edges return as subtle zipper under fast automation. First Signal takes the honest per-sample path; Zone 4 studies the tradeoff properly.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'smoothing',
+        prompt: 'Why does an unsmoothed gain change click?',
+        options: [
+          { t: 'The instant jump is a discontinuity in the waveform — ears hear the cliff', why: '' },
+          { t: 'Atomics are slow', why: 'The atomic is innocent — it delivered the value perfectly. The *jump* is the problem.' },
+          { t: 'Floats can\'t change quickly', why: 'They change instantly — that\'s exactly the issue.' },
+          { t: 'The host sends corrupt values', why: 'The value is fine; the step-shape it creates in the audio is the click.' },
+        ],
+        answer: 0,
+        explain: 'Any instant level change is a vertical edge in the waveform — wideband energy, heard as a click. Glide over ~50 ms and the edge becomes inaudible slope.',
+      },
+      {
+        type: 'fill', concept: 'smoothing',
+        prompt: 'Per block: tell the smoother where the knob wants to be.',
+        code: 'gainSmoothed.___(\n    juce::Decibels::decibelsToGain(gainParam->load()));',
+        accept: ['setTargetValue'],
+        placeholder: 'method',
+        hint: 'Target, not teleport.',
+        explain: 'setTargetValue: the destination. getNextValue per sample walks there. Atomic delivers, smoother glides — the complete parameter pipeline.',
+      },
+      {
+        type: 'bugspot', concept: 'smoothing',
+        prompt: 'This smoother never glides at all — values snap and click. Tap the missing preparation\'s scene of the crime.',
+        code: [
+          'void prepareToPlay(double sampleRate, int samplesPerBlock)',
+          '{',
+          '    // (nothing here)',
+          '}',
+          'void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)',
+          '{',
+          '    gainSmoothed.setTargetValue(',
+          '        juce::Decibels::decibelsToGain(gainParam->load()));',
+          '    applySmoothed(buffer);',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'The smoother was never reset(sampleRate, rampSeconds) — with no ramp configured, setTargetValue snaps instantly and every change clicks. Preparation belongs in prepareToPlay: that\'s the j6 contract.',
+        fix: 'gainSmoothed.reset(sampleRate, 0.05); in prepareToPlay',
+      },
+    ],
+    recap: [
+      'Raw value jumps = waveform cliffs = clicks.',
+      'reset(rate, seconds) in prepare; setTargetValue per block; getNextValue per sample.',
+      'Decibels::decibelsToGain — the library owns your c1 formula.',
+      'Per-sample smoothing is the honest default for gain.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'the exact code above IS its final DSP' },
+      { name: 'Every shipping plugin', use: 'every continuous knob runs through some smoother' },
+    ],
+    analogyPanel: 'The atomic is the fader\'s new position; the smoother is the motorized fader gliding there. Nobody ships a desk whose faders teleport.',
+    beginnerMistake: 'Smoothing the dB value instead of the linear gain — the glide then warps through the log curve. Convert first, smooth the linear value.',
+    remember: 'Atomic delivers the target; the smoother walks there — one step per sample.',
+    builds: ['parameter-smoothing', 'atomic', 'decibel'],
+    leads: ['dsp', 'gain'],
+  },
+
+  /* ------------------------------------------------------ J13 */
+  {
+    id: 'j13', kind: 'lesson', title: 'Building the Editor', short: 'Components, paint, resized',
+    concepts: ['editor'], time: '~7 MIN', diff: 2,
+    hook: 'Time to give First Signal a face: one slider, one label, one dark panel. In JUCE everything on screen is a Component — and your editor is just a Component that owns other Components.',
+    objective: 'Build First Signal\'s editor: child components made visible, laid out in resized(), painted in paint().',
+    sections: [
+      {
+        h: 'A tree of Components',
+        body: 'The editor inherits `juce::AudioProcessorEditor` (itself a **Component**). Children — a `juce::Slider`, a `juce::Label` — are members; each gets `addAndMakeVisible()`. Two overrides do the visual work: **paint(g)** draws the background; **resized()** positions children. All of it on the **message thread** — never called by, and never calling into, the audio thread.',
+        code: '// PluginEditor.h\nclass FirstSignalEditor : public juce::AudioProcessorEditor\n{\npublic:\n    explicit FirstSignalEditor(FirstSignalProcessor&);\n    void paint(juce::Graphics&) override;\n    void resized() override;\nprivate:\n    FirstSignalProcessor& processorRef;\n    juce::Slider gainSlider;\n    juce::Label  gainLabel;\n};',
+        codeTitle: 'the panel, declared',
+      },
+      {
+        h: 'Constructor, paint, resized',
+        body: 'The constructor wires children and picks a size; `resized()` runs on every size change (do **layout math here**, not in paint); `paint` fills pixels. The pattern:',
+        code: 'FirstSignalEditor::FirstSignalEditor(FirstSignalProcessor& p)\n    : AudioProcessorEditor(&p), processorRef(p)\n{\n    gainSlider.setSliderStyle(\n        juce::Slider::RotaryVerticalDrag);\n    addAndMakeVisible(gainSlider);\n    addAndMakeVisible(gainLabel);\n    setSize(300, 200);\n}\n\nvoid FirstSignalEditor::resized()\n{\n    gainSlider.setBounds(\n        getLocalBounds().reduced(40));\n}\n\nvoid FirstSignalEditor::paint(juce::Graphics& g)\n{\n    g.fillAll(juce::Colour(0xff141414));\n}',
+        codeTitle: 'wire, size, place, paint',
+        breakdown: [
+          ['addAndMakeVisible(child)', 'adopt the child AND show it — forget it and the control is invisible'],
+          ['setSize(300, 200)', 'triggers the first resized() call'],
+          ['resized()', 'layout math — runs on every resize'],
+          ['paint(g)', 'pixels only; no layout, no state changes'],
+        ],
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'editor',
+        prompt: 'A slider member exists and works in code, but doesn\'t appear on screen. Most likely cause?',
+        options: [
+          { t: 'addAndMakeVisible() was never called for it', why: '' },
+          { t: 'The audio thread is blocking it', why: 'Threads don\'t hide components — visibility is opt-in and this one never opted in.' },
+          { t: 'It needs a LookAndFeel first', why: 'Default look draws fine — LookAndFeel is styling (a later-course topic), not existence.' },
+          { t: 'Sliders require attachments to render', why: 'Attachments bind values (next lesson) — rendering only needs visibility.' },
+        ],
+        answer: 0,
+        explain: 'The single most common first-editor bug: a fully functional, entirely invisible component. addAndMakeVisible in the constructor, per child, always.',
+      },
+      {
+        type: 'fill', concept: 'editor',
+        prompt: 'Adopt and show the gain slider.',
+        code: 'FirstSignalEditor::FirstSignalEditor(FirstSignalProcessor& p)\n    : AudioProcessorEditor(&p), processorRef(p)\n{\n    ___(gainSlider);\n    setSize(300, 200);\n}',
+        accept: ['addAndMakeVisible'],
+        placeholder: 'method',
+        hint: 'Add AND make visible — one call.',
+        explain: 'addAndMakeVisible: parent adopts child, child becomes drawable. Layout comes later in resized(); this call is about existence.',
+      },
+      {
+        type: 'mcq', concept: 'editor',
+        prompt: 'Where does layout math (setBounds calls) belong?',
+        options: [
+          { t: 'resized() — it re-runs on every size change', why: '' },
+          { t: 'paint() — it runs most often', why: 'paint is pixels-only; doing layout there re-computes geometry every repaint and fights the framework.' },
+          { t: 'processBlock()', why: 'UI geometry on the audio thread — the exact cross-thread sin this course exists to prevent.' },
+          { t: 'The processor\'s constructor', why: 'The engine doesn\'t know or care about pixels — panels lay themselves out.' },
+        ],
+        answer: 0,
+        explain: 'resized() is the layout callback: triggered by setSize and by user resizing. Bounds there, pixels in paint, wiring in the constructor — three homes, never mixed.',
+      },
+    ],
+    recap: [
+      'Everything visible is a Component; the editor owns its children.',
+      'addAndMakeVisible per child — or it silently doesn\'t exist.',
+      'resized() = layout; paint() = pixels; constructor = wiring.',
+      'All of it on the message thread.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'one rotary slider, one label, one dark panel' },
+      { name: 'Big plugins', use: 'the same tree, hundreds of components deep' },
+    ],
+    analogyPanel: 'The editor is the faceplate build: mount the knobs (addAndMakeVisible), drill the layout (resized), silkscreen the panel (paint). The circuit behind it was finished lessons ago.',
+    beginnerMistake: 'Doing layout in paint(). It works — and recomputes geometry on every repaint while resized() sits empty. Bounds in resized, pixels in paint.',
+    remember: 'Wire in the constructor, place in resized(), draw in paint() — and make every child visible.',
+    builds: ['audioprocessoreditor', 'gui', 'ui-thread'],
+    leads: ['slider-attachment', 'component'],
+  },
+
+  /* ------------------------------------------------------ J14 */
+  {
+    id: 'j14', kind: 'lesson', title: 'Attachments: UI Meets Engine', short: 'SliderAttachment & lifetime',
+    concepts: ['attachments'], time: '~6 MIN', diff: 2,
+    hook: 'The slider turns; nothing happens. The parameter moves under automation; the slider sits still. They\'ve never met. One small object introduces them — permanently, thread-safely, in both directions.',
+    objective: 'Connect First Signal\'s slider to its parameter with a SliderAttachment — declared in the right order, for a reason.',
+    sections: [
+      {
+        h: 'The two-way patch cable',
+        body: 'A **SliderAttachment** (full name `juce::AudioProcessorValueTreeState::SliderAttachment`) binds one slider to one parameter ID: drag the slider → parameter updates (host sees it, atomic updates, undo-able gesture); automation moves the parameter → slider follows. The UI never touches DSP directly — the attachment routes everything through APVTS.',
+        viz: { t: 'paramflow' },
+        code: '// PluginEditor.h — AFTER the slider member:\nstd::unique_ptr<juce::AudioProcessorValueTreeState\n                    ::SliderAttachment> gainAttachment;\n\n// PluginEditor.cpp — constructor:\ngainAttachment = std::make_unique<\n    juce::AudioProcessorValueTreeState::SliderAttachment>(\n        processorRef.apvts, "gain", gainSlider);',
+        codeTitle: 'the introduction',
+        breakdown: [
+          ['unique_ptr<...SliderAttachment>', 'the editor owns the binding (Zone 2 ownership)'],
+          ['processorRef.apvts', 'the brain it patches into'],
+          ['"gain"', 'the permanent ID from j10 — the address'],
+          ['gainSlider', 'the knob being introduced'],
+        ],
+      },
+      {
+        h: 'Declaration order is destruction order',
+        body: 'Zone 1 fact, load-bearing at last: members are destroyed in **reverse declaration order**. The attachment references the slider — so it must die *first*, meaning it must be declared *after* the slider. Declare it before, and at editor close the attachment briefly references a destroyed slider: a real, shipping-plugin crash class.',
+        mistake: { code: '// ✗ WRONG ORDER\nstd::unique_ptr<SliderAttachment> gainAttachment; // declared first,\njuce::Slider gainSlider;                          // destroyed LAST\n// at close: attachment outlives its slider — dangling', text: 'Slider first, attachment after. The compiler won\'t warn — only the crash log will.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'attachments',
+        prompt: 'What does a SliderAttachment do?',
+        options: [
+          { t: 'Binds slider ↔ parameter both ways, routed through APVTS — no direct UI→DSP touching', why: '' },
+          { t: 'Draws the slider', why: 'The slider draws itself — the attachment is pure plumbing, invisible.' },
+          { t: 'Sends slider values straight to processBlock', why: 'Nothing goes "straight" — host sync, atomics and gestures all flow through APVTS. That indirection IS the design.' },
+          { t: 'Saves the slider position to disk', why: 'State saving is APVTS/getStateInformation — the attachment just keeps knob and parameter agreeing.' },
+        ],
+        answer: 0,
+        explain: 'Drag → parameter (host-visible, automatable); parameter → slider (automation follows on screen). One object, both directions, zero custom glue.',
+      },
+      {
+        type: 'fill', concept: 'attachments',
+        prompt: 'Introduce the slider to its parameter.',
+        code: 'gainAttachment = std::make_unique<\n    juce::AudioProcessorValueTreeState::SliderAttachment>(\n        processorRef.apvts, "___", gainSlider);',
+        accept: ['gain'],
+        placeholder: 'parameter ID',
+        hint: 'The permanent address from j10.',
+        explain: 'The ID is the patch address: apvts + "gain" + slider. A mismatched ID means the attachment can\'t find its parameter — JUCE asserts/crashes the moment the editor is built. IDs are strings: type them once, reuse a constant in bigger plugins.',
+      },
+      {
+        type: 'bugspot', concept: 'attachments',
+        prompt: 'This editor crashes on close. Tap the declaration that\'s in the wrong place.',
+        code: [
+          'class FirstSignalEditor : public juce::AudioProcessorEditor',
+          '{',
+          'private:',
+          '    std::unique_ptr<SliderAttachment> gainAttachment;',
+          '    juce::Slider gainSlider;',
+          '};',
+        ],
+        buggy: 3,
+        explain: 'Declared before the slider → destroyed after it → the attachment\'s final moments reference a dead slider. Move the attachment below the slider: destruction order is reverse declaration order.',
+        fix: 'Declare gainSlider first, gainAttachment after it',
+      },
+    ],
+    recap: [
+      'SliderAttachment: two-way slider↔parameter binding via APVTS.',
+      'The editor owns it (unique_ptr); built in the constructor.',
+      'Declare slider first, attachment after — destruction order.',
+      'UI never mutates DSP directly; everything routes through the brain.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'one attachment — the whole UI↔engine wiring' },
+      { name: 'Buttons & combos', use: 'ButtonAttachment / ComboBoxAttachment: same pattern, other controls' },
+    ],
+    analogyPanel: 'The attachment is a two-way patch cable between panel and automation bus: turn the knob, the bus records; the bus plays back, the knob moves. Nobody solders the knob straight to the circuit.',
+    beginnerMistake: 'Skipping the attachment and setting engine values in onValueChange. It "works" — and silently loses host automation, gestures, and state sync. Attach; don\'t wire around the brain.',
+    remember: 'Slider first, attachment after — and all roads run through APVTS.',
+    builds: ['slider-attachment', 'unique-ptr', 'destructor'],
+    leads: ['valuetree', 'automation'],
+  },
+
+  /* ------------------------------------------------------ J15 */
+  {
+    id: 'j15', kind: 'lesson', title: 'Saving & Restoring State', short: 'get/setStateInformation',
+    concepts: ['state'], time: '~6 MIN', diff: 2,
+    hook: 'A producer dials First Signal to −7.3 dB, saves, and goes to sleep. Tomorrow the session must open at exactly −7.3. Two overrides carry that promise — and a plugin that breaks it doesn\'t get used twice.',
+    objective: 'Implement both state calls: serialize the APVTS tree out, and restore incoming state defensively.',
+    sections: [
+      {
+        h: 'Out: the session save',
+        body: 'When the host saves, it calls **getStateInformation(destData)**: serialize your state into the provided memory block. With APVTS it\'s three honest lines — copy the tree, render it to XML, pour the XML into the block. Your settings then live *inside the user\'s project file*.',
+        code: 'void FirstSignalProcessor::getStateInformation(\n        juce::MemoryBlock& destData)\n{\n    auto state = apvts.copyState();\n    std::unique_ptr<juce::XmlElement> xml(\n        state.createXml());\n    copyXmlToBinary(*xml, destData);\n}',
+        codeTitle: 'save: tree → XML → block',
+      },
+      {
+        h: 'In: defensive restoration',
+        body: '**setStateInformation(data, size)** arrives with *whatever was saved* — possibly by an older version, possibly corrupted. Parse, **verify the tree type matches**, and only then `replaceState()`. Missing parameters in old saves keep their defaults — which is your version-migration safety net, and why removing/renaming IDs breaks sessions (j10\'s promise, round two).',
+        code: 'void FirstSignalProcessor::setStateInformation(\n        const void* data, int sizeInBytes)\n{\n    std::unique_ptr<juce::XmlElement> xml(\n        getXmlFromBinary(data, sizeInBytes));\n\n    if (xml != nullptr\n        && xml->hasTagName(apvts.state.getType()))\n        apvts.replaceState(\n            juce::ValueTree::fromXml(*xml));\n}',
+        codeTitle: 'load: verify, then replace',
+        breakdown: [
+          ['getXmlFromBinary', 'unpack — may fail: returns nullptr on garbage'],
+          ['xml != nullptr', 'Zone 1\'s null check, guarding real user data'],
+          ['hasTagName(state.getType())', 'is this OUR "PARAMS" tree? (j11\'s name, load-bearing)'],
+          ['replaceState(...)', 'swap the whole tree in — parameters update everywhere'],
+        ],
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'state',
+        prompt: 'When do get/setStateInformation run?',
+        options: [
+          { t: 'When the host saves or loads a session (and for host-side preset systems)', why: '' },
+          { t: 'Every block', why: 'Serialization per block would demolish the deadline — these are rare, host-triggered events kept off the audio deadline.' },
+          { t: 'Only when the editor is open', why: 'Sessions save with every window closed — state is engine business.' },
+          { t: 'Only at plugin scan', why: 'Scanning interrogates capabilities; state moves when projects save and open.' },
+        ],
+        answer: 0,
+        explain: 'Host saves → getState; project opens → setState. Your knobs ride inside the user\'s project file — that\'s the whole contract.',
+      },
+      {
+        type: 'fill', concept: 'state',
+        prompt: 'The XML checked out. Swap the restored tree in.',
+        code: 'if (xml != nullptr\n    && xml->hasTagName(apvts.state.getType()))\n    apvts.___(juce::ValueTree::fromXml(*xml));',
+        accept: ['replaceState'],
+        placeholder: 'method',
+        hint: 'Replace the whole tree, atomically-managed by APVTS.',
+        explain: 'replaceState swaps the tree; parameters, atomics and any open editor all follow. Assigning to apvts.state directly skips the bookkeeping — replaceState is the sanctioned door.',
+      },
+      {
+        type: 'predict', concept: 'state',
+        prompt: 'A session saved by v1.0 (gain only) loads into v1.2 (gain + width). What happens to width?',
+        code: '// old save: <PARAMS gain="-7.3"/>\n// v1.2 parameters: gain, width',
+        options: [
+          { t: 'width keeps its default; gain restores to −7.3', why: '' },
+          { t: 'The load fails entirely', why: 'Missing values aren\'t corruption — absent parameters simply keep defaults. Old sessions stay loadable.' },
+          { t: 'width gets a random value', why: 'Nothing random: unmentioned parameters are untouched — that\'s the defensive design.' },
+          { t: 'gain resets too', why: 'gain is present in the save — it restores exactly. Only the newcomer defaults.' },
+        ],
+        answer: 0,
+        explain: 'Additive evolution is safe: new parameters default, old ones restore. Renaming or deleting IDs is what breaks the past — add, don\'t rewrite.',
+      },
+    ],
+    recap: [
+      'getState: copyState → XML → binary block.',
+      'setState: parse → null-check → tag-check → replaceState.',
+      'State rides inside the host\'s project file.',
+      'New params default on old saves — add IDs, never rename them.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'six lines total — full session persistence' },
+      { name: 'Preset systems', use: 'the same tree, saved to your own files (Zone 5)' },
+    ],
+    analogyPanel: 'The tour manager\'s notebook: every knob written down at load-out (save), restored exactly at the next load-in (open) — and if a page is missing or from another band\'s book, you keep your defaults instead of guessing.',
+    beginnerMistake: 'Skipping the hasTagName check. setState receives whatever bytes exist — old versions, other-plugin state after a host mix-up, corruption. Verify before you replace.',
+    remember: 'Save the tree, verify the tree, replace the tree — and never break an old session.',
+    builds: ['valuetree', 'preset', 'nullptr'],
+    leads: ['preset', 'automation'],
+  },
+
+  /* ------------------------------------------------------ J16 */
+  {
+    id: 'j16', kind: 'lesson', title: 'CMake: The Build Recipe', short: 'CMakeLists.txt, line by line',
+    concepts: ['build-system'], time: '~7 MIN', diff: 2,
+    hook: 'Five source files don\'t become a VST3 by wishing. One text file tells CMake what to build, what to call it, which formats to produce, and which JUCE modules to link. Read it once slowly and it stops being an incantation forever.',
+    objective: 'Read every line of First Signal\'s CMakeLists.txt and know what each one controls.',
+    sections: [
+      {
+        h: 'The recipe, complete',
+        body: 'This is First Signal\'s entire build description — real and buildable:',
+        code: 'cmake_minimum_required(VERSION 3.22)\nproject(FirstSignal VERSION 0.1.0)\n\nadd_subdirectory(JUCE)   # the framework source\n\njuce_add_plugin(FirstSignal\n    COMPANY_NAME "TXPPS"\n    PLUGIN_MANUFACTURER_CODE Txps\n    PLUGIN_CODE Fsig\n    FORMATS VST3 Standalone\n    PRODUCT_NAME "First Signal")\n\ntarget_sources(FirstSignal PRIVATE\n    Source/PluginProcessor.cpp\n    Source/PluginEditor.cpp)\n\ntarget_compile_definitions(FirstSignal PUBLIC\n    JUCE_WEB_BROWSER=0\n    JUCE_USE_CURL=0)\n\ntarget_link_libraries(FirstSignal PRIVATE\n    juce::juce_audio_utils)',
+        codeTitle: 'CMakeLists.txt — all of it',
+        breakdown: [
+          ['juce_add_plugin(...)', 'JUCE\'s macro: declares the plugin target + formats'],
+          ['PLUGIN_MANUFACTURER_CODE / PLUGIN_CODE', 'four-char codes hosts index you by (case conventions matter for AU; keep yours unique)'],
+          ['target_sources', 'the .cpp list — a missing file here = j-era linker errors'],
+          ['target_link_libraries', 'which JUCE modules your code may use'],
+        ],
+      },
+      {
+        h: 'Configure, then build',
+        body: 'Two distinct steps: **configure** (`cmake -B build`) reads the recipe and generates platform build files into `build/`; **build** (`cmake --build build --config Release`) compiles and links. Debug vs Release is Zone 2\'s lesson applied: develop in Debug, measure and ship Release. (`--config` selects it on multi-config generators like Visual Studio/Xcode; single-config setups choose at configure time with `-DCMAKE_BUILD_TYPE=Release`.) The binaries land inside `build/` under the target\'s artefacts folder — the .vst3 and the standalone app.',
+      },
+    ],
+    checks: [
+      {
+        type: 'match', concept: 'build-system',
+        prompt: 'Match each CMake line to its job.',
+        left: ['juce_add_plugin(...)', 'target_sources(...)', 'target_link_libraries(...)', 'FORMATS VST3 Standalone'],
+        right: ['declare the plugin target and identity', 'list the .cpp files to compile', 'grant access to JUCE modules', 'choose which wrappers get built'],
+        explain: 'Identity, sources, dependencies, formats — the four decisions every plugin recipe makes.',
+      },
+      {
+        type: 'fill', concept: 'build-system',
+        prompt: 'The editor\'s .cpp is missing from the build — linker errors await. Add it.',
+        code: 'target_sources(FirstSignal PRIVATE\n    Source/PluginProcessor.cpp\n    Source/___)',
+        accept: ['PluginEditor.cpp'],
+        placeholder: 'file',
+        hint: 'The panel\'s implementation file.',
+        explain: 'Every .cpp must be listed or its definitions never compile — "undefined reference to FirstSignalEditor::..." is this exact omission (e3, all grown up).',
+      },
+      {
+        type: 'mcq', concept: 'build-system',
+        prompt: 'What\'s the difference between configuring and building?',
+        options: [
+          { t: 'Configure reads the recipe and generates build files; build actually compiles and links', why: '' },
+          { t: 'They\'re synonyms', why: 'Two separate commands, two separate failures: recipe errors surface at configure; code errors at build.' },
+          { t: 'Configure compiles; build packages', why: 'Backwards-ish: configure only *plans* — no compiler runs until the build step.' },
+          { t: 'Only IDEs configure', why: 'cmake -B build configures anywhere — IDEs just click it for you.' },
+        ],
+        answer: 0,
+        explain: 'cmake -B build (plan) → cmake --build build (do). Knowing which step failed halves every build-problem hunt.',
+      },
+    ],
+    recap: [
+      'One CMakeLists.txt: identity, sources, definitions, modules, formats.',
+      'Four-char manufacturer/plugin codes — unique, case conventions matter.',
+      'A .cpp missing from target_sources = linker errors.',
+      'Configure plans; build compiles. Debug to develop, Release to ship.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'the recipe above builds it, verbatim' },
+      { name: 'Any JUCE project', use: 'same skeleton, longer source lists' },
+    ],
+    analogyPanel: 'CMakeLists.txt is the stage plot + input list: one document any venue\'s crew (any platform\'s compiler) can wire the show from. Configure reads the plot; build runs the cables.',
+    beginnerMistake: 'Editing generated files in build/ to "fix" something. Regeneration erases it. The recipe is the only source of truth — fix CMakeLists.txt.',
+    remember: 'One recipe file rules the build: identity, sources, modules, formats.',
+    builds: ['cmake', 'linker-error', 'build'],
+    leads: ['debug-build', 'release-build'],
+  },
+
+  /* ------------------------------------------------------ J17 */
+  {
+    id: 'j17', kind: 'lesson', title: 'Loading & Testing First Signal', short: 'From binary to host',
+    concepts: ['deployment'], time: '~6 MIN', diff: 2,
+    hook: 'The build succeeded. Somewhere in build/ sits a real .vst3 and a real app. The last mile — install locations, host scans, and the classic scan failures — is where first plugins go to sulk. Not yours.',
+    objective: 'Test standalone-first, install the VST3 where hosts look, and diagnose the classic scan failures calmly.',
+    sections: [
+      {
+        h: 'The safe test workflow',
+        body: '**Standalone first**: run the built app directly — instant audio, no scanning, fastest loop. Then the **VST3**: hosts scan fixed locations — Windows: `C:\\Program Files\\Common Files\\VST3`; macOS: `~/Library/Audio/Plug-Ins/VST3` (or /Library for all users); Linux: `~/.vst3`. JUCE\'s `COPY_PLUGIN_AFTER_BUILD` option can install on every build. Then rescan in the host — or use a dedicated test host (JUCE ships AudioPluginHost) before touching your real sessions.',
+        viz: { t: 'chain', nodes: ['build/', 'VST3 folder', 'host scan', 'insert & play'], accent: 2, caption: 'the last mile, in order' },
+      },
+      {
+        h: 'When the scan comes up empty',
+        body: 'The classic culprits, in checking order: **wrong folder** (a .vst3 on your desktop is invisible); **stale duplicates** (an old copy shadowing the new build — delete, rebuild, rescan); **architecture mismatch** (an ARM-only build in an Intel host, or vice versa — build universal/matching); **failed validation** (the host probed it and blacklisted — check the host\'s plugin manager list and un-blacklist after fixing). Every one is boring once you\'ve met it.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'deployment',
+        prompt: 'Why test the standalone build before the VST3?',
+        options: [
+          { t: 'It runs directly — no install, no scan, the fastest possible feedback loop', why: '' },
+          { t: 'The VST3 can\'t work until the standalone runs', why: 'They\'re independent wrappers — standalone is just the *cheapest* to test, not a prerequisite.' },
+          { t: 'DAWs require it', why: 'Hosts never see your standalone — it\'s purely your dev-loop friend.' },
+          { t: 'It has better audio quality', why: 'Identical processor, identical sound.' },
+        ],
+        answer: 0,
+        explain: 'Build → double-click → hear it. When something breaks you know it\'s your code, not the install path, the scan cache, or the host. Isolate variables like an engineer.',
+      },
+      {
+        type: 'mcq', concept: 'deployment',
+        prompt: 'Your new build shows old behavior in the DAW. Most likely cause?',
+        options: [
+          { t: 'A stale duplicate .vst3 is being loaded instead of the fresh build', why: '' },
+          { t: 'The DAW caches audio forever', why: 'Hosts cache scan *results*, not your DSP — the binary being loaded is simply the old file.' },
+          { t: 'VST3s can\'t be updated', why: 'They update fine — when the file the host loads is actually the new one.' },
+          { t: 'You must reboot', why: 'Rescanning after replacing the right file is all it takes.' },
+        ],
+        answer: 0,
+        explain: 'Old copy in the scan path, new copy in build/ — the classic. Delete stale copies, install the fresh one (or COPY_PLUGIN_AFTER_BUILD), rescan. Check the file\'s timestamp when in doubt.',
+      },
+      {
+        type: 'order', concept: 'deployment',
+        prompt: 'Arrange the sane debugging order for "my plugin doesn\'t appear."',
+        lines: [
+          'run the standalone — does the code itself work?',
+          'check the .vst3 is in the host\'s scan folder',
+          'delete stale duplicate copies',
+          'rescan (and check the host\'s blacklist)',
+        ],
+        explain: 'Code first, location second, duplicates third, scan last — each step isolates one variable. Random-order flailing is how afternoons disappear.',
+      },
+    ],
+    recap: [
+      'Standalone first: the fastest, cleanest test loop.',
+      'VST3 lives in fixed per-OS folders; hosts only look there.',
+      'Stale duplicates and architecture mismatches are the classic ghosts.',
+      'Failed scans often mean a blacklist entry — check the host\'s plugin manager.',
+    ],
+    inside: [
+      { name: 'First Signal', use: 'Mission 3 walks this exact path to a loaded plugin' },
+      { name: 'Every release', use: 'installers automate the same folder rules' },
+    ],
+    analogyPanel: 'Soundcheck logic: test the synth on headphones (standalone) before patching it into the venue system (host). If the PA is silent, check the patchbay (folder) before blaming the synth.',
+    beginnerMistake: 'Testing day-one builds inside your real music sessions. A crashing dev build takes the session with it — use the standalone and a test host until it\'s stable.',
+    remember: 'Standalone to hear it; right folder + fresh copy + rescan for the host to see it.',
+    builds: ['host', 'daw', 'vst3'],
+    leads: ['debugger', 'release-build'],
+  }
+);
+
+;
+/* ===== src/js/data_zone3_challenges.js ===== */
+/* ============================================================
+   ZONE 3 — challenges (incl. 'reading' ctype), missions, boss.
+   ============================================================ */
+
+const ZONE3_CHALLENGES = [
+
+  /* ============ READING THE SIGNAL PATH ============ */
+  {
+    id: 'jr1', kind: 'challenge', ctype: 'reading', title: 'Read: PluginProcessor.h', short: 'Trace the code',
+    concepts: ['processor'],
+    intro: 'A realistic processor header. Read it like a session engineer reads a patch sheet: who owns what, who calls what, which thread.',
+    questions: [
+      {
+        type: 'match', concept: 'processor',
+        prompt: 'Match each member to its truth.',
+        left: ['processBlock(...)', 'apvts member', 'createEditor()', 'gainSmoothed member'],
+        right: ['host calls it, audio thread', 'the engine owns the parameter brain', 'host calls it when the window opens', 'engine-owned DSP state'],
+        explain: 'The host calls the overrides; the engine owns the members. Two facts that decode any processor header.',
+      },
+      {
+        type: 'mcq', concept: 'processor',
+        prompt: 'In this header, which code runs on the audio thread?',
+        code: 'class FirstSignalProcessor : public juce::AudioProcessor {\npublic:\n    void prepareToPlay(double, int) override;\n    void processBlock(juce::AudioBuffer<float>&,\n                      juce::MidiBuffer&) override;\n    juce::AudioProcessorEditor* createEditor() override;\nprivate:\n    juce::AudioProcessorValueTreeState apvts;\n};',
+        options: [
+          { t: 'Only processBlock runs on the audio thread', why: '' },
+          { t: 'All of it', why: 'prepare and createEditor aren\'t audio-thread calls — only processBlock lives on the deadline.' },
+          { t: 'createEditor', why: 'Editors are pure message-thread citizens.' },
+          { t: 'None — headers don\'t run', why: 'Fair pedantry! But the question is where these *methods* run when called — and processBlock is the audio-thread one.' },
+        ],
+        answer: 0,
+        explain: 'One method on the deadline, everything else off it. Reading a header and instantly sorting methods by thread is the Zone 3 superpower.',
+      },
+    ],
+  },
+  {
+    id: 'jr2', kind: 'challenge', ctype: 'reading', title: 'Read: The Parameter Layout', short: 'Trace the code',
+    concepts: ['apvts'],
+    intro: 'A layout function from a real processor. Find where the knob is born and what each argument commits to.',
+    questions: [
+      {
+        type: 'mcq', concept: 'apvts',
+        prompt: 'Where exactly is the Gain parameter created?',
+        code: 'juce::AudioProcessorValueTreeState::ParameterLayout\ncreateParameterLayout()\n{\n    juce::AudioProcessorValueTreeState::ParameterLayout layout;\n    layout.add(std::make_unique<juce::AudioParameterFloat>(\n        juce::ParameterID { "gain", 1 }, "Gain",\n        juce::NormalisableRange<float>(-60.0f, 6.0f, 0.01f),\n        0.0f));\n    return layout;\n}',
+        options: [
+          { t: 'In createParameterLayout, once, before the APVTS is constructed with it', why: '' },
+          { t: 'Every processBlock', why: 'Parameters are born once at construction — per-block creation would allocate on the deadline.' },
+          { t: 'When the editor opens', why: 'Parameters exist editor-or-not; the slider merely attaches to one later.' },
+          { t: 'In the host\'s code', why: 'The host *learns* about it from this layout — you author it here.' },
+        ],
+        answer: 0,
+        explain: 'The layout runs once, feeding the APVTS constructor. From then on the parameter exists for the host, the atomics, and any future attachment.',
+      },
+      {
+        type: 'match', concept: 'apvts',
+        prompt: 'Match each argument to its commitment.',
+        left: ['{ "gain", 1 }', '"Gain"', 'NormalisableRange(-60, 6, ...)', '0.0f'],
+        right: ['permanent ID — sessions depend on it', 'display name — free to change', 'the 0–1 ↔ dB map', 'default: wakes at unity'],
+        explain: 'One line, four commitments — only one of them is forever.',
+      },
+    ],
+  },
+  {
+    id: 'jr3', kind: 'challenge', ctype: 'reading', title: 'Read: The Editor Pair', short: 'Trace the code',
+    concepts: ['attachments'],
+    intro: 'An editor header with one planted flaw and several truths. Read the lifetime story.',
+    questions: [
+      {
+        type: 'mcq', concept: 'attachments',
+        prompt: 'Which statement about this editor is TRUE?',
+        code: 'class FirstSignalEditor : public juce::AudioProcessorEditor {\npublic:\n    explicit FirstSignalEditor(FirstSignalProcessor&);\n    void paint(juce::Graphics&) override;\n    void resized() override;\nprivate:\n    FirstSignalProcessor& processorRef;\n    juce::Slider gainSlider;\n    std::unique_ptr<SliderAttachment> gainAttachment;\n};',
+        options: [
+          { t: 'Closing the window destroys all of this; the processor keeps playing', why: '' },
+          { t: 'processorRef owns the processor', why: 'A reference borrows — the host owns the processor. The editor is the guest here.' },
+          { t: 'gainSlider runs on the audio thread', why: 'Sliders are Components: message-thread only, always.' },
+          { t: 'The attachment order shown is a bug', why: 'Slider first, attachment after — this one is actually correct. (You fixed the reversed version in jb-land.)' },
+        ],
+        answer: 0,
+        explain: 'Editor members live and die with the window; the engine plays on. Note the reference (borrow) vs the unique_ptr (own) — Zone 2 vocabulary telling the whole lifetime story in two declarations.',
+      },
+    ],
+  },
+
+  /* ============ COMPLETION ============ */
+  {
+    id: 'jc1', kind: 'challenge', ctype: 'completion', title: 'Complete: The Smoother\'s Soundcheck', short: 'Code completion',
+    concepts: ['smoothing'],
+    intro: 'A smoother that was never prepared has no ramp at all — values snap and click. Prepare it properly.',
+    questions: [
+      {
+        type: 'fill', concept: 'smoothing',
+        prompt: 'Give the smoother its 50 ms ramp, in this session\'s time.',
+        code: 'void prepareToPlay(double sampleRate, int samplesPerBlock)\n{\n    gainSmoothed.reset(___, 0.05);\n    gainSmoothed.setCurrentAndTargetValue(1.0f);\n}',
+        accept: ['sampleRate'],
+        placeholder: 'argument',
+        hint: 'Seconds only mean something once the rate is known.',
+        explain: 'reset(sampleRate, seconds): now "0.05" is a real 50 ms at this session\'s rate. Un-prepared smoothers snap instead of gliding — a boss-stage ghost you\'ve now pre-exorcised.',
+      },
+    ],
+  },
+  {
+    id: 'jc2', kind: 'challenge', ctype: 'completion', title: 'Complete: Walk the Grid', short: 'Code completion',
+    concepts: ['buffers'],
+    intro: 'The channel loop of a real processBlock. One method name completes it.',
+    questions: [
+      {
+        type: 'fill', concept: 'buffers',
+        prompt: 'Loop over however many channels this block actually has.',
+        code: 'for (int ch = 0; ch < buffer.___(); ++ch)\n{\n    float* data = buffer.getWritePointer(ch);\n    // ...\n}',
+        accept: ['getNumChannels'],
+        placeholder: 'method',
+        hint: 'Ask the buffer its shape — rows first.',
+        mistakes: [
+          { match: '^getNumSamples$', msg: 'That\'s the row *length*. The outer loop wants the number of rows: getNumChannels().' },
+        ],
+        explain: 'getNumChannels() per block: mono sends 1, stereo 2, surround more. The buffer knows; assumptions crash.',
+      },
+    ],
+  },
+  {
+    id: 'jc3', kind: 'challenge', ctype: 'completion', title: 'Complete: The Engine\'s Doorway', short: 'Code completion',
+    concepts: ['apvts'],
+    intro: 'The audio thread needs the gain parameter — through the sanctioned atomic doorway, cached once.',
+    questions: [
+      {
+        type: 'fill', concept: 'apvts',
+        prompt: 'Read this block\'s gain from the cached atomic pointer.',
+        code: '// member: std::atomic<float>* gainParam = nullptr;\n// constructor: gainParam = apvts.getRawParameterValue("gain");\n\nvoid processBlock(...)\n{\n    float gainDb = gainParam->___();\n}',
+        accept: ['load'],
+        placeholder: 'method',
+        hint: 'Zone 2\'s receiving half.',
+        explain: 'Cached pointer + load() per block: no string lookups, no locks, no torn values. The complete professional read path.',
+      },
+    ],
+  },
+  {
+    id: 'jc4', kind: 'challenge', ctype: 'completion', title: 'Complete: Make the Introduction', short: 'Code completion',
+    concepts: ['attachments'],
+    intro: 'Slider, meet parameter. One constructor call binds them for life.',
+    questions: [
+      {
+        type: 'fill', concept: 'attachments',
+        prompt: 'Build the attachment: brain, address, knob.',
+        code: 'gainAttachment = std::make_unique<\n    juce::AudioProcessorValueTreeState::SliderAttachment>(\n        processorRef.___, "gain", gainSlider);',
+        accept: ['apvts'],
+        placeholder: 'member',
+        hint: 'The parameter brain, reached through the processor reference.',
+        explain: 'processorRef.apvts + "gain" + gainSlider: the two-way binding. Drag updates the host; automation moves the knob. Zero custom glue.',
+      },
+    ],
+  },
+
+  /* ============ BUG HUNTS ============ */
+  {
+    id: 'jb1', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Mono Crash', short: 'Find the bug',
+    concepts: ['buffers'],
+    intro: 'Works on every stereo track; crashes the DAW on a mono voice channel. Tap the assumption.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'buffers',
+        prompt: 'One line indexes a channel that may not exist. Which?',
+        code: [
+          'void processBlock(juce::AudioBuffer<float>& buffer,',
+          '                  juce::MidiBuffer&)',
+          '{',
+          '    float* left  = buffer.getWritePointer(0);',
+          '    float* right = buffer.getWritePointer(1);',
+          '    processStereo(left, right, buffer.getNumSamples());',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'Channel 1 doesn\'t exist on a mono track — out-of-bounds row access, undefined behavior, host down. Loop getNumChannels() or branch on the count; never hard-code the grid\'s shape.',
+        fix: 'for (int ch = 0; ch < buffer.getNumChannels(); ++ch)',
+      },
+    ],
+  },
+  {
+    id: 'jb2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Deadline Logger', short: 'Find the bug',
+    concepts: ['processblock'],
+    intro: 'A "helpful" debugging habit is glitching the whole session. Tap the contraband.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'processblock',
+        prompt: 'Which line breaks the real-time contract?',
+        code: [
+          'void processBlock(juce::AudioBuffer<float>& buffer,',
+          '                  juce::MidiBuffer&)',
+          '{',
+          '    float g = gainParam->load();',
+          '    juce::Logger::writeToLog("gain: " + juce::String(g));',
+          '    buffer.applyGain(g);',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'Logging is I/O — string building (which allocates!) plus a possibly-blocking write, on the deadline thread, hundreds of times a second. The atomic load above and applyGain below are model citizens. Meter through atomics; log from the message thread.',
+        fix: 'Delete it — expose values via atomics for the editor to read',
+      },
+    ],
+  },
+  {
+    id: 'jb3', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Engine in the Panel', short: 'Find the bug',
+    concepts: ['editor'],
+    intro: 'This plugin only makes the right sound while its window is open. Tap the architectural sin.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'editor',
+        prompt: 'One declaration puts engine state in the wrong house. Which?',
+        code: [
+          'class FirstSignalEditor : public juce::AudioProcessorEditor',
+          '{',
+          'private:',
+          '    juce::Slider gainSlider;',
+          '    juce::SmoothedValue<float> gainSmoothed;',
+          '    std::unique_ptr<SliderAttachment> gainAttachment;',
+          '};',
+        ],
+        buggy: 4,
+        explain: 'The gain smoother is DSP state — it belongs to the *processor*. Living in the editor, it dies when the window closes and never exists in headless hosts: the sound literally depends on a window. Engine state in the engine; the panel only displays.',
+        fix: 'Move gainSmoothed into FirstSignalProcessor',
+      },
+    ],
+  },
+  {
+    id: 'jb4', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Amnesiac Save', short: 'Find the bug',
+    concepts: ['state'],
+    intro: 'Sessions save fine — and always reopen at factory defaults. The save path works; tap what the load path forgot.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'state',
+        prompt: 'One line inspects the restored tree and then… nothing. Which line is the dead end?',
+        code: [
+          'void setStateInformation(const void* data, int sizeInBytes)',
+          '{',
+          '    std::unique_ptr<juce::XmlElement> xml(',
+          '        getXmlFromBinary(data, sizeInBytes));',
+          '    if (xml != nullptr)',
+          '        auto restored = juce::ValueTree::fromXml(*xml);',
+          '}',
+        ],
+        buggy: 5,
+        explain: 'The tree is parsed into a local… which dies at the semicolon (Zone 2 lifetime!). Nothing ever reaches the APVTS. The missing call: apvts.replaceState(restored) — parse, verify, *replace*.',
+        fix: 'apvts.replaceState(juce::ValueTree::fromXml(*xml));',
+      },
+    ],
+  },
+
+  /* ============ SIMULATED COMPILER / BUILD ============ */
+  {
+    id: 'je1', kind: 'challenge', ctype: 'compiler', title: 'Decode: The Unlinked Module', short: 'Read the error',
+    concepts: ['build-system'],
+    intro: 'The build dies on the very first file: JUCE headers can\'t be found. Decode the build error, pick the recipe fix.',
+    questions: [
+      {
+        type: 'compiler', concept: 'build-system',
+        prompt: 'What fixes this build?',
+        code: '# CMakeLists.txt (excerpt)\ntarget_sources(FirstSignal PRIVATE\n    Source/PluginProcessor.cpp\n    Source/PluginEditor.cpp)\n# (no target_link_libraries line)',
+        error: "PluginProcessor.h:2:10: fatal error:\njuce_audio_processors/juce_audio_processors.h:\nNo such file or directory\ncompilation terminated.",
+        options: [
+          { t: 'Add `target_link_libraries(FirstSignal PRIVATE juce::juce_audio_utils)`', why: '' },
+          { t: 'Fix the #include path by hand', why: 'The path is right — linking a JUCE module is what *supplies* its include paths (and compiled code). No module link, no headers.' },
+          { t: 'Rewrite the editor without JUCE classes', why: 'The classes are fine — the recipe just never granted the target their implementation.' },
+          { t: 'Delete build/ and pray', why: 'A clean rebuild of an incomplete recipe fails identically. Fix the recipe.' },
+        ],
+        answer: 0,
+        explain: 'Linking a JUCE module via target_link_libraries grants BOTH its include paths and its compiled code — omit it and the build fails at the very first #include. One recipe line, two gifts.',
+      },
+    ],
+  },
+  {
+    id: 'je2', kind: 'challenge', ctype: 'compiler', title: 'Decode: The Override That Isn\'t', short: 'Read the error',
+    concepts: ['editor'],
+    intro: 'A one-letter slip means your paint function silently never runs — except the compiler catches it. Read why.',
+    questions: [
+      {
+        type: 'compiler', concept: 'editor',
+        prompt: 'What\'s the fix?',
+        code: 'class FirstSignalEditor : public juce::AudioProcessorEditor\n{\npublic:\n    void paint(const juce::Graphics& g) override;  // note the const\n};',
+        error: "PluginEditor.h:4:10: error: 'void FirstSignalEditor::paint(const juce::Graphics&)'\nmarked 'override', but does not override\nnote: candidate: 'virtual void juce::Component::paint(juce::Graphics&)'",
+        options: [
+          { t: 'Match the base exactly: `void paint(juce::Graphics&)` — drop the const', why: '' },
+          { t: 'Remove the override keyword', why: 'That silences the error and ships the bug: a paint that never gets called. override is the tripwire *saving* you here.' },
+          { t: 'Rename the function to Paint', why: 'The name is right — the parameter type (const Graphics& vs Graphics&) is the mismatch. Read the candidate note.' },
+          { t: 'Add virtual instead', why: 'It\'s already virtual in the base — the fix is matching its signature, not re-declaring it.' },
+        ],
+        answer: 0,
+        explain: '"marked override, but does not override" = your signature differs from the base\'s. The candidate note shows the real one: a non-const Graphics&. This is why override goes on everything — it turns silent never-called bugs into loud build errors.',
+      },
+    ],
+  },
+
+  /* ============ ORDERING ============ */
+  {
+    id: 'jo1', kind: 'challenge', ctype: 'ordering', title: 'Assemble: The Lifecycle', short: 'Order the sequence',
+    concepts: ['lifecycle'],
+    intro: 'The host\'s script for one plugin instance, shuffled. Restore the spine.',
+    questions: [
+      {
+        type: 'order', concept: 'lifecycle',
+        prompt: 'Arrange one instance\'s life, first event on top.',
+        lines: [
+          'constructor runs',
+          'prepareToPlay(sampleRate, maxBlock)',
+          'processBlock — repeatedly',
+          'getStateInformation (host saves session)',
+          'releaseResources()',
+          'destructor runs',
+        ],
+        explain: 'Construct → prepare → process → (save rides along) → release → destroy. The spine every diagnostic conversation starts from.',
+      },
+    ],
+  },
+
+  /* ============ MISSIONS ============ */
+  {
+    id: 'p6', kind: 'project', title: 'Mission 1: The Empty Plugin Wakes Up', short: 'Zone mission',
+    concepts: ['processor', 'lifecycle'],
+    brief: 'First Signal exists as five nearly-empty files. Bring the processor to life: identify the map, follow the host\'s calls, and pass audio through safely — the moment a plugin first breathes.',
+    steps: [
+      {
+        note: 'Step 1 — Orientation. You\'ve cloned the empty repo. Prove you know the map.',
+        q: {
+          type: 'match', concept: 'processor',
+          prompt: 'Match each file to what Mission 1 will do with it.',
+          left: ['PluginProcessor.cpp', 'PluginEditor.cpp', 'CMakeLists.txt', 'build/'],
+          right: ['today\'s work: the engine breathes', 'untouched until Mission 2', 'already lists both .cpp files', 'will appear when we first configure'],
+          explain: 'Mission 1 is engine-only. The panel waits; the recipe is ready; build/ doesn\'t exist yet.',
+        },
+      },
+      {
+        note: 'Step 2 — The host will construct your processor with stereo doors. Declare the inheritance.',
+        q: {
+          type: 'fill', concept: 'processor',
+          prompt: 'Complete the class declaration.',
+          code: 'class FirstSignalProcessor : public ___\n{\npublic:\n    FirstSignalProcessor();\n    // lifecycle overrides follow\n};',
+          accept: ['juce::AudioProcessor'],
+          placeholder: 'base',
+          hint: 'The engine contract, namespaced.',
+          explain: 'One inheritance and the host knows how to talk to you: construct, prepare, process, release — the whole j5 script.',
+        },
+      },
+      {
+        note: 'Step 3 — First Signal has no per-rate state yet, but the prepare override must exist and be honest.',
+        q: {
+          type: 'mcq', concept: 'lifecycle',
+          prompt: 'What belongs in an empty-but-correct prepareToPlay today?',
+          options: [
+            { t: 'Nothing yet — but the override exists, ready for the smoother in Mission 2', why: '' },
+            { t: 'A jassert that block size never changes', why: 'j6\'s exact anti-lesson: samplesPerBlock is a ceiling, not a promise.' },
+            { t: 'Creating the editor', why: 'The host asks for editors separately (createEditor) — prepare is audio setup only.' },
+            { t: 'A file read to load defaults', why: 'Defaults are constructor/parameter territory. Prepare is for rate-dependent setup — and this plugin has none yet.' },
+          ],
+          answer: 0,
+          explain: 'An honest empty prepare beats a busy wrong one. The slot exists; Mission 2 fills it with the smoother reset.',
+        },
+      },
+      {
+        note: 'Step 4 — The heart. Assemble the safe passthrough processBlock: clear unused outputs, touch nothing else.',
+        q: {
+          type: 'order', concept: 'processblock',
+          prompt: 'Arrange the passthrough processBlock.',
+          lines: [
+            'void processBlock(juce::AudioBuffer<float>& buffer,',
+            '                  juce::MidiBuffer&) {',
+            '    juce::ScopedNoDenormals noDenormals;',
+            '    for (int ch = getTotalNumInputChannels();',
+            '             ch < getTotalNumOutputChannels(); ++ch)',
+            '        buffer.clear(ch, 0, buffer.getNumSamples());',
+            '}',
+          ],
+          explain: 'Signature → denormal guard → clear the outputs you didn\'t write → done. Input samples pass through untouched: a correct, silent-safe, do-nothing plugin — which is a real milestone.',
+        },
+      },
+      {
+        note: 'Step 5 — Wake-up review. One line snuck in from an old habit.',
+        q: {
+          type: 'bugspot', concept: 'processblock',
+          prompt: 'This passthrough glitches under small host buffers. Tap the lie.',
+          code: [
+            'void processBlock(juce::AudioBuffer<float>& buffer,',
+            '                  juce::MidiBuffer&)',
+            '{',
+            '    for (int i = 0; i < preparedBlockSize; ++i)',
+            '        monitorLevel(buffer.getReadPointer(0)[i]);',
+            '}',
+          ],
+          buggy: 3,
+          explain: 'Looping by the prepared (maximum) size reads past the end of every smaller block the host sends — j6\'s warning made flesh. buffer.getNumSamples(), always. First Signal breathes — Mission 2 gives it a voice.',
+          fix: 'for (int i = 0; i < buffer.getNumSamples(); ++i)',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p7', kind: 'project', title: 'Mission 2: Wire the Control Room', short: 'Zone mission',
+    concepts: ['apvts', 'attachments', 'smoothing'],
+    brief: 'Give First Signal its knob: declare the gain parameter, build the APVTS, smooth the value, raise the editor, and attach the slider — then trace one drag all the way from finger to waveform.',
+    steps: [
+      {
+        note: 'Step 1 — Declare the knob in the layout: permanent ID, honest dB range, transparent default.',
+        q: {
+          type: 'fill', concept: 'apvts',
+          prompt: 'Complete the parameter: range −60 to +6 dB, default unity.',
+          code: 'layout.add(std::make_unique<juce::AudioParameterFloat>(\n    juce::ParameterID { "gain", 1 }, "Gain",\n    juce::NormalisableRange<float>(-60.0f, 6.0f, 0.01f),\n    ___));',
+          accept: ['0.0f', '0.f', '0.0F', '0.0', '0'],
+          placeholder: 'default',
+          hint: 'Unity, in dB.',
+          explain: '0 dB default: insert the plugin, hear no change — the professional first impression. (Zone 1\'s dB landmarks, deciding a real API.)',
+        },
+      },
+      {
+        note: 'Step 2 — The engine\'s doorway: cache the atomic once, at construction.',
+        q: {
+          type: 'fill', concept: 'apvts',
+          prompt: 'Cache the raw parameter pointer.',
+          code: '// constructor body:\ngainParam = apvts.___("gain");',
+          accept: ['getRawParameterValue'],
+          placeholder: 'method',
+          hint: 'Raw, atomic, cached once — never per block.',
+          explain: 'One lookup at construction; load() forever after. The deadline thread never does string searches.',
+        },
+      },
+      {
+        note: 'Step 3 — De-click it. Assemble the smoothed DSP core.',
+        q: {
+          type: 'order', concept: 'smoothing',
+          prompt: 'Arrange the per-block DSP, top to bottom.',
+          lines: [
+            'float db = gainParam->load();',
+            'gainSmoothed.setTargetValue(',
+            '    juce::Decibels::decibelsToGain(db));',
+            'for (int i = 0; i < buffer.getNumSamples(); ++i) {',
+            '    float g = gainSmoothed.getNextValue();',
+            '    applyToAllChannels(buffer, i, g);',
+            '}',
+          ],
+          explain: 'Load → convert → target → glide per sample. The complete professional parameter pipeline: atomic delivers, smoother walks, ears never notice the machinery.',
+        },
+      },
+      {
+        note: 'Step 4 — Raise the panel: the slider must actually appear.',
+        q: {
+          type: 'fill', concept: 'editor',
+          prompt: 'Adopt and show the slider in the editor\'s constructor.',
+          code: 'FirstSignalEditor::FirstSignalEditor(FirstSignalProcessor& p)\n    : AudioProcessorEditor(&p), processorRef(p)\n{\n    ___(gainSlider);\n    setSize(300, 200);\n}',
+          accept: ['addAndMakeVisible'],
+          placeholder: 'call',
+          hint: 'Adopt AND show, one call.',
+          explain: 'The most-forgotten line in first editors. Layout lands in resized(); existence starts here.',
+        },
+      },
+      {
+        note: 'Step 5 — The introduction: bind slider to parameter.',
+        q: {
+          type: 'fill', concept: 'attachments',
+          prompt: 'Complete the attachment: brain, address, knob.',
+          code: 'gainAttachment = std::make_unique<\n    juce::AudioProcessorValueTreeState::SliderAttachment>(\n        processorRef.apvts, "___", gainSlider);',
+          accept: ['gain'],
+          placeholder: 'ID',
+          hint: 'The address carved in Step 1.',
+          explain: 'Brain + address + knob. The slider now speaks host: automation, gestures, state — all free.',
+        },
+      },
+      {
+        note: 'Step 6 — Trace the full path. You drag the slider down 6 dB. Order the journey.',
+        q: {
+          type: 'order', concept: 'attachments',
+          prompt: 'Arrange the value\'s journey, finger to waveform.',
+          lines: [
+            'slider drag (message thread)',
+            'attachment updates the parameter in APVTS',
+            'host records the gesture; atomic value updates',
+            'audio thread load()s the new target',
+            'smoother glides; samples scale',
+          ],
+          explain: 'Finger → attachment → brain/host → atomic → smoother → sound. Two threads, zero races, one click-free knob. You just traced the architecture this whole zone exists to teach — the control room is wired.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p8', kind: 'project', title: 'Mission 3: Build & Load First Signal', short: 'Zone mission',
+    concepts: ['build-system', 'state', 'deployment'],
+    brief: 'The finale: repair the build recipe line by line, wire session persistence, build both formats, and walk the last mile into a host. At the end, First Signal is architecturally complete — a real plugin you can take to a real compiler.',
+    steps: [
+      {
+        note: 'Step 1 — The recipe\'s identity block has one blank. Plugin codes are four characters (unique per plugin; case conventions matter for AU compatibility).',
+        q: {
+          type: 'fill', concept: 'build-system',
+          prompt: 'Complete the format list: VST3 plus the self-testing app.',
+          code: 'juce_add_plugin(FirstSignal\n    COMPANY_NAME "TXPPS"\n    PLUGIN_MANUFACTURER_CODE Txps\n    PLUGIN_CODE Fsig\n    FORMATS VST3 ___\n    PRODUCT_NAME "First Signal")',
+          accept: ['Standalone'],
+          placeholder: 'format',
+          hint: 'The no-DAW-needed doorway.',
+          explain: 'VST3 for hosts, Standalone for the fast loop. (On a Mac you\'d append AU — and codes like Txps/Fsig stay reserved to you, not copy-pasted from tutorials, for release.)',
+        },
+      },
+      {
+        note: 'Step 2 — The linker will want JUCE\'s implementation, not just its headers.',
+        q: {
+          type: 'fill', concept: 'build-system',
+          prompt: 'Grant the target its JUCE module.',
+          code: 'target_link_libraries(FirstSignal PRIVATE\n    juce::___)',
+          accept: ['juce_audio_utils'],
+          placeholder: 'module',
+          hint: 'The audio-app umbrella module used all zone.',
+          explain: 'juce::juce_audio_utils pulls in processors, GUI basics and device handling — the one-module diet a first plugin needs. Without it: je1\'s missing-header build failure.',
+        },
+      },
+      {
+        note: 'Step 3 — Persistence: the save side is written; finish the defensive load.',
+        q: {
+          type: 'order', concept: 'state',
+          prompt: 'Arrange setStateInformation, defensive and complete.',
+          lines: [
+            'std::unique_ptr<juce::XmlElement> xml(',
+            '    getXmlFromBinary(data, sizeInBytes));',
+            'if (xml != nullptr',
+            '    && xml->hasTagName(apvts.state.getType()))',
+            '    apvts.replaceState(',
+            '        juce::ValueTree::fromXml(*xml));',
+          ],
+          explain: 'Parse → null-check → tag-check → replace. Sessions now reopen at exactly the producer\'s −7.3 dB. The amnesia bug (jb4) can never happen here.',
+        },
+      },
+      {
+        note: 'Step 4 — Two commands stand between source and binaries.',
+        q: {
+          type: 'order', concept: 'build-system',
+          prompt: 'Arrange the terminal session, first command on top.',
+          lines: [
+            'cmake -B build            # configure: read the recipe',
+            'cmake --build build --config Release',
+            '# outputs: FirstSignal.vst3 + standalone app in build/',
+          ],
+          explain: 'Configure plans, build compiles. Two commands, two failure domains, one pair of fresh binaries. (--config applies to multi-config generators; single-config setups pass -DCMAKE_BUILD_TYPE=Release at configure. And note: this runs on your machine with a real compiler — this app simulates and teaches; it doesn\'t compile C++.)',
+        },
+      },
+      {
+        note: 'Step 5 — The last mile. The standalone plays; the DAW shows nothing.',
+        q: {
+          type: 'mcq', concept: 'deployment',
+          prompt: 'First thing to check?',
+          options: [
+            { t: 'Is the .vst3 actually in the host\'s scan folder (e.g. Common Files\\VST3 / ~/Library/Audio/Plug-Ins/VST3)?', why: '' },
+            { t: 'Rewrite processBlock', why: 'The standalone plays — the code works. This is a plumbing problem, not a DSP one.' },
+            { t: 'Reinstall the DAW', why: 'The nuclear option for a filing problem. Location, duplicates, rescan — in that order.' },
+            { t: 'Switch to AU', why: 'Different doorway, same filing rules. Fix the path you have.' },
+          ],
+          answer: 0,
+          explain: 'Standalone-works + host-blind = location/scan issue, near-certainly. j17\'s checklist: folder → duplicates → rescan → blacklist. First Signal is complete: engine, knob, panel, persistence, recipe, and the path into a host. Zone 3\'s boss awaits.',
+        },
+      },
+    ],
+  },
+
+  /* ============ BOSS ============ */
+  {
+    id: 'boss3', kind: 'boss', title: 'BOSS: The Silent Plugin', short: 'Zone 3 boss', passNeed: 5,
+    concepts: ['processor', 'apvts', 'smoothing', 'state', 'build-system'],
+    brief: 'A client\'s "finished" gain plugin: it builds, but the DAW can\'t always see it, it\'s silent on mono tracks, the knob clicks, and every session forgets its settings. Seven faults hide across the whole architecture. Clear 5 of 7 to ship the fix.',
+    stages: [
+      {
+        type: 'compiler', concept: 'build-system',
+        prompt: 'Stage 1 — It stopped building after the editor was added. Fix the recipe.',
+        code: 'target_sources(SilentGain PRIVATE\n    Source/PluginProcessor.cpp)\n# PluginEditor.cpp exists on disk — note its absence',
+        error: "ld: error: undefined reference to\n'SilentGainEditor::SilentGainEditor(SilentGainProcessor&)'\ncollect2: error: ld returned 1 exit status",
+        options: [
+          { t: 'Add Source/PluginEditor.cpp to target_sources', why: '' },
+          { t: 'Include PluginEditor.h in more files', why: 'Headers satisfy the compiler; this is the *linker* missing compiled bodies — the .cpp never entered the build.' },
+          { t: 'Delete the editor class', why: 'The plugin needs its panel — the recipe just needs to know the file exists.' },
+          { t: 'Link another JUCE module', why: 'The missing symbol is *your* class, not juce:: — that\'s the tell: your file, not their module.' },
+        ],
+        answer: 0,
+        explain: 'Undefined reference to YOUR class = your .cpp missing from target_sources. To a juce:: class = missing module link. Learn the tell; halve the debugging.',
+      },
+      {
+        type: 'bugspot', concept: 'lifecycle',
+        prompt: 'Stage 2 — The smoother glides at garbage speed. Tap the misplaced setup.',
+        code: [
+          'SilentGainProcessor::SilentGainProcessor()',
+          '{',
+          '    gainSmoothed.reset(44100.0, 0.05);',
+          '}',
+          'void SilentGainProcessor::prepareToPlay(',
+          '        double sampleRate, int samplesPerBlock)',
+          '{',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'The rate is guessed (44100) at construction — sessions at 48k/96k glide wrong, and rate changes never re-teach it. Rate-dependent setup lives in prepareToPlay, with the REAL sampleRate argument.',
+        fix: 'gainSmoothed.reset(sampleRate, 0.05); in prepareToPlay',
+      },
+      {
+        type: 'bugspot', concept: 'buffers',
+        prompt: 'Stage 3 — Silent on mono tracks, and hissy on mono→stereo inserts. Tap the grid bug.',
+        code: [
+          'void processBlock(juce::AudioBuffer<float>& buffer,',
+          '                  juce::MidiBuffer&)',
+          '{',
+          '    float* right = buffer.getWritePointer(1);',
+          '    for (int i = 0; i < buffer.getNumSamples(); ++i)',
+          '        right[i] *= gain;',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'Hard-coded channel 1: crashes or misbehaves on mono, and channel 0 is never processed at all (plus unwritten outputs never cleared — the hiss). Loop getNumChannels(), clear unused outputs: j8\'s whole gospel.',
+        fix: 'Loop channels 0..getNumChannels(); clear extra outputs',
+      },
+      {
+        type: 'bugspot', concept: 'processblock',
+        prompt: 'Stage 4 — Dropouts every time settings change. Tap the contraband.',
+        code: [
+          'void processBlock(juce::AudioBuffer<float>& buffer,',
+          '                  juce::MidiBuffer&)',
+          '{',
+          '    if (settingsChanged)',
+          '        saveSettingsToFile("gain.cfg");',
+          '    buffer.applyGain(currentGain);',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'File I/O on the deadline thread — the oldest sin in the book, now spotted on sight. State belongs to get/setStateInformation, kept off the audio thread; processBlock touches memory that already exists, only.',
+        fix: 'Delete it — the host persists state via getStateInformation',
+      },
+      {
+        type: 'fill', concept: 'attachments',
+        prompt: 'Stage 5 — The editor asserts the moment it opens: the attachment is addressed to an ID that doesn\'t exist. Fix the address (the layout declares ParameterID { "gain", 1 }).',
+        code: 'gainAttachment = std::make_unique<SliderAttachment>(\n    processorRef.apvts, "___", gainSlider);',
+        accept: ['gain'],
+        placeholder: 'ID',
+        hint: 'Exactly as the layout carved it.',
+        explain: 'IDs are strings: "Gain" ≠ "gain" — and an attachment that can\'t find its parameter asserts/crashes at editor creation. Match the layout exactly (and share a constant in bigger code).',
+      },
+      {
+        type: 'predict', concept: 'state',
+        prompt: 'Stage 6 — Settings vanish on reopen. The load code parses XML, checks the tag… and assigns to apvts.state directly. What\'s wrong?',
+        code: 'if (xml != nullptr && xml->hasTagName("PARAMS"))\n    apvts.state = juce::ValueTree::fromXml(*xml);',
+        options: [
+          { t: 'Direct assignment skips APVTS\'s bookkeeping — use apvts.replaceState(...) instead', why: '' },
+          { t: 'The null check is unnecessary', why: 'The null check is correct and stays — the assignment is the flaw.' },
+          { t: 'XML can\'t store parameters', why: 'XML is exactly the serialization JUCE generates — the transport is fine, the door is wrong.' },
+          { t: 'Nothing — this works', why: 'It half-works, which is worse: parameters, atomics and attachments can desync from the swapped tree. replaceState is the sanctioned door.' },
+        ],
+        answer: 0,
+        explain: 'replaceState() swaps the tree AND keeps parameters, atomics, host and any open editor coherent. Direct .state assignment is the subtle half-bug that "mostly works" — until it doesn\'t.',
+      },
+      {
+        type: 'mcq', concept: 'deployment',
+        prompt: 'Stage 7 — Fixed, rebuilt… and the DAW still runs the OLD version. Final diagnosis?',
+        options: [
+          { t: 'A stale copy in the VST3 scan folder is shadowing the fresh build — replace it and rescan', why: '' },
+          { t: 'The DAW compiles plugins itself and needs source', why: 'Hosts load binaries — they never see your source.' },
+          { t: 'VST3s update only on OS restart', why: 'They update the moment the *right file* is replaced and rescanned.' },
+          { t: 'The plugin must change its ID every build', why: 'IDs are forever — the file in the scan path is the whole story.' },
+        ],
+        answer: 0,
+        explain: 'Fresh binary in build/, stale binary in the scan path — the last-mile classic. Replace, rescan, hear the fix. Seven ghosts, one architecture, fully exorcised: the Silent Plugin sings, and Zone 3 is yours.',
+      },
+    ],
+  },
+];
+
+;
 /* ===== src/js/data_glossary.js ===== */
 /* ============================================================
    SIGNAL DICTIONARY — part A: Basics, C++, Memory.
@@ -6029,6 +8011,81 @@ DICT.push(
 );
 
 ;
+/* ===== src/js/data_glossary_e.js ===== */
+/* ============================================================
+   SIGNAL DICTIONARY — part E: terms introduced by Zone 3.
+   ============================================================ */
+
+DICT.push(
+  {
+    id: 'valuetree', t: 'ValueTree', c: 'JUCE',
+    plain: 'JUCE\'s saveable data structure: a named tree of properties and children. APVTS keeps your parameter state in one, and it serializes to XML — which is how sessions and presets travel.',
+    why: 'Every getStateInformation you write copies a ValueTree out; every setStateInformation replaces one. Understanding the tree means state code stops being boilerplate.',
+    studio: 'The session\'s recall sheet: a structured page of every setting, copyable, storable, and re-loadable.',
+    uses: ['APVTS state', 'Session save/restore', 'Preset files'],
+    mistake: 'Assigning to apvts.state directly. Use replaceState() — it swaps the tree while keeping parameters, atomics and editors coherent.',
+    remember: 'The ValueTree is your plugin\'s recall sheet — copy it out to save, replace it to restore.',
+    related: ['apvts', 'preset', 'audioprocessor'],
+    appears: [{ z: 3, node: 'j15' }, { z: 3, node: 'jb4' }],
+    aka: ['value tree', 'replaceState', 'copyState'],
+    search: ['state', 'save settings', 'xml', 'session'],
+  },
+  {
+    id: 'slider-attachment', t: 'SliderAttachment', full: 'AudioProcessorValueTreeState::SliderAttachment', c: 'JUCE',
+    plain: 'A small object that binds one slider to one parameter, both ways: drag the slider and the parameter updates (host sees it); automation moves the parameter and the slider follows.',
+    why: 'Without it you\'d hand-wire callbacks and silently lose automation, gestures and state sync. With it, one constructor call buys the whole professional pipeline.',
+    studio: 'A two-way patch cable between a panel knob and the automation bus.',
+    uses: ['Every slider↔parameter link', 'ButtonAttachment / ComboBoxAttachment siblings'],
+    viz: { t: 'paramflow' },
+    mistake: 'Declaring the attachment before its slider. Members destroy in reverse order — the attachment must die first, so declare it after.',
+    remember: 'Slider first, attachment after — and all roads run through APVTS.',
+    related: ['apvts', 'parameter', 'unique-ptr', 'audioprocessoreditor'],
+    appears: [{ z: 3, node: 'j14' }, { z: 3, node: 'jc4' }, { z: 3, node: 'p7' }],
+    aka: ['attachment', 'ButtonAttachment'],
+    search: ['connect slider', 'knob to parameter', 'binding'],
+  },
+  {
+    id: 'component', t: 'Component', full: 'juce::Component', c: 'JUCE',
+    plain: 'The base class of everything visible in JUCE: sliders, labels, buttons, and your editor itself. Each draws itself in paint(), lays out children in resized(), and lives on the message thread.',
+    why: 'Your editor is a Component owning child Components — grasp that tree and every JUCE interface, no matter how complex, reads the same way.',
+    studio: 'A module in the faceplate: every knob, screen and panel section is one, mounted inside a bigger one.',
+    uses: ['Sliders & labels', 'Your editor', 'Meters & custom displays'],
+    mistake: 'Forgetting addAndMakeVisible for a child — the component works perfectly and appears never.',
+    remember: 'Everything on screen is a Component; visibility is opt-in per child.',
+    related: ['audioprocessoreditor', 'gui', 'ui-thread'],
+    appears: [{ z: 3, node: 'j13' }],
+    aka: ['juce::Slider', 'juce::Label', 'addAndMakeVisible'],
+    search: ['slider', 'label', 'widget', 'ui element'],
+  },
+  {
+    id: 'midibuffer', t: 'MidiBuffer', c: 'JUCE',
+    plain: 'The container of this block\'s MIDI events, each stamped with a sample position inside the block. processBlock receives one next to the audio buffer.',
+    why: 'Sample positions are what make instruments tight: a note-on at sample 137 starts the voice mid-block, not at the block edge. Your Zone 5 synth is built on reading these.',
+    studio: 'Cue marks written at exact beats within one bar of the song.',
+    uses: ['Synth note input', 'MIDI effects', 'Controller handling'],
+    mistake: 'Handling all events at the block start "for simplicity" — that quantizes timing by up to a block and players feel it.',
+    remember: 'MIDI arrives sample-stamped — deliver each event at its exact sample.',
+    related: ['midi', 'processblock', 'block', 'velocity'],
+    appears: [{ z: 3, node: 'j9' }, { z: 5, label: 'the synth engine' }],
+    aka: ['midi buffer', 'samplePosition'],
+    search: ['midi events', 'note on position', 'midi in block'],
+  }
+);
+
+/* Retarget existing JUCE entries' Zone 3 appearances to real nodes. */
+for (const [id, node] of [
+  ['juce', 'j1'], ['audioprocessor', 'j4'], ['audioprocessoreditor', 'j13'],
+  ['preparetoplay', 'j6'], ['processblock', 'j7'], ['releaseresources', 'j5'],
+  ['apvts', 'j11'], ['audio-buffer', 'j8'], ['cmake', 'j16'], ['vst3', 'j3'],
+]) {
+  const e = DICT.find((x) => x.id === id);
+  if (e) {
+    e.appears = e.appears.filter((a) => !(a.z === 3 && !a.node));
+    if (!e.appears.some((a) => a.node === node)) e.appears.push({ z: 3, node });
+  }
+}
+
+;
 /* ===== src/js/engine.js ===== */
 /* ============================================================
    Challenge engine — pure logic, no DOM.
@@ -6045,7 +8102,7 @@ const Engine = (() => {
   const QINDEX = {};
 
   function indexAll() {
-    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES];
+    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES];
     for (const node of all) {
       NODES[node.id] = node;
       const qs = questionsOf(node);
@@ -6414,7 +8471,9 @@ const Store = (() => {
       if (id === 'p2') grant('osc_online');
       if (id === 'boss1') grant('zone1_clear');
       if (id === 'boss2') grant('zone2_clear');
+      if (id === 'boss3') grant('zone3_clear');
       if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
+      if (['p6', 'p7', 'p8'].every(isDone)) grant('first_signal');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }
@@ -7058,6 +9117,75 @@ const Viz = (() => {
       });
       s.push(txt(170, 132, 'one design — every unit keeps its own knob positions', C.faint, 9, 'middle'));
       return { svg: s.join(''), h: 140 };
+    },
+
+    // Plugin project file map: recipe + four sources.
+    filemap() {
+      const s = [];
+      s.push(box(110, 8, 120, 26, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(170, 25, 'CMakeLists.txt', C.amber, 9.5, 'middle'));
+      s.push(txt(170, 44, 'the recipe — builds everything below', C.faint, 8, 'middle'));
+      const files = [['PluginProcessor.h', 'engine panel'], ['PluginProcessor.cpp', 'engine circuit'], ['PluginEditor.h', 'UI panel'], ['PluginEditor.cpp', 'UI circuit']];
+      files.forEach(([f, r], i) => {
+        const x = 8 + i * 82;
+        s.push(box(x, 56, 76, 30, i < 2 ? C.phosDim : C.line, false, i < 2 ? 'rgba(93,232,148,0.04)' : 'none'));
+        s.push(txt(x + 38, 69, f, i < 2 ? C.phos : C.dim, 7.5, 'middle'));
+        s.push(txt(x + 38, 80, r, C.faint, 7, 'middle'));
+        s.push(arrow(170, 36, x + 38, 54));
+      });
+      s.push(txt(170, 104, 'editor includes processor — never the reverse', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 110 };
+    },
+
+    // Plugin lifecycle timeline with process loop.
+    lifecycle() {
+      const s = [];
+      const stages = [['scan', C.faint], ['construct', C.dim], ['prepare', C.phos], ['process ⟳', C.phos], ['release', C.amber], ['destroy', C.red]];
+      const w = 50, gap = 4;
+      let x = 8;
+      stages.forEach(([label, col], i) => {
+        s.push(box(x, 26, w, 28, col === C.faint ? C.line : col, false, col === C.phos ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(x + w / 2, 43, label, col, 7.5, 'middle'));
+        if (i < stages.length - 1) s.push(arrow(x + w + 1, 40, x + w + gap + 1, 40));
+        x += w + gap + 2;
+      });
+      s.push(`<path d="M 190 26 C 190 12, 160 12, 160 26" fill="none" stroke="${C.phosDim}" stroke-width="1.2"/>`);
+      s.push(txt(175, 10, 'repeats', C.faint, 7.5, 'middle'));
+      s.push(txt(170, 72, 'prepare ⇄ release can cycle many times per instance', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 80 };
+    },
+
+    // The audio block as a channels × samples grid.
+    audioGrid() {
+      const s = [];
+      s.push(txt(170, 14, 'ONE BLOCK — channels × samples', C.dim, 9, 'middle', 1.5));
+      ['L', 'R'].forEach((ch, r) => {
+        const y = 24 + r * 30;
+        s.push(txt(20, y + 17, ch, C.phos, 10, 'middle'));
+        for (let i = 0; i < 10; i++) {
+          const x = 34 + i * 29;
+          s.push(box(x, y, 26, 24, r === 0 && i === 2 ? C.phosDim : C.line, false, r === 0 && i === 2 ? 'rgba(93,232,148,0.08)' : 'none'));
+        }
+      });
+      s.push(txt(47 + 2 * 29, 100, '↑ buffer.getWritePointer(0)[2]', C.faint, 8, 'start'));
+      s.push(txt(170, 116, 'rows: getNumChannels() — columns: getNumSamples()', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 122 };
+    },
+
+    // Parameter flow: slider → attachment → APVTS → atomic → smoother → audio.
+    paramflow() {
+      const s = [];
+      const steps = [['slider', 'UI thread'], ['attachment', 'binds both ways'], ['APVTS', 'brain + host'], ['atomic', 'the bridge'], ['smoother', 'the glide'], ['audio', 'the sound']];
+      steps.forEach(([label, sub], i) => {
+        const y = 8 + i * 26;
+        const hot = i >= 3;
+        s.push(box(96, y, 148, 20, hot ? C.phosDim : C.line, false, hot ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(170, y + 13, label, hot ? C.phos : C.dim, 9, 'middle'));
+        s.push(txt(252, y + 13, sub, C.faint, 7.5, 'start'));
+        if (i < steps.length - 1) s.push(arrow(170, y + 21, 170, y + 26, C.phosDim));
+      });
+      s.push(txt(90, 47, 'automation →', C.amber, 7.5, 'end'));
+      return { svg: s.join(''), h: 168 };
     },
 
     // Object lifetime timeline: born -> alive -> destroyed (scope braces).
@@ -8125,7 +10253,7 @@ const Views = (() => {
     if (node.kind === 'lesson') return 'Lesson · ' + node.short;
     if (node.kind === 'project') return 'Mini-project mission';
     if (node.kind === 'boss') return 'Boss challenge';
-    const map = { completion: 'Code completion', bugfix: 'Bug hunt', ordering: 'Code ordering', compiler: 'Compiler challenge' };
+    const map = { completion: 'Code completion', bugfix: 'Bug hunt', ordering: 'Code ordering', compiler: 'Compiler challenge', reading: 'Reading the signal path' };
     return 'Challenge · ' + (map[node.ctype] || 'Challenge');
   }
 
@@ -8133,7 +10261,7 @@ const Views = (() => {
     if (node.kind === 'lesson') return '§';
     if (node.kind === 'project') return '◆';
     if (node.kind === 'boss') return '☠';
-    const map = { completion: '{}', bugfix: '✗', ordering: '≡', compiler: '⚠' };
+    const map = { completion: '{}', bugfix: '✗', ordering: '≡', compiler: '⚠', reading: '⇆' };
     return map[node.ctype] || '?';
   }
 
@@ -8461,7 +10589,7 @@ const Views = (() => {
         el('div', { class: 'row wrap mt-s' },
           el('span', { class: 'chip' }, node.stages.length + ' stages'),
           el('span', { class: 'chip' }, '1 retry per stage'),
-          el('span', { class: 'chip' }, 'clear 4+ to win'),
+          el('span', { class: 'chip' }, 'clear ' + (node.passNeed || 4) + '+ to win'),
           el('span', { class: 'chip' }, '+' + XP_RULES.boss + ' XP max')),
         el('button', { class: 'btn danger block', style: 'margin-top:6px', onclick: start }, 'Enter the session')));
     main.appendChild(intro);
@@ -8477,7 +10605,7 @@ const Views = (() => {
         baseXp: alreadyDone ? 0 : XP_RULES.boss,
         nodeId: node.id,
         onFinish: (result) => {
-          const passed = result.correct >= 4;
+          const passed = result.correct >= (node.passNeed || 4);
           if (passed) {
             if (result.earned > 0) App.awardXp(result.earned);
             Store.completeNode(node.id, result.firstTry, result.total);
@@ -8488,7 +10616,7 @@ const Views = (() => {
               el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
                 el('div', { class: 'eyebrow red', style: 'justify-content:center' }, 'SESSION FAILED'),
                 el('div', { class: 'h-display' }, result.correct + ' / ' + result.total + ' stages cleared'),
-                el('p', { class: 'small dim' }, 'You need 4. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
+                el('p', { class: 'small dim' }, 'You need ' + (node.passNeed || 4) + '. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
               el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
               el('button', { class: 'btn block', onclick: () => App.go('boss', { id: node.id }) }, 'Try again'),
               el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
@@ -8710,7 +10838,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS].map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),

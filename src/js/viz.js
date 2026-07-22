@@ -224,6 +224,75 @@ const Viz = (() => {
       return { svg: s.join(''), h: 140 };
     },
 
+    // Plugin project file map: recipe + four sources.
+    filemap() {
+      const s = [];
+      s.push(box(110, 8, 120, 26, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(170, 25, 'CMakeLists.txt', C.amber, 9.5, 'middle'));
+      s.push(txt(170, 44, 'the recipe — builds everything below', C.faint, 8, 'middle'));
+      const files = [['PluginProcessor.h', 'engine panel'], ['PluginProcessor.cpp', 'engine circuit'], ['PluginEditor.h', 'UI panel'], ['PluginEditor.cpp', 'UI circuit']];
+      files.forEach(([f, r], i) => {
+        const x = 8 + i * 82;
+        s.push(box(x, 56, 76, 30, i < 2 ? C.phosDim : C.line, false, i < 2 ? 'rgba(93,232,148,0.04)' : 'none'));
+        s.push(txt(x + 38, 69, f, i < 2 ? C.phos : C.dim, 7.5, 'middle'));
+        s.push(txt(x + 38, 80, r, C.faint, 7, 'middle'));
+        s.push(arrow(170, 36, x + 38, 54));
+      });
+      s.push(txt(170, 104, 'editor includes processor — never the reverse', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 110 };
+    },
+
+    // Plugin lifecycle timeline with process loop.
+    lifecycle() {
+      const s = [];
+      const stages = [['scan', C.faint], ['construct', C.dim], ['prepare', C.phos], ['process ⟳', C.phos], ['release', C.amber], ['destroy', C.red]];
+      const w = 50, gap = 4;
+      let x = 8;
+      stages.forEach(([label, col], i) => {
+        s.push(box(x, 26, w, 28, col === C.faint ? C.line : col, false, col === C.phos ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(x + w / 2, 43, label, col, 7.5, 'middle'));
+        if (i < stages.length - 1) s.push(arrow(x + w + 1, 40, x + w + gap + 1, 40));
+        x += w + gap + 2;
+      });
+      s.push(`<path d="M 190 26 C 190 12, 160 12, 160 26" fill="none" stroke="${C.phosDim}" stroke-width="1.2"/>`);
+      s.push(txt(175, 10, 'repeats', C.faint, 7.5, 'middle'));
+      s.push(txt(170, 72, 'prepare ⇄ release can cycle many times per instance', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 80 };
+    },
+
+    // The audio block as a channels × samples grid.
+    audioGrid() {
+      const s = [];
+      s.push(txt(170, 14, 'ONE BLOCK — channels × samples', C.dim, 9, 'middle', 1.5));
+      ['L', 'R'].forEach((ch, r) => {
+        const y = 24 + r * 30;
+        s.push(txt(20, y + 17, ch, C.phos, 10, 'middle'));
+        for (let i = 0; i < 10; i++) {
+          const x = 34 + i * 29;
+          s.push(box(x, y, 26, 24, r === 0 && i === 2 ? C.phosDim : C.line, false, r === 0 && i === 2 ? 'rgba(93,232,148,0.08)' : 'none'));
+        }
+      });
+      s.push(txt(47 + 2 * 29, 100, '↑ buffer.getWritePointer(0)[2]', C.faint, 8, 'start'));
+      s.push(txt(170, 116, 'rows: getNumChannels() — columns: getNumSamples()', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 122 };
+    },
+
+    // Parameter flow: slider → attachment → APVTS → atomic → smoother → audio.
+    paramflow() {
+      const s = [];
+      const steps = [['slider', 'UI thread'], ['attachment', 'binds both ways'], ['APVTS', 'brain + host'], ['atomic', 'the bridge'], ['smoother', 'the glide'], ['audio', 'the sound']];
+      steps.forEach(([label, sub], i) => {
+        const y = 8 + i * 26;
+        const hot = i >= 3;
+        s.push(box(96, y, 148, 20, hot ? C.phosDim : C.line, false, hot ? 'rgba(93,232,148,0.05)' : 'none'));
+        s.push(txt(170, y + 13, label, hot ? C.phos : C.dim, 9, 'middle'));
+        s.push(txt(252, y + 13, sub, C.faint, 7.5, 'start'));
+        if (i < steps.length - 1) s.push(arrow(170, y + 21, 170, y + 26, C.phosDim));
+      });
+      s.push(txt(90, 47, 'automation →', C.amber, 7.5, 'end'));
+      return { svg: s.join(''), h: 168 };
+    },
+
     // Object lifetime timeline: born -> alive -> destroyed (scope braces).
     lifetime() {
       const s = [];
