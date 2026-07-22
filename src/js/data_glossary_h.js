@@ -113,7 +113,7 @@ DICT.push(
   },
   {
     id: 'plugin-validation', t: 'plugin validation', c: 'PLUGIN DEV',
-    plain: 'Automated entrance exams that torture a plugin with legal-but-extreme host behavior: pluginval (open source, any format) and auval (Apple\'s, run by Logic before trusting any AU). Odd lifecycle orders, 0-sample blocks, rapid rate changes, state chaos.',
+    plain: 'Automated entrance exams that torture a plugin with legal-but-extreme host behavior: pluginval (open source — VST3 and AU) and auval (Apple\'s, run by Logic before trusting any AU). Odd lifecycle orders, 0-sample blocks, rapid rate changes, state chaos.',
     why: 'Everything a validator does, some real host somewhere does eventually — validation concentrates a year of edge cases into a minute you can debug locally. Crash Monday in the validator, not Friday on a customer\'s stage.',
     studio: 'Venue security testing your rig harder than any audience will: cables yanked, power cycled, inputs slammed — because "it worked at rehearsal" is not a plan for 50,000 people.',
     uses: ['Pre-release gates (strictness 10)', 'auval for Logic/GarageBand', 'CI runs on every build'],

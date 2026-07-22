@@ -551,7 +551,7 @@ ZONE6_LESSONS.push(
       },
       {
         type: 'order', concept: 'shipping',
-        prompt: 'Arrange the release ritual\'s spine, top to bottom.',
+        prompt: 'Arrange the release ritual\'s spine top to bottom, exactly as taught: freeze → prove → validate → sessions → docs → ship.',
         lines: [
           'freeze features — only fixes may land now',
           'run the full suite: units, golden renders, scripted MIDI',

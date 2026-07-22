@@ -16,7 +16,7 @@ const ZONE6_CHALLENGES = [
         type: 'match', concept: 'rt-discipline',
         prompt: 'Match each line to its thread — and its law.',
         left: ['adsr.getNextSample() in the render loop', 'gainSlider.setValue(...) in the editor', 'startNote() called from the MIDI dispatch', 'loadPresetFile() from a browser click'],
-        right: ['audio — the deadline\'s law applies', 'message — human-paced, slow is fine', 'audio — processBlock is the caller', 'message — disk I/O is legal here'],
+        right: ['audio — envelopes advance on the deadline, per sample', 'message — a mouse gesture, human-paced', 'audio — the MIDI dispatch runs INSIDE processBlock', 'message — disk I/O is legal off the deadline'],
         explain: 'The caller decides the address (r2). The MIDI dispatch fools everyone once: it FEELS like input handling, but it runs inside processBlock, on the deadline.',
       },
       {
@@ -640,7 +640,7 @@ const ZONE6_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'lifecycle-eng',
-        prompt: 'QA #6 — In one host, the synth loads with a SCREAMING LFO until any knob is touched. Fine everywhere else. Tap the too-early question.',
+        prompt: 'QA #6 — In one host the synth loads DEAD: the output is poisoned with NaNs until any knob is touched. Fine everywhere else. Tap the too-early question.',
         code: [
           'FirstSignalProcessor::FirstSignalProcessor()',
           '{',
@@ -649,7 +649,7 @@ const ZONE6_CHALLENGES = [
           '}',
         ],
         buggy: 3,
-        explain: 'getSampleRate() in the CONSTRUCTOR — before any prepareToPlay, it returns 0: division by zero, an infinite increment, a screaming LFO until something recomputes it. Rate-derived math belongs in prepareToPlay, where the rate is real (r7, and boss3\'s ghost, returned).',
+        explain: 'getSampleRate() in the CONSTRUCTOR — before any prepareToPlay it returns 0, so the division yields infinity, sin(∞) yields NaN, and NaN poisons every sample it touches: dead output until something recomputes the increment. Rate-derived math belongs in prepareToPlay, where the rate is real (r7 — and boss3\'s ghost, returned).',
         fix: 'Compute lfoIncrement in prepareToPlay, from the sampleRate argument',
       },
       {

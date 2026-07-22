@@ -36,7 +36,7 @@ const ZONE6_LESSONS = [
         code: '// budget = block / rate',
         options: [
           { t: '≈5.3 ms — 256 ÷ 48000', why: '' },
-          { t: '≈48 ms', why: 'That would be nearly half a second of samples — the budget is block-length ÷ rate: 256/48000 ≈ 0.00533 s.' },
+          { t: '≈48 ms', why: 'That would be nearly TEN times the real budget (48 ms ≈ 2,304 samples at 48k). Block ÷ rate: 256/48000 ≈ 0.00533 s.' },
           { t: '≈21 ms', why: 'That\'s roughly a 1024 block at 48k — this session runs a quarter of that.' },
           { t: 'Whatever the CPU allows', why: 'The CPU sets what you can DO in the budget — the budget itself is fixed by block and rate alone.' },
         ],
@@ -99,7 +99,7 @@ const ZONE6_LESSONS = [
       },
       {
         h: 'Sorting the codebase',
-        body: 'Every function you\'ve written lives somewhere. Audio thread: processBlock and everything it calls — voices, envelopes, the MIDI dispatch (n3 — the MidiBuffer arrives INSIDE processBlock). Message thread: the editor, paint(), sliders, attachment callbacks, preset loading UI. Host-decided: prepareToPlay and setStateInformation arrive on host threads with audio safely stopped or gated — treat them as "not the audio thread, but also not free to touch audio state carelessly."',
+        body: 'Every function you\'ve written lives somewhere. Audio thread: processBlock and everything it calls — voices, envelopes, the MIDI dispatch (n3 — the MidiBuffer arrives INSIDE processBlock). Message thread: the editor, paint(), sliders, attachment callbacks, preset loading UI. Host-decided: prepareToPlay arrives with audio safely stopped — but setStateInformation can land while audio RUNS (r9 returns to this). Treat both as "not the audio thread — and anything they share with audio must cross through the safe channels."',
         code: '// the sorting, as a habit:\nprocessBlock()            // AUDIO — the deadline\n  └ startNote, render…    // AUDIO — called from it\ncreateEditor(), paint()   // MESSAGE — human-paced\nsliderValueChanged()      // MESSAGE — a finger did this\nprepareToPlay()           // host setup call — audio not running yet',
         codeTitle: 'every line has an address',
       },
@@ -422,13 +422,13 @@ const ZONE6_LESSONS = [
       },
       {
         h: 'The one-line cure',
-        body: 'Desktop CPUs have flags — flush-to-zero (FTZ) and denormals-are-zero (DAZ) — that make hardware treat denormals AS zero: full speed, and the "lost" values are ~10⁻³⁸, roughly 700 dB below full scale. Nobody\'s ears will file a complaint. JUCE wraps the flags in a scoped guard, set on entry to processBlock, restored on exit:',
+        body: 'Desktop CPUs have flags — flush-to-zero (FTZ) and denormals-are-zero (DAZ) — that make hardware treat denormals AS zero: full speed, and the "lost" values are ~10⁻³⁸, roughly 760 dB below full scale. Nobody\'s ears will file a complaint. JUCE wraps the flags in a scoped guard, set on entry to processBlock, restored on exit:',
         code: 'void processBlock (juce::AudioBuffer<float>& buffer,\n                   juce::MidiBuffer& midi)\n{\n    juce::ScopedNoDenormals noDenormals;   // FTZ/DAZ for this scope\n    // … render as usual — tails now decay to a clean 0.0\n}',
         codeTitle: 'the brake, released',
         breakdown: [
           ['ScopedNoDenormals', 'sets the CPU flags on construction, restores them on destruction — RAII from Zone 2, guarding a CPU mode'],
           ['per callback', 'the flags are per-thread state — setting them inside the callback covers exactly your rendering'],
-          ['~700 dB down', 'the values being flushed are astronomically below hearing — the trade is free'],
+          ['~760 dB down', 'the values being flushed are astronomically below hearing — the trade is free'],
         ],
         mistake: { code: 'if (std::abs(s) < 1.0e-15f)   // ✗ manual denormal patrol\n    s = 0.0f;', text: 'Hand-checking every signal path costs a branch per sample per path, misses the filter states you forgot, and still leaves internal feedback values denormal. The CPU flags fix ALL paths at once, for free. One guard beats a hundred ifs.' },
       },
@@ -463,9 +463,9 @@ const ZONE6_LESSONS = [
         type: 'mcq', concept: 'performance-eng',
         prompt: 'Is flushing denormals to zero audible?',
         options: [
-          { t: 'No — the flushed values sit around 700 dB below full scale, astronomically beneath hearing, dither, and every converter on Earth', why: '' },
+          { t: 'No — the flushed values sit around 760 dB below full scale, astronomically beneath hearing, dither, and every converter on Earth', why: '' },
           { t: 'Yes, tails get truncated', why: 'The tail still decays through the entire audible range normally — only the sub-10⁻³⁸ ghost of it snaps to zero.' },
-          { t: 'Only on high-end monitors', why: 'No monitor made reproduces −700 dBFS — thermal noise in the cables is louder by dozens of orders of magnitude.' },
+          { t: 'Only on high-end monitors', why: 'No monitor made reproduces −760 dBFS — thermal noise in the cables is louder by dozens of orders of magnitude.' },
           { t: 'Yes, it adds distortion', why: 'Flushing is a clean snap-to-zero of inaudibly small values — no new harmonics anywhere near the audible range.' },
         ],
         answer: 0,
