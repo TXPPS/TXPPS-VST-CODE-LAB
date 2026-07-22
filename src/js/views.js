@@ -778,7 +778,7 @@ const Views = (() => {
       if (step === 0) {
         slot.replaceChildren(
           el('div', { class: 'card raised' },
-            node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook) }) : null,
+            node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook, { links: true }) }) : null,
             el('div', { class: 'eyebrow phos' }, 'OBJECTIVE'),
             el('p', { class: 'prose mt-s', html: fmt(node.objective) }),
             el('div', { class: 'mt-m row wrap' },
@@ -793,7 +793,7 @@ const Views = (() => {
       if (sIdx < node.sections.length) {
         const s = node.sections[sIdx];
         const bits = [el('h2', { class: 'h-display', style: 'font-size:16px' }, s.h),
-          el('div', { class: 'prose', html: fmt(s.body) })];
+          el('div', { class: 'prose', html: fmt(s.body, { links: true }) })];
         if (s.viz) bits.push(Viz.render(s.viz));
         if (s.code) {
           bits.push(UI.codePanel(s.code, s.codeTitle));
@@ -805,16 +805,16 @@ const Views = (() => {
         }
         if (s.analogy) bits.push(el('div', { class: 'callout analogy' },
           el('div', { class: 'co-head' }, '⌁ Studio analogy'),
-          el('div', { html: fmt(s.analogy) })));
+          el('div', { html: fmt(s.analogy, { links: true }) })));
         if (s.mistake) {
           const mk = [el('div', { class: 'co-head' }, '✗ Common mistake')];
           if (s.mistake.code) mk.push(el('div', { class: 'code', style: 'margin:6px 0' }, el('pre', { html: UI.highlightCpp(s.mistake.code) })));
-          mk.push(el('div', { html: fmt(s.mistake.text) }));
+          mk.push(el('div', { html: fmt(s.mistake.text, { links: true }) }));
           bits.push(el('div', { class: 'callout mistake' }, mk));
         }
         if (s.warn) bits.push(el('div', { class: 'callout warn' },
           el('div', { class: 'co-head' }, '⚠ Worth knowing'),
-          el('div', { html: fmt(s.warn) })));
+          el('div', { html: fmt(s.warn, { links: true }) })));
         slot.replaceChildren(el('div', { class: 'card col', style: 'gap:12px' }, bits), nextBtn(sIdx === node.sections.length - 1 ? 'To the checks' : 'Next'));
         return;
       }
@@ -852,13 +852,13 @@ const Views = (() => {
         el('div', { class: 'eyebrow phos' }, '\uD83C\uDF9B INSIDE A REAL PLUGIN'),
         el('div', { class: 'col gap-s' }, node.inside.map((x) => el('div', { class: 'plugin-use' },
           el('span', { class: 'pu-name' }, x.name),
-          el('span', { class: 'pu-desc', html: fmt(x.use) }))))));
+          el('span', { class: 'pu-desc', html: fmt(x.use, { links: true }) }))))));
       if (node.analogyPanel) endPanels.push(el('div', { class: 'callout analogy' },
         el('div', { class: 'co-head' }, '\uD83C\uDFB9 STUDIO ANALOGY'),
-        el('div', { html: fmt(node.analogyPanel) })));
+        el('div', { html: fmt(node.analogyPanel, { links: true }) })));
       if (node.beginnerMistake) endPanels.push(el('div', { class: 'callout mistake' },
         el('div', { class: 'co-head' }, '\u26A0 COMMON BEGINNER MISTAKE'),
-        el('div', { html: fmt(node.beginnerMistake) })));
+        el('div', { html: fmt(node.beginnerMistake, { links: true }) })));
       if (node.remember) endPanels.push(el('div', { class: 'callout remember' },
         el('div', { class: 'co-head' }, '\uD83D\uDCA1 REMEMBER THIS'),
         el('div', { class: 'co-body', html: fmt(node.remember) })));
@@ -891,7 +891,7 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'eyebrow amber' }, nodeKindLabel(node).toUpperCase() + (alreadyDone ? ' · REPLAY' : '')),
       el('h1', { class: 'h-display' }, node.title),
-      node.intro ? el('p', { class: 'small dim', style: 'max-width:62ch' }, node.intro) : null));
+      node.intro ? el('p', { class: 'small dim', style: 'max-width:62ch', html: fmt(node.intro, { links: true }) }) : null));
 
     main.appendChild(el('div', { class: 'card' }, sequenceRunner({
       eyebrow: 'CHALLENGE',
@@ -921,7 +921,7 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'eyebrow phos' }, 'MINI-PROJECT MISSION' + (alreadyDone ? ' · REPLAY' : '')),
       el('h1', { class: 'h-display' }, node.title),
-      el('p', { class: 'small dim', style: 'max-width:62ch' }, node.brief),
+      el('p', { class: 'small dim', style: 'max-width:62ch', html: fmt(node.brief, { links: true }) }),
       savedStep > 0 && !alreadyDone ? el('p', { class: 'mono small', style: 'color:var(--amber)' }, 'RESUMING AT STEP ' + (savedStep + 1)) : null));
 
     main.appendChild(el('div', { class: 'card' }, sequenceRunner({
@@ -1141,26 +1141,27 @@ const Views = (() => {
   function glossary() {
     const main = el('div', { class: 'main' });
     main.appendChild(el('div', { class: 'col gap-s' },
-      el('div', { class: 'eyebrow phos' }, 'GLOSSARY'),
-      el('h1', { class: 'h-display' }, 'The signal dictionary')));
+      el('div', { class: 'eyebrow phos' }, 'SIGNAL DICTIONARY'),
+      el('h1', { class: 'h-display' }, 'The signal dictionary'),
+      el('p', { class: 'small dim', style: 'max-width:62ch' }, DICT.length + ' terms — each one a mini-lesson: plain English, why it matters, a studio take, and where it appears in the curriculum.'),
+      el('div', { class: 'mastery-legend' }, Dict.LEVELS.map((l) => l.glyph + ' ' + l.label).join('   '))));
 
     let filter = '';
     let cat = 'ALL';
-    const cats = ['ALL', 'C++', 'DSP', 'JUCE', 'TOOLS'];
 
-    const search = el('input', { type: 'search', placeholder: 'Search terms…', 'aria-label': 'Search glossary',
-      oninput: (e) => { filter = e.target.value.toLowerCase(); renderList(); } });
+    const search = el('input', { type: 'search', placeholder: 'Search — try "memory", "volume", "wobble"…', 'aria-label': 'Search the signal dictionary',
+      oninput: (e) => { filter = e.target.value; renderList(); } });
     main.appendChild(el('div', { class: 'search-row' }, search));
 
-    const chipRow = el('div', { class: 'chips' });
-    cats.forEach((c) => {
-      const b = el('button', { class: 'chip', onclick: () => { cat = c; renderChips(); renderList(); } }, c);
-      chipRow.appendChild(b);
+    const chipRow = el('div', { class: 'cat-row' });
+    DICT_CATS.forEach((c) => {
+      chipRow.appendChild(el('button', { class: 'chip', onclick: () => { Sfx.tap(); cat = c; renderChips(); renderList(); } }, c));
     });
     function renderChips() {
       [...chipRow.children].forEach((b, i) => {
-        b.style.borderColor = cats[i] === cat ? 'var(--phos)' : '';
-        b.style.color = cats[i] === cat ? 'var(--phos)' : '';
+        const on = DICT_CATS[i] === cat;
+        b.style.borderColor = on ? 'var(--phos)' : '';
+        b.style.color = on ? 'var(--phos)' : '';
       });
     }
     renderChips();
@@ -1170,25 +1171,18 @@ const Views = (() => {
     main.appendChild(listCard);
 
     function renderList() {
-      const items = GLOSSARY.filter((g) =>
-        (cat === 'ALL' || g.c === cat) &&
-        (!filter || g.t.toLowerCase().includes(filter) || g.d.toLowerCase().includes(filter)));
+      const items = Dict.search(filter, cat);
       if (items.length === 0) {
-        listCard.replaceChildren(el('p', { class: 'dim small', style: 'padding:8px 0' }, 'No terms match. Try a shorter search.'));
+        listCard.replaceChildren(el('p', { class: 'dim small', style: 'padding:8px 0' }, 'No terms match. Try a shorter search — or a producer word like "wobble" or "volume".'));
         return;
       }
       listCard.replaceChildren(...items.map((g) => {
-        const body = el('div', { class: 'gloss-body hidden' },
-          el('div', null, g.d),
-          g.a ? el('div', { class: 'aud' }, el('b', null, 'STUDIO TAKE — '), g.a) : null);
-        const btn = el('button', { class: 'gloss-term', 'aria-expanded': 'false', onclick: () => {
-          const open = !body.classList.contains('hidden');
-          body.classList.toggle('hidden', open);
-          btn.setAttribute('aria-expanded', String(!open));
-        } },
+        const m = Dict.mastery(g);
+        const btn = el('button', { class: 'gloss-term', onclick: () => { Sfx.tap(); Dict.open(g.id); } },
+          el('span', { class: 'gloss-glyph', style: 'color:' + (m.level >= 2 ? 'var(--phos)' : (m.level === 1 ? 'var(--amber)' : 'var(--ink-faint)')), 'aria-label': m.label }, m.glyph),
           el('span', { class: 't' }, g.t),
           el('span', { class: 'c' }, g.c));
-        return el('div', { class: 'gloss-item' }, btn, body);
+        return el('div', { class: 'gloss-item' }, btn);
       }));
     }
     renderList();

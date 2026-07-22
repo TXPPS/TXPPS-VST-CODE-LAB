@@ -30,10 +30,11 @@ const UI = (() => {
   }
 
   /* ---- inline markup: `code` and **bold** ---- */
-  function fmt(text) {
+  function fmt(text, opts) {
     let s = escapeHtml(text);
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    if (opts && opts.links && typeof Dict !== 'undefined') s = Dict.autoLink(s);
     return s;
   }
 

@@ -143,6 +143,16 @@ const App = (() => {
 
   function boot() {
     try {
+      // tap-to-define: abbreviations in prose open their dictionary card
+      document.addEventListener('click', (e) => {
+        const tl = e.target.closest && e.target.closest('.term-link');
+        if (tl) { e.preventDefault(); e.stopPropagation(); Sfx.tap(); Dict.open(tl.dataset.term); }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const tl = e.target.closest && e.target.closest('.term-link');
+        if (tl) { e.preventDefault(); Dict.open(tl.dataset.term); }
+      });
       applyCodeSize();
       applyMotion();
       go('dashboard');

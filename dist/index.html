@@ -544,6 +544,41 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .gloss-body .aud { margin-top: 7px; color: var(--ink); }
 .gloss-body .aud b { color: var(--phos); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; }
 
+/* ---------- signal dictionary ---------- */
+.term-link {
+  color: var(--phos);
+  border-bottom: 1px dashed var(--phos-dim);
+  cursor: pointer;
+}
+.term-link:active { background: var(--phos-glow); }
+.mastery-legend {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+  color: var(--ink-faint); white-space: pre-wrap;
+}
+.cat-row {
+  display: flex; gap: 8px;
+  overflow-x: auto; padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.cat-row::-webkit-scrollbar { display: none; }
+.cat-row .chip { flex: none; }
+.gloss-glyph { font-family: var(--mono); font-size: 14px; flex: none; width: 22px; text-align: center; }
+.dict-full { font-size: 13px; color: var(--ink-dim); font-style: italic; margin-top: 2px; }
+.appears-row {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; width: 100%; text-align: left;
+  padding: 4px 0; border-radius: var(--rad-sm);
+}
+.appears-row:active { background: var(--bg2); }
+.z-badge {
+  flex: none; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 6px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint);
+}
+.z-badge.live { border-color: var(--phos-dim); color: var(--phos); }
+
 /* ---------- modal / sheet ---------- */
 .sheet-veil {
   position: fixed; inset: 0; z-index: 60;
@@ -2458,71 +2493,1600 @@ const ZONE1_CHALLENGES = [
 ;
 /* ===== src/js/data_glossary.js ===== */
 /* ============================================================
-   Glossary — C++, DSP, JUCE and tooling terms.
-   Shape: { t: term, c: category, d: definition, a?: audio analogy }
-   Categories: 'C++', 'DSP', 'JUCE', 'TOOLS'
+   SIGNAL DICTIONARY — part A: Basics, C++, Memory.
+   Parts B (audio/DSP/synth) and C (JUCE/plugin-dev/MIDI/tools)
+   push onto DICT in data_glossary_b.js / data_glossary_c.js.
+
+   Entry shape:
+   { id, t: term, full?: spelled-out name, c: category,
+     plain:   plain English, no jargon
+     why:     why it matters for building a VST
+     studio:  music-production analogy
+     uses:    where it shows up in real plugins (chips)
+     viz?:    diagram spec (Viz)
+     mistake: common beginner mistake
+     remember: one sentence to keep forever
+     related: [ids] — clickable
+     appears: [{z, node?, label?}] — curriculum appearances
+     aka?:    alternative names/abbreviations for search
+     search?: beginner-wording search keywords }
    ============================================================ */
 
-const GLOSSARY = [
-  { t: 'variable', c: 'C++', d: 'A named slot that stores one value of a fixed type.', a: 'A labeled knob position — one name, one current value.' },
-  { t: 'type', c: 'C++', d: 'The kind of value a variable holds (float, int, bool…). Set at declaration, never changes.', a: 'The kind of jack: audio, MIDI, or footswitch. No cross-plugging.' },
-  { t: 'float', c: 'C++', d: '32-bit floating-point number. The standard type for audio samples, normally in the -1.0 to +1.0 range. Literals take an f suffix: 0.5f.' },
-  { t: 'double', c: 'C++', d: '64-bit floating-point number — twice the precision of float. Used for phase accumulators and other precision-critical math.' },
-  { t: 'int', c: 'C++', d: 'Whole-number type. Used for counters, indexes, and MIDI data (notes 0–127). int / int truncates the remainder.' },
-  { t: 'bool', c: 'C++', d: 'true or false. The type for bypass switches and flags.' },
-  { t: 'const', c: 'C++', d: 'Marks a value read-only. Any code that tries to modify it fails to compile.', a: 'The locked sample rate of a running session — nobody changes it mid-take.' },
-  { t: 'constexpr', c: 'C++', d: 'Like const, but the value is computed and fixed at compile time.' },
-  { t: 'function', c: 'C++', d: 'A named, reusable block of code with typed inputs (parameters) and one typed output (return value).', a: 'A pedal: signal and knob settings in, processed signal out.' },
-  { t: 'parameter', c: 'C++', d: 'A typed input a function receives. The caller\'s values (arguments) are copied — or referenced — into the parameters.' },
-  { t: 'return value', c: 'C++', d: 'The single value a function sends back to its caller. Type void means nothing is returned.' },
-  { t: 'scope', c: 'C++', d: 'The region of code where a name is valid — usually the braces it was declared in. Locals die at the closing brace.' },
-  { t: 'if / else', c: 'C++', d: 'Runs code only when a condition is true, with optional alternatives. Exactly one branch of a chain executes.', a: 'A noise gate: above threshold, open; otherwise, closed.' },
-  { t: 'switch', c: 'C++', d: 'Branches on one integer-like value with fixed cases. Each case needs break, or execution falls through to the next.', a: 'A rotary mode selector — discrete positions, each wired to a circuit.' },
-  { t: 'loop', c: 'C++', d: 'Repeats a block of code. for = known count; while = open-ended. The block loop for(i = 0; i < numSamples; ++i) is the heart of DSP code.' },
-  { t: 'array', c: 'C++', d: 'A fixed-length row of same-typed values, indexed from 0. No bounds checking — stay inside 0…size-1.' },
-  { t: 'std::vector', c: 'C++', d: 'A resizable array that knows its size. resize() in setup code; never grow it inside the audio callback (it may allocate).', a: 'A delay line whose length you set while the session is stopped.' },
-  { t: 'reference', c: 'C++', d: 'An alias — a second name for an existing value (float&). No copy; writes through it change the original. Must be initialized, can\'t be re-seated.', a: 'A patchbay mult: the same signal at two jack labels.' },
-  { t: 'pointer', c: 'C++', d: 'A variable holding a memory address (float*). * dereferences (follows) it; & takes an address. Can be nullptr — check before dereferencing.', a: 'A written-down patch location: "delay at rack 2, slot 5".' },
-  { t: 'nullptr', c: 'C++', d: 'The pointer value meaning "points at nothing". Dereferencing it is undefined behavior — typically a crash.', a: 'A note that says "nothing patched here". Don\'t plug into it.' },
-  { t: 'dangling pointer', c: 'C++', d: 'A pointer to memory that has been destroyed — like the address of a local variable after its function returned. Using it is undefined behavior.' },
-  { t: 'undefined behavior', c: 'C++', d: 'Code the C++ standard makes no promises about (out-of-bounds reads, null dereference, data races). May appear to work, then crash elsewhere. UB is never acceptable.' },
-  { t: 'class', c: 'C++', d: 'A user-defined type bundling data (members) with functions that operate on it.', a: 'A synth schematic — the design every unit is built from.' },
-  { t: 'object', c: 'C++', d: 'One instance created from a class, with its own copy of all member variables.', a: 'One physical unit on your desk. Two units, two independent sets of knobs.' },
-  { t: 'constructor', c: 'C++', d: 'The function that runs automatically when an object is created, ensuring it starts in a valid state. Same name as the class, no return type.', a: 'A hardware power-on sequence: defaults loaded, unit ready.' },
-  { t: 'member initializer list', c: 'C++', d: 'The : member(value) list after a constructor\'s parameters — initializes members directly, before the body runs. Preferred over assigning in the body.' },
-  { t: 'encapsulation', c: 'C++', d: 'Keeping state private and exposing controlled public functions, so invalid states become impossible from outside.', a: 'Panel controls hide the circuitry — users turn knobs, they don\'t resolder.' },
-  { t: 'public / private', c: 'C++', d: 'Access specifiers. public members are usable from outside code; private members only from the class\'s own functions.' },
-  { t: 'header file (.h)', c: 'C++', d: 'Declares a class\'s interface for other files to #include. Starts with #pragma once.', a: 'The front-panel silkscreen: every jack labeled, case closed.' },
-  { t: 'implementation file (.cpp)', c: 'C++', d: 'Defines the function bodies declared in the header, using the ClassName:: prefix.' },
-  { t: '#include', c: 'C++', d: 'Pastes another file\'s contents in at compile time. Quotes ("MyClass.h") for your headers; angle brackets (<vector>) for system/library ones.' },
-  { t: '#pragma once', c: 'C++', d: 'Header guard: ensures a header is included at most once per compiled file, preventing duplicate-definition errors.' },
-  { t: 'compiler error', c: 'C++', d: 'A per-file build failure: syntax, types, unknown names. Points at file and line — though often one line after the real cause. Fix the first error first.' },
-  { t: 'linker error', c: 'C++', d: '"undefined reference": a function was declared but no compiled body exists — never written, or its .cpp isn\'t in the build.' },
-  { t: 'stack / heap', c: 'C++', d: 'Stack: fast, automatic memory for locals, freed at scope end. Heap: manually managed memory (new, vector growth) with unpredictable allocation time — which is why the audio thread avoids it.' },
-  { t: 'allocation', c: 'C++', d: 'Requesting heap memory at runtime. Unbounded worst-case time; forbidden inside the audio callback. Allocate in prepareToPlay instead.' },
+const DICT_CATS = ['ALL', 'BASICS', 'C++', 'MEMORY', 'AUDIO CODE', 'DSP', 'SYNTHS', 'EFFECTS', 'MIDI', 'JUCE', 'PLUGIN DEV', 'AUDIO ENG', 'MATH', 'TOOLS', 'DEBUGGING', 'PERFORMANCE', 'ARCHITECTURE', 'DAWS'];
 
-  { t: 'sample', c: 'DSP', d: 'One measurement of a waveform\'s amplitude at one instant — in code, one float, usually within -1.0…+1.0.' },
-  { t: 'sample rate', c: 'DSP', d: 'Samples per second (44100, 48000…). Converts between time and sample counts: one second at 48 kHz is 48000 samples.' },
-  { t: 'buffer / block', c: 'DSP', d: 'The chunk of samples a host delivers per callback (32–2048 samples). Smaller = lower latency, more CPU overhead.' },
-  { t: 'gain', c: 'DSP', d: 'A multiplier applied to a signal. 1.0 = unity, 0.5 ≈ -6 dB, 2.0 ≈ +6 dB. Applied by multiplication, never addition.' },
-  { t: 'decibel (dB)', c: 'DSP', d: 'Logarithmic level scale matching how we hear. Amplitude: gain = 10^(dB/20). 0 dB = unity; -6 dB ≈ half amplitude.' },
-  { t: 'phase', c: 'DSP', d: 'Position within a waveform\'s cycle, 0 to 2π radians. An oscillator advances phase by 2π·f/fs per sample and wraps it past 2π.' },
-  { t: 'DC offset', c: 'DSP', d: 'A constant added to a signal, shifting the waveform off center — wastes headroom and thumps on start/stop. One reason gain multiplies instead of adds.' },
-  { t: 'audio callback', c: 'DSP', d: 'The function the host calls repeatedly with each new block, on a high-priority thread with a hard deadline. Miss the deadline and the audio glitches.', a: 'The DAW asking, every few milliseconds without fail: "next block, now."' },
-  { t: 'real-time safety', c: 'DSP', d: 'Writing callback code whose worst-case time is bounded: no allocation, file access, blocking locks, logging, or unbounded loops on the audio thread.' },
+const DICT = [
 
-  { t: 'JUCE', c: 'JUCE', d: 'The dominant C++ framework for audio plugins: one codebase building VST3, AU, AAX and standalone apps. Zone 3 onward lives here.' },
-  { t: 'AudioProcessor', c: 'JUCE', d: 'The JUCE base class your plugin inherits: the host talks to your plugin entirely through its interface (prepareToPlay, processBlock, state calls).' },
-  { t: 'processBlock', c: 'JUCE', d: 'The JUCE audio callback: receives an AudioBuffer and MidiBuffer, must fill/modify the audio in place under real-time rules.' },
-  { t: 'prepareToPlay', c: 'JUCE', d: 'Called before playback starts, with sample rate and max block size. The place to size buffers and reset state — allocation is allowed here.' },
-  { t: 'APVTS', c: 'JUCE', d: 'AudioProcessorValueTreeState: JUCE\'s parameter system — declares plugin parameters, syncs them with the host, and saves/restores state.', a: 'The preset system: every knob declared, automatable, and recallable.' },
-  { t: 'VST3', c: 'JUCE', d: 'Steinberg\'s plugin format — the standard target on Windows and common everywhere. JUCE generates it from your AudioProcessor.' },
+  /* ================= BASICS ================= */
+  {
+    id: 'variable', t: 'variable', c: 'BASICS',
+    plain: 'A named slot that remembers one value. You give it a name, put a value in, and read or change it later. That\'s it — a labeled box that holds a number (or a switch state, or text).',
+    why: 'Every knob, fader, switch and setting in your plugin is a variable underneath. No variables, no state — your plugin couldn\'t remember anything between samples.',
+    studio: 'A knob remembering where you left it. The knob is the handle; the variable is the memory behind it.',
+    uses: ['Every knob & fader', 'Oscillator phase', 'Filter cutoff', 'Bypass switch'],
+    viz: { t: 'knobToVar', knob: 'CUTOFF', code: 'float cutoff = 1200.0f;' },
+    mistake: 'Thinking a variable "does" something. It just holds the last value it was given — code elsewhere has to read it for anything to happen.',
+    remember: 'Every knob you have ever moved is a number stored in a variable.',
+    related: ['type', 'float', 'int', 'bool', 'memory', 'const'],
+    appears: [{ z: 1, node: 'l1' }, { z: 3, label: 'parameters & APVTS' }],
+    search: ['memory', 'value', 'store', 'remember', 'knob'],
+  },
+  {
+    id: 'type', t: 'type', c: 'BASICS',
+    plain: 'The kind of value a variable can hold: a decimal number, a whole number, a true/false switch. In C++ you declare the type up front, and it never changes.',
+    why: 'Audio is floats, MIDI notes are whole numbers, bypass is true/false. Pick the wrong type and audio truncates to silence or notes go out of range — the compiler checks types so those mistakes fail early.',
+    studio: 'The kind of jack: audio, MIDI, or footswitch. No cross-plugging — each cable type carries its own kind of signal.',
+    uses: ['Samples (float)', 'MIDI notes (int)', 'Switches (bool)', 'Phase (double)'],
+    mistake: 'Mixing types casually — dividing two ints and expecting a decimal result, or storing 0.73 in an int and losing everything after the point.',
+    remember: 'A type says what kind of value fits in the jack.',
+    related: ['variable', 'float', 'int', 'bool', 'double'],
+    appears: [{ z: 1, node: 'l1' }],
+    search: ['kind', 'number', 'data'],
+  },
+  {
+    id: 'float', t: 'float', full: 'floating-point number (32-bit)', c: 'BASICS',
+    plain: 'A number that can hold decimals, like 0.5 or -0.73. The standard type for audio: every sample and almost every knob value is a float. Write float values with an f on the end: 0.5f.',
+    why: 'Audio samples are fractional values, normally between -1.0 and +1.0. Floats are what your DSP reads and writes, tens of thousands of times per second.',
+    studio: 'A fader position: smoothly variable, any value in the range — not clicks between fixed steps.',
+    uses: ['Every audio sample', 'Gain / volume', 'Cutoff & resonance', 'Mix amounts'],
+    mistake: 'Forgetting the f suffix. `0.5` alone is a double (a bigger, slower cousin) that gets converted — write `0.5f` in audio code.',
+    remember: 'Audio is floats: fractional numbers, usually between -1.0 and +1.0.',
+    related: ['double', 'sample', 'type', 'gain', 'amplitude'],
+    appears: [{ z: 1, node: 'l1' }, { z: 4, label: 'every DSP formula' }],
+    search: ['volume', 'decimal', 'number', 'fraction'],
+  },
+  {
+    id: 'double', t: 'double', full: 'double-precision floating-point (64-bit)', c: 'BASICS',
+    plain: 'A float with twice the precision — it can hold many more decimal places accurately. Slower and bigger, so it\'s used where precision genuinely matters.',
+    why: 'An oscillator\'s phase accumulates tiny steps for hours; in a float those errors slowly detune it. Doubles keep long-running positions accurate.',
+    studio: 'The difference between a rough tape counter and a sample-accurate playhead readout.',
+    uses: ['Oscillator phase', 'Sample rate values', 'Long-running counters'],
+    mistake: 'Using double everywhere "to be safe" — samples stay float; doubles are for accumulating positions, not for the audio itself.',
+    remember: 'double = extra decimal precision for values that accumulate over time.',
+    related: ['float', 'phase', 'oscillator', 'sample-rate'],
+    appears: [{ z: 1, node: 'l1' }, { z: 4, label: 'phase accumulators' }],
+    search: ['precision', 'decimal'],
+  },
+  {
+    id: 'int', t: 'int', full: 'integer', c: 'BASICS',
+    plain: 'A whole number: no decimal point. Used for counting things — samples, notes, voices, slots.',
+    why: 'MIDI notes are 0–127, buffers hold a whole number of samples, loops count in whole steps. And the classic trap: int ÷ int throws the remainder away (3 / 2 gives 1).',
+    studio: 'A step count on a sequencer: step 7 exists, step 7.5 doesn\'t.',
+    uses: ['MIDI notes (0–127)', 'Sample counts', 'Loop counters', 'Voice slots'],
+    mistake: 'Dividing two ints and expecting a decimal — `50 / 100` is 0, which is how a "50% mix" knob outputs silence.',
+    remember: 'ints count; they never hold fractions — and int ÷ int drops the remainder.',
+    related: ['float', 'type', 'loop', 'midi'],
+    appears: [{ z: 1, node: 'l1' }],
+    aka: ['integer'],
+    search: ['whole number', 'count'],
+  },
+  {
+    id: 'bool', t: 'bool', full: 'boolean', c: 'BASICS',
+    plain: 'A value that is only ever true or false. The type for anything that\'s on or off.',
+    why: 'Bypass, mute, solo, "is this voice playing?", "is the gate open?" — plugin logic runs on true/false decisions.',
+    studio: 'A footswitch: down or up. Nothing in between.',
+    uses: ['Bypass switch', 'Mute / solo', 'Voice active flag', 'Sync on/off'],
+    mistake: 'Comparing with `== true` (or worse, assigning with `=` in an if). For switches, just write `if (bypassed)`.',
+    remember: 'bool = a footswitch: true or false, nothing else.',
+    related: ['if-else', 'type', 'variable'],
+    appears: [{ z: 1, node: 'l1' }, { z: 1, node: 'l4' }],
+    aka: ['boolean'],
+    search: ['switch', 'true', 'false', 'toggle', 'on off'],
+  },
+  {
+    id: 'function', t: 'function', c: 'BASICS',
+    plain: 'A named block of processing: values go in, one job happens, a result comes back. Define it once, use it anywhere.',
+    why: 'Your gain stage, your dB converter, your envelope step — each is a function. Plugins are functions calling functions, like pedals feeding pedals.',
+    studio: 'A pedal: signal and knob settings in, the circuit works, processed signal out.',
+    uses: ['applyGain()', 'dbToGain()', 'nextSample()', 'processBlock()'],
+    viz: { t: 'chain', nodes: ['sample in', 'applyGain()', 'sample out'], accent: 1 },
+    mistake: 'Calling a function and ignoring what it returns — the signal got processed, but nothing was patched to the output.',
+    remember: 'Signal in, processing inside, signal out — every function is a pedal.',
+    related: ['parameter', 'return-value', 'argument', 'method'],
+    appears: [{ z: 1, node: 'l3' }, { z: 1, node: 'c1' }],
+    search: ['pedal', 'process', 'call'],
+  },
+  {
+    id: 'parameter', t: 'parameter', c: 'BASICS',
+    plain: 'A named input a function receives — declared in its parentheses. When you call the function, your values land in its parameters. (In plugin-land, "parameter" also means an automatable knob — see APVTS.)',
+    why: 'Parameters are how you hand a function the signal and the knob settings it needs: `applyGain(float sample, float gain)` takes two.',
+    studio: 'The knobs on a pedal: the settings you hand the circuit along with the signal.',
+    uses: ['Function inputs', 'Plugin knobs (APVTS)', 'processBlock arguments'],
+    mistake: 'Confusing parameters (the function\'s named slots) with arguments (the actual values you pass in a call).',
+    remember: 'Parameters are the named input jacks of a function.',
+    related: ['function', 'argument', 'apvts', 'return-value'],
+    appears: [{ z: 1, node: 'l3' }, { z: 3, label: 'APVTS parameter layouts' }],
+    search: ['input', 'knob'],
+  },
+  {
+    id: 'argument', t: 'argument', c: 'BASICS',
+    plain: 'The actual value you pass when calling a function. In `applyGain(0.8f, 0.5f)`, the arguments are 0.8f and 0.5f — they land in the function\'s parameters.',
+    why: 'Understanding parameter (the slot) vs argument (the value) makes compiler messages readable: "no matching function" errors are almost always about argument types.',
+    studio: 'The actual knob positions for this one pass — the settings, not the knobs.',
+    uses: ['Every function call', 'Compiler error messages'],
+    mistake: 'Passing arguments in the wrong order — C++ matches them by position, not by name.',
+    remember: 'Arguments are the values; parameters are the slots they land in.',
+    related: ['parameter', 'function'],
+    appears: [{ z: 1, node: 'l3' }],
+    search: ['value', 'pass'],
+  },
+  {
+    id: 'return-value', t: 'return value', c: 'BASICS',
+    plain: 'The single value a function hands back to whoever called it. Its type is the first word of the function\'s signature; `void` means "returns nothing."',
+    why: 'A per-sample processor returns the processed sample; a dB converter returns the gain. If you ignore a return value, the work was done for nothing.',
+    studio: 'The output jack: the processed signal leaving the pedal.',
+    uses: ['Processed samples', 'Converted values', 'Success/failure flags'],
+    mistake: 'Writing a function that computes the right value but never `return`s it — or calling one and dropping the result on the floor.',
+    remember: 'return is the output jack — one value, back to the caller.',
+    related: ['function', 'parameter'],
+    appears: [{ z: 1, node: 'l3' }],
+    search: ['output', 'result'],
+  },
+  {
+    id: 'if-else', t: 'if / else', c: 'BASICS',
+    plain: 'Code that decides: run this block only when a condition is true; otherwise run the other one. Chains of else-if pick exactly one branch.',
+    why: 'Threshold logic is everywhere in audio: gates, compressors, limiters, "is this voice free?", "are we bypassed?" — all if-statements.',
+    studio: 'A noise gate: above the threshold the branch opens, otherwise the else path runs.',
+    uses: ['Gate / compressor thresholds', 'Bypass logic', 'Voice allocation', 'Clip protection'],
+    viz: { t: 'gate' },
+    mistake: 'Typing `=` (store) when you mean `==` (compare) — `if (x = 1)` silently rewrites x and always runs.',
+    remember: 'A gate is just an if statement with good marketing.',
+    related: ['bool', 'switch-statement', 'cutoff'],
+    appears: [{ z: 1, node: 'l4' }],
+    aka: ['if', 'else', 'branch', 'condition'],
+    search: ['decision', 'threshold', 'gate', 'compare'],
+  },
+  {
+    id: 'switch-statement', t: 'switch', c: 'BASICS',
+    plain: 'A selector statement: one whole-number value chooses between fixed cases. Each case ends with break, or the code "falls through" into the next case.',
+    why: 'Waveform selectors, filter modes, sync divisions — any fixed-position choice reads cleaner as a switch than a ladder of if/elses.',
+    studio: 'A rotary selector: discrete positions, each wired to its own circuit.',
+    uses: ['Waveform select', 'Filter mode (LP/HP/BP)', 'Delay sync mode', 'Reverb algorithm'],
+    viz: { t: 'selector', options: ['SINE', 'SAW', 'SQUARE', 'NOISE'], active: 1 },
+    mistake: 'Forgetting break — the selector leaks into the next position, and saw also triggers square.',
+    remember: 'switch is a rotary selector; break is the click that stops it.',
+    related: ['if-else', 'enum', 'int'],
+    appears: [{ z: 1, node: 'l5' }],
+    aka: ['case', 'switch case'],
+    search: ['selector', 'mode', 'choose'],
+  },
+  {
+    id: 'loop', t: 'loop', c: 'BASICS',
+    plain: 'Code that repeats. A `for` loop repeats a known number of times with a counter; a `while` loop repeats until a condition turns false.',
+    why: 'Audio arrives in blocks of hundreds of samples, and a loop visits each one: `for (int i = 0; i < numSamples; ++i)` is the most important line in audio programming.',
+    studio: 'Rolling through a reel of tape sample by sample until the reel ends.',
+    uses: ['The block loop', 'Delay line movement', 'Peak metering', 'Voice rendering'],
+    viz: { t: 'buffer', n: 8, cursor: 2, highlight: 2, label: 'ONE BLOCK', caption: 'the counter i visits every slot once' },
+    mistake: 'Writing `<=` and stepping one slot past the end of the buffer — undefined behavior, the click-today-crash-tomorrow bug.',
+    remember: 'for (int i = 0; i < numSamples; ++i) — burn it in.',
+    related: ['block', 'audio-buffer', 'array', 'undefined-behavior'],
+    appears: [{ z: 1, node: 'l6' }, { z: 1, node: 'o1' }],
+    aka: ['for loop', 'while loop', 'iteration'],
+    search: ['repeat', 'every sample'],
+  },
+  {
+    id: 'scope', t: 'scope', c: 'BASICS',
+    plain: 'The region of code where a name exists — usually the curly braces it was born in. Step outside the braces and the variable is gone.',
+    why: 'Locals dying at the closing brace is why returning a pointer to a local crashes — and why state that must survive between audio blocks lives in class members, not local variables.',
+    studio: 'A talkback mic that\'s only live inside the control room. Step outside and nobody hears you.',
+    uses: ['Local temp values', 'Loop counters', 'Why members exist'],
+    mistake: 'Declaring state inside processBlock and wondering why it forgets everything on the next block — it died at the closing brace.',
+    remember: 'Variables live between their braces; state that must survive belongs in a class member.',
+    related: ['variable', 'stack', 'class', 'dangling-pointer'],
+    appears: [{ z: 1, node: 'l9' }],
+    search: ['lifetime', 'local'],
+  },
 
-  { t: 'CMake', c: 'TOOLS', d: 'The build-system generator used for modern JUCE projects: CMakeLists.txt declares targets, sources and formats; CMake produces the platform build.' },
-  { t: 'Git', c: 'TOOLS', d: 'Version control: snapshots (commits) of your codebase you can branch, compare and roll back.', a: 'Infinite undo plus takes and comps — for code.' },
-  { t: 'debugger', c: 'TOOLS', d: 'A tool that pauses a running program at breakpoints so you can inspect variables and step line by line — the fastest route to understanding a crash.' },
-  { t: 'DAW validation', c: 'TOOLS', d: 'Host-side checks a plugin must pass to load (e.g. Logic\'s auval). Professional plugins are tested across hosts before release.' },
+  /* ================= C++ ================= */
+  {
+    id: 'class', t: 'class', c: 'C++',
+    plain: 'A design that bundles data (member variables) with the behavior that operates on it (member functions). From one class you build any number of objects.',
+    why: 'Your oscillator, filter, voice, and the whole plugin itself are classes. Polyphony is literally one Voice class instantiated eight times.',
+    studio: 'The schematic for a synth model — the design every unit is built from.',
+    uses: ['Oscillator', 'Filter', 'Voice', 'AudioProcessor'],
+    viz: { t: 'blueprint', cls: 'class Filter', a: 'cutoff: 200', b: 'cutoff: 2000' },
+    mistake: 'Forgetting the semicolon after the closing brace: `};` — the errors it causes land in the *next* file and make no sense.',
+    remember: 'A class is the design; every object built from it lives its own life.',
+    related: ['object', 'method', 'constructor', 'encapsulation', 'audioprocessor'],
+    appears: [{ z: 1, node: 'l10' }, { z: 1, node: 'o2' }, { z: 3, label: 'AudioProcessor' }],
+    search: ['blueprint', 'design', 'template of object'],
+  },
+  {
+    id: 'object', t: 'object', c: 'C++',
+    plain: 'One instance built from a class, holding its own copy of every member variable. Two objects from the same class are fully independent.',
+    why: 'Each synth voice is an object with its own phase, envelope and filter state. Turn a knob on one and the others don\'t move.',
+    studio: 'One physical unit built from the schematic — its own knobs, its own settings.',
+    uses: ['Each voice', 'Each channel\'s filter', 'Each LFO'],
+    mistake: 'Assuming objects share their insides. They don\'t — if state seems shared, something is miswired (usually a static or a shared pointer).',
+    remember: 'An object is one unit on the desk — its knobs are its own.',
+    related: ['class', 'constructor', 'method', 'voice'],
+    appears: [{ z: 1, node: 'l10' }],
+    aka: ['instance'],
+    search: ['instance', 'unit', 'copy of class'],
+  },
+  {
+    id: 'method', t: 'method', full: 'member function', c: 'C++',
+    plain: 'A function that lives inside a class and works on that object\'s own data. Called with a dot: `filter.setCutoff(500.0f)` — or through a pointer with an arrow: `filter->setCutoff(500.0f)`.',
+    why: 'Everything a plugin object does — set a frequency, render a sample, reset — is a method. JUCE hands you methods to fill in: processBlock is one.',
+    studio: 'A button on one specific unit: pressing it acts on that unit, not the one next to it.',
+    uses: ['osc.nextSample()', 'filter.setCutoff()', 'voice.startNote()'],
+    mistake: 'Forgetting which object you\'re talking to — a method always acts on the object before the dot.',
+    remember: 'A method is a button on one specific unit.',
+    related: ['class', 'object', 'function'],
+    appears: [{ z: 1, node: 'l10' }, { z: 1, node: 'l11' }],
+    aka: ['member function'],
+    search: ['dot', 'call on object'],
+  },
+  {
+    id: 'constructor', t: 'constructor', c: 'C++',
+    plain: 'The special function that runs automatically the instant an object is created. Same name as the class, no return type. Its job: start the object in a valid state.',
+    why: 'Voices must wake silent, filters must wake stable, your processor must declare its parameters — all constructor work. No object should boot with random knob values.',
+    studio: 'The power-on sequence: relays click, defaults load, the unit wakes ready.',
+    uses: ['Voice defaults', 'Parameter setup', 'Buffer member init'],
+    mistake: 'Assigning members in the body instead of the `: member(value)` initializer list — the list initializes each member exactly once, first.',
+    remember: 'Objects should power on valid — the constructor makes it so.',
+    related: ['class', 'destructor', 'object'],
+    appears: [{ z: 1, node: 'l11' }, { z: 1, node: 'c4' }],
+    search: ['init', 'power on', 'create'],
+  },
+  {
+    id: 'encapsulation', t: 'encapsulation', c: 'C++',
+    plain: 'Keeping a class\'s data private and letting outside code change it only through public functions. The functions can enforce rules, so invalid states become impossible from outside.',
+    why: 'A gain member that only changes through a clamping setGain() can never be 9000. Encapsulation is how plugin classes stay trustworthy as projects grow.',
+    studio: 'Panel controls hiding the circuitry: users turn the knobs you provided — they don\'t open the case and resolder.',
+    uses: ['Guarded setters', 'Voice state protection', 'Parameter clamping'],
+    viz: { t: 'twoLayer', top: 'public: — the front panel', topSub: 'setGain(), getGain()', bottom: 'private: — the circuitry', bottomSub: 'float gain' },
+    mistake: 'Making everything public "for now" — any code anywhere can then corrupt any value, and bug hunts span the whole project instead of one class.',
+    remember: 'Private data + public guarded controls = a class that can\'t be put in a bad state.',
+    related: ['class', 'method', 'constructor', 'const'],
+    appears: [{ z: 1, node: 'l11' }, { z: 1, node: 'b3' }],
+    search: ['private', 'public', 'hide', 'protect'],
+  },
+  {
+    id: 'destructor', t: 'destructor', c: 'C++',
+    plain: 'The special function that runs automatically when an object is destroyed — written `~ClassName()`. Its job: clean up anything the object was responsible for.',
+    why: 'Plugins get created and destroyed constantly as sessions load and close. Cleanup that happens automatically (see RAII in Zone 2) is what keeps them from leaking memory.',
+    studio: 'The power-down sequence: outputs muted, state saved, everything released cleanly.',
+    uses: ['Releasing resources', 'RAII cleanup', 'Editor teardown'],
+    mistake: 'Doing cleanup manually and forgetting a path — modern C++ lets destructors and smart pointers do it for you, every time.',
+    remember: 'Constructors power on; destructors power down — both automatically.',
+    related: ['constructor', 'smart-pointer', 'memory'],
+    appears: [{ z: 2, label: 'RAII & ownership' }],
+    search: ['cleanup', 'delete', 'free'],
+  },
+  {
+    id: 'reference', t: 'reference', c: 'C++',
+    plain: 'A second name for a value that already exists — written `float&`. Not a copy: writing through either name changes the one underlying value.',
+    why: 'processBlock hands you the host\'s audio buffer by reference — you edit the real audio, not a copy. Forgetting the & is the classic "my effect does nothing" bug.',
+    studio: 'Patching another cable into the same signal instead of making a copy — two labels, one wire.',
+    uses: ['processBlock(buffer&)', 'Per-sample processors', 'const& preset reads'],
+    viz: { t: 'mult', a: 'sample', b: 'float& alias', value: '0.2f' },
+    mistake: 'Dropping the & in a parameter — the function quietly processes a copy and the caller\'s audio never changes.',
+    remember: 'A reference is a second label on the same signal — not a copy.',
+    related: ['pointer', 'variable', 'const', 'audio-buffer'],
+    appears: [{ z: 1, node: 'l8' }, { z: 3, label: 'processBlock signature' }],
+    search: ['alias', 'memory', 'same value', 'no copy'],
+  },
+  {
+    id: 'pointer', t: 'pointer', c: 'C++',
+    plain: 'A variable that holds where a value lives — its address — instead of the value itself. `*` follows the address to the value; `&` takes an address. It can also hold nullptr: "points at nothing."',
+    why: 'JUCE hands you pointers constantly (getWritePointer gives a float* into the audio). Mishandled pointers are the #1 reason plugins crash DAWs.',
+    studio: 'Writing the rack slot number on a sticky note instead of carrying the whole synth.',
+    uses: ['getWritePointer()', 'Editor references', 'Sample playheads'],
+    viz: { t: 'rackPointer', code: 'float* p', note: '"rack 2, slot 5"', slot: 'OSC' },
+    mistake: 'Following the note without checking it — one `if (ptr != nullptr)` is the difference between a quiet skip and crashing the session.',
+    remember: 'A pointer is directions to a value — check the directions before you follow them.',
+    related: ['nullptr', 'reference', 'smart-pointer', 'dangling-pointer', 'memory'],
+    appears: [{ z: 1, node: 'l9' }, { z: 1, node: 'b2' }, { z: 2, label: 'smart pointers & ownership' }],
+    search: ['memory', 'address', 'arrow', 'crash'],
+  },
+  {
+    id: 'smart-pointer', t: 'smart pointer', c: 'C++',
+    plain: 'A pointer that manages its own cleanup: when the last owner lets go, the object it points at is destroyed automatically. The main ones are std::unique_ptr (one owner) and std::shared_ptr (shared owners).',
+    why: 'Manual new/delete is how plugins leak memory and double-free crash. Modern JUCE code owns things through unique_ptr — cleanup becomes impossible to forget.',
+    studio: 'A rental system for gear: when the last person checks it back in, it goes back to the warehouse automatically.',
+    uses: ['Owning the editor', 'Owning DSP modules', 'Preset storage'],
+    mistake: 'Still writing raw `new`/`delete` in new code. Reach for std::make_unique first; raw owning pointers are legacy style.',
+    remember: 'Smart pointers make forgetting to clean up impossible.',
+    related: ['pointer', 'destructor', 'memory', 'heap'],
+    appears: [{ z: 2, label: 'unique_ptr & ownership' }],
+    aka: ['unique_ptr', 'shared_ptr', 'make_unique'],
+    search: ['ownership', 'leak', 'delete', 'raii'],
+  },
+  {
+    id: 'nullptr', t: 'nullptr', full: 'null pointer', c: 'C++',
+    plain: 'The pointer value that means "currently pointing at nothing." Its whole purpose is to be checkable before you follow a pointer.',
+    why: '"The editor doesn\'t exist yet" and "no sample is loaded" are everyday plugin situations. Code that checks for nullptr survives them; code that doesn\'t crashes the DAW.',
+    studio: 'A patch note that honestly says "nothing patched here." Don\'t plug into it.',
+    uses: ['Editor checks', 'Optional modules', 'Unloaded samples'],
+    viz: { t: 'rackPointer', code: 'float* osc', note: 'nullptr', empty: true },
+    mistake: 'Dereferencing without checking. `if (p != nullptr)` — or the shorthand `if (p)` — before every use.',
+    remember: 'nullptr is checkable emptiness — always check.',
+    related: ['pointer', 'undefined-behavior', 'dangling-pointer'],
+    appears: [{ z: 1, node: 'l9' }],
+    aka: ['null', 'NULL'],
+    search: ['nothing', 'empty', 'crash', 'check'],
+  },
+  {
+    id: 'dangling-pointer', t: 'dangling pointer', c: 'C++',
+    plain: 'A pointer to memory that has already been destroyed — like the address of a local variable after its function ended. The directions still read fine; the destination is gone.',
+    why: 'Returning a pointer to a local buffer, or keeping a pointer to a deleted voice, gives garbage audio or delayed crashes that are brutal to trace.',
+    studio: 'A note saying "delay at rack 2, slot 5" — but the show ended and the gear was struck down hours ago.',
+    uses: ['Crash post-mortems', 'Why locals can\'t be returned by address'],
+    mistake: 'Returning the address of a local variable. The buffer must outlive the function — make it a class member sized in prepareToPlay.',
+    remember: 'Never hand out directions to something that\'s about to be destroyed.',
+    related: ['pointer', 'scope', 'stack', 'undefined-behavior'],
+    appears: [{ z: 1, node: 'l9' }, { z: 1, node: 'b2' }],
+    search: ['garbage', 'crash', 'freed', 'destroyed'],
+  },
+  {
+    id: 'const', t: 'const', full: 'constant (read-only)', c: 'C++',
+    plain: 'A one-word lock: a const value can be read but never rewritten. Code that tries to change it refuses to build.',
+    why: 'Sample rate, tuning constants, read-only preset access — locking them means the compiler catches accidental changes before they ever reach your speakers.',
+    studio: 'The locked sample rate of a rolling session: everyone reads it, nobody flips it mid-take.',
+    uses: ['Sample rate', 'twoPi constants', 'const& parameters'],
+    mistake: 'Leaving everything changeable "to keep it simple" — then hunting who changed a value at 2am. Lock what shouldn\'t move.',
+    remember: 'If a value should never change, say so — and let the compiler stand guard.',
+    related: ['constexpr', 'variable', 'reference'],
+    appears: [{ z: 1, node: 'l2' }],
+    search: ['lock', 'read only', 'fixed'],
+  },
+  {
+    id: 'constexpr', t: 'constexpr', full: 'constant expression', c: 'C++',
+    plain: 'const\'s stricter cousin: the value is computed and locked before the program even runs — at compile time.',
+    why: 'Math constants like twoPi, table sizes, fixed voice counts — burning them in at compile time is free and documents that they can never change.',
+    studio: 'A value printed on the front panel at the factory — decided before the unit ever powered on.',
+    uses: ['constexpr float twoPi', 'Table sizes', 'Max voice counts'],
+    mistake: 'Trying to make runtime values constexpr — the sample rate arrives while running, so it can only ever be const.',
+    remember: 'constexpr locks a value before the plugin even runs.',
+    related: ['const', 'float'],
+    appears: [{ z: 1, node: 'l2' }],
+    search: ['compile time', 'constant'],
+  },
+  {
+    id: 'enum', t: 'enum', full: 'enumeration', c: 'C++',
+    plain: 'A type with a fixed menu of named options. `enum class Waveform { sine, saw, square };` — now a variable of that type can only hold one of those three, by name.',
+    why: 'Waveform selectors and filter modes as raw ints invite nonsense values like 47. An enum class makes only the real options possible, and switch statements over them get compiler-checked.',
+    studio: 'The printed labels around a selector knob — the only positions that exist.',
+    uses: ['Waveform select', 'Filter modes', 'Play modes', 'Plugin states'],
+    mistake: 'Using plain ints for modes. `enum class` names the options and blocks invalid ones for free.',
+    remember: 'An enum is the printed label ring around a selector knob.',
+    related: ['switch-statement', 'type', 'int'],
+    appears: [{ z: 2, label: 'enum class for selectors' }],
+    aka: ['enum class', 'enumeration'],
+    search: ['options', 'mode', 'choices', 'named values'],
+  },
+  {
+    id: 'namespace', t: 'namespace', c: 'C++',
+    plain: 'A named container for names, so different libraries can both have a "Filter" without colliding. `std::` is the standard library\'s namespace; `juce::` is JUCE\'s.',
+    why: 'Every `std::vector` and `juce::AudioBuffer` you type is namespace syntax: library name, two colons, thing.',
+    studio: 'Channel naming on a big desk: "Drums/Kick" and "Keys/Kick" coexist because the group name comes first.',
+    uses: ['std::', 'juce::', 'Your own utils'],
+    mistake: 'Writing `using namespace std;` in headers — it dumps every std name into every file that includes you. Type the prefix.',
+    remember: 'namespace::thing = which library\'s thing you mean.',
+    related: ['vector', 'juce'],
+    appears: [{ z: 2, label: 'reading std:: and juce::' }],
+    search: ['std', 'prefix', 'colons'],
+  },
+  {
+    id: 'template', t: 'template', c: 'C++',
+    plain: 'A recipe for code that works with any type you plug in. `std::vector<float>` is the vector template with float plugged in; `std::vector<int>` is the same recipe holding ints.',
+    why: 'You mostly *use* templates (vector, clamp, JUCE\'s AudioBuffer<float>) rather than write them. Reading the angle brackets calmly is the skill.',
+    studio: 'One pedal enclosure design that can be built for guitar, bass, or synth level — same design, different signal type.',
+    uses: ['std::vector<float>', 'AudioBuffer<float>', 'std::clamp'],
+    mistake: 'Panicking at template error messages. Read the first line and the "no known conversion" note — the rest is usually noise.',
+    remember: 'Angle brackets plug a type into a reusable recipe.',
+    related: ['vector', 'array', 'type'],
+    appears: [{ z: 2, label: 'templates in practice' }],
+    search: ['angle brackets', 'generic'],
+  },
+  {
+    id: 'vector', t: 'std::vector', c: 'C++',
+    plain: 'A row of values that can grow and shrink while the program runs. It knows its own size, and resize() sets how many slots it holds.',
+    why: 'Delay lines, wavetables, working buffers — the standard resizable audio storage. One rule: size it during setup, never grow it inside the audio callback (growing may allocate).',
+    studio: 'A modular case you can re-rack between sessions — but never mid-performance.',
+    uses: ['Delay lines', 'Wavetables', 'Sample storage', 'Scratch buffers'],
+    viz: { t: 'buffer', n: 8, label: 'std::vector<float>', caption: 'resizable — but only backstage' },
+    mistake: 'push_back inside processBlock. Growth can allocate, allocation can stall, and a stalled audio thread glitches.',
+    remember: 'Vectors get their size backstage (prepare), never on stage (processBlock).',
+    related: ['array', 'template', 'heap', 'audio-buffer', 'real-time-audio'],
+    appears: [{ z: 1, node: 'l7' }, { z: 1, node: 'c3' }],
+    aka: ['std::vector'],
+    search: ['resizable', 'list', 'buffer', 'storage'],
+  },
+  {
+    id: 'array', t: 'array', c: 'C++',
+    plain: 'A fixed row of same-typed values, numbered from 0. The size is set when it\'s created and never changes. (std::array is the modern fixed-size version; std::vector is the resizable one.)',
+    why: 'Wavetables, filter coefficient sets, anything with a known fixed size. Zero-indexing means slot 3 is the *fourth* slot — and nothing checks your bounds but you.',
+    studio: 'A hardware step sequencer: 16 slots, wired in forever.',
+    uses: ['Wavetables', 'Coefficient sets', 'Fixed windows'],
+    viz: { t: 'buffer', n: 4, values: ['0.1', '0.4', '0.4', '0.1'], highlight: 0, label: 'float window[4]' },
+    mistake: 'Reading slot [size] — one past the end. Valid slots run 0 to size-1.',
+    remember: 'Arrays are fixed slots numbered from zero — stay inside them.',
+    related: ['vector', 'loop', 'undefined-behavior', 'audio-buffer'],
+    appears: [{ z: 1, node: 'l7' }, { z: 1, node: 'b1' }],
+    aka: ['std::array'],
+    search: ['slots', 'fixed', 'row'],
+  },
+  {
+    id: 'lambda', t: 'lambda', full: 'lambda expression (anonymous function)', c: 'C++',
+    plain: 'A small function written inline, right where you need it, without a name: `[this] { repaint(); }`. Handy for "when X happens, do this."',
+    why: 'JUCE UI code runs on lambdas: button clicks, slider changes, timers. `slider.onValueChange = [this] { updateFilter(); };` is everyday plugin code.',
+    studio: 'A sticky note macro: "when the red light comes on, mute channel 3" — instructions left right at the spot.',
+    uses: ['Button onClick', 'Slider onValueChange', 'Async callbacks'],
+    mistake: 'Capturing objects that may be destroyed before the lambda runs — the UI-lifetime version of a dangling pointer.',
+    remember: 'A lambda is a little unnamed function you hand to "when this happens."',
+    related: ['function', 'audioprocessoreditor', 'dangling-pointer'],
+    appears: [{ z: 2, label: 'lambdas & callbacks' }],
+    search: ['callback', 'inline function', 'onclick'],
+  },
+  {
+    id: 'undefined-behavior', t: 'undefined behavior', c: 'C++',
+    plain: 'Code the C++ rulebook makes no promises about: reading past a buffer\'s end, following a null pointer, using destroyed memory. It might seem to work, then crash somewhere unrelated.',
+    why: 'UB is why a plugin runs fine for you and crashes on stage for someone else. Bounds, null checks and initialization are the everyday defenses.',
+    studio: 'A patched cable with a broken shield: works in the shop, hums at soundcheck, dies mid-show — unpredictably.',
+    uses: ['Out-of-bounds reads', 'Null dereference', 'Uninitialized reads'],
+    mistake: 'Believing "it runs, so it\'s correct." UB often runs — until it doesn\'t, in someone else\'s DAW.',
+    remember: 'Undefined behavior isn\'t an error message — it\'s the absence of any promise at all.',
+    related: ['nullptr', 'dangling-pointer', 'array', 'debugger'],
+    appears: [{ z: 1, node: 'l6' }, { z: 1, node: 'l9' }, { z: 6, label: 'debugging crashes' }],
+    aka: ['UB'],
+    search: ['crash', 'random', 'sometimes works'],
+  },
+  {
+    id: 'header-file', t: 'header file (.h)', c: 'C++',
+    plain: 'The file that declares what a class offers — its public face — for other files to #include. Starts with #pragma once.',
+    why: 'PluginProcessor.h, PluginEditor.h — every class you write or read in JUCE splits into a header (what exists) and a source file (how it works).',
+    studio: 'The front-panel silkscreen: every jack and knob labeled, case closed.',
+    uses: ['Class declarations', 'Shared constants', 'Public interfaces'],
+    viz: { t: 'twoLayer', top: 'SineOsc.h — the front panel', topSub: 'what exists', bottom: 'SineOsc.cpp — the circuit board', bottomSub: 'how it works' },
+    mistake: 'Putting big function bodies in headers early on — declarations here, definitions in the .cpp (Zone 2 covers the exceptions).',
+    remember: 'Panel in the .h, circuit in the .cpp.',
+    related: ['source-file', 'include', 'pragma-once', 'class'],
+    appears: [{ z: 1, node: 'l12' }, { z: 1, node: 'o3' }],
+    aka: ['.h', 'header'],
+    search: ['declaration', 'interface'],
+  },
+  {
+    id: 'source-file', t: 'source file (.cpp)', c: 'C++',
+    plain: 'The file with the actual function bodies for a class — the how behind the header\'s what. It includes its own header first, then defines each function with the ClassName:: prefix.',
+    why: 'This is where your DSP actually lives. And if a .cpp is missing from the build, the linker greets you with "undefined reference."',
+    studio: 'The circuit board inside the case — where the work happens.',
+    uses: ['Function bodies', 'DSP implementations', 'Your processBlock'],
+    mistake: 'Writing a body but forgetting to add the .cpp to the build (CMake) — compiles fine, fails at link.',
+    remember: 'The .cpp is the circuit board behind the panel.',
+    related: ['header-file', 'linker', 'cmake', 'compiler'],
+    appears: [{ z: 1, node: 'l12' }, { z: 1, node: 'e3' }],
+    aka: ['.cpp', 'implementation file'],
+    search: ['implementation', 'body', 'definition'],
+  },
+  {
+    id: 'include', t: '#include', c: 'C++',
+    plain: 'Pastes another file\'s contents in at build time. Quotes for your own headers (`#include "SineOsc.h"`), angle brackets for library ones (`#include <vector>`).',
+    why: 'It\'s how files learn about each other\'s classes. Missing includes are among the first errors you\'ll ever read — and among the easiest to fix.',
+    studio: 'Loading a channel strip preset into your session — the definitions arrive ready to use.',
+    uses: ['Every file\'s top lines', 'Pulling in JUCE modules'],
+    mistake: 'Angle brackets for your own headers — `<MyClass.h>` searches system paths and fails. Quotes for yours.',
+    remember: 'Quotes = my files; angle brackets = library files.',
+    related: ['header-file', 'pragma-once', 'compiler'],
+    appears: [{ z: 1, node: 'l12' }, { z: 1, node: 'c5' }],
+    search: ['import', 'quotes', 'brackets'],
+  },
+  {
+    id: 'pragma-once', t: '#pragma once', c: 'C++',
+    plain: 'The first line of every header: "include this file at most once per build unit." Without it, a header included twice redefines its class and the build fails.',
+    why: 'Headers get included from many places, often indirectly. This one line prevents an entire family of confusing duplicate-definition errors.',
+    studio: 'A "already patched" tag on a cable so nobody patches the same signal twice.',
+    uses: ['Line one of every header you write'],
+    mistake: 'Forgetting it on a new header — works until a second file includes it, then explodes mysteriously.',
+    remember: 'Every header starts with #pragma once. No exceptions in this course.',
+    related: ['header-file', 'include'],
+    appears: [{ z: 1, node: 'l12' }, { z: 1, node: 'c5' }],
+    aka: ['include guard'],
+    search: ['guard', 'twice', 'duplicate'],
+  },
+
+  /* ================= MEMORY ================= */
+  {
+    id: 'memory', t: 'memory', c: 'MEMORY',
+    plain: 'Where all running values live — every variable, buffer and object occupies a spot in RAM while the plugin runs. C++ gives you direct, mostly unguarded access to it.',
+    why: 'Audio programming is memory-intense: buffers, delay lines, samples. Most serious plugin bugs — crashes, garbage audio — are memory handled wrong.',
+    studio: 'The patchbay wall of the whole studio: every signal has a physical location.',
+    uses: ['Buffers & delay lines', 'Loaded samples', 'All plugin state'],
+    mistake: 'Treating memory as infinite and automatic. In C++ you own the bounds, the lifetime, and the cleanup.',
+    remember: 'Every value lives somewhere — C++ makes you responsible for the somewhere.',
+    related: ['stack', 'heap', 'pointer', 'ram', 'allocation'],
+    appears: [{ z: 1, node: 'l9' }, { z: 2, label: 'ownership & RAII' }],
+    search: ['ram', 'storage', 'where values live'],
+  },
+  {
+    id: 'stack', t: 'stack', c: 'MEMORY',
+    plain: 'Fast, automatic memory for local variables: created when a function starts, gone the instant it returns. No cleanup needed — and no survival either.',
+    why: 'Locals in processBlock cost nothing to create — but they vanish per block, which is why persistent state (phase, delay lines) must live in class members instead.',
+    studio: 'The mixer\'s scribble strip: quick notes for this take, wiped when the take ends.',
+    uses: ['Loop counters', 'Temp values', 'Small locals'],
+    viz: { t: 'twoLayer', top: 'STACK — automatic, fast', topSub: 'locals; gone at return', bottom: 'HEAP — requested, flexible', bottomSub: 'big/persistent; you manage it' },
+    mistake: 'Returning a pointer to a stack local — the note outlives the value it points at.',
+    remember: 'Stack memory is fast, automatic, and gone at the closing brace.',
+    related: ['heap', 'scope', 'dangling-pointer', 'memory'],
+    appears: [{ z: 1, node: 'l9' }, { z: 2, label: 'stack vs heap ownership' }],
+    search: ['local', 'automatic', 'fast memory'],
+  },
+  {
+    id: 'heap', t: 'heap', c: 'MEMORY',
+    plain: 'The big, flexible pool of memory a program requests at runtime — where vectors grow and large buffers live. Requesting it (allocation) takes an unpredictable amount of time.',
+    why: 'Sample libraries and delay lines are heap-sized. But because allocation can stall, the audio thread must never allocate — everything is requested up front in prepareToPlay.',
+    studio: 'The gear warehouse: room for anything, but every checkout takes paperwork — never mid-show.',
+    uses: ['Delay lines', 'Loaded samples', 'Vector growth'],
+    mistake: 'Allocating in the audio callback (new, resize, push_back) — the paperwork can stall the show.',
+    remember: 'The heap is roomy but slow to request — do the requesting backstage.',
+    related: ['stack', 'allocation', 'vector', 'real-time-audio'],
+    appears: [{ z: 1, node: 'l7' }, { z: 2, label: 'allocation-free callbacks' }],
+    search: ['big memory', 'dynamic', 'allocate'],
+  },
+  {
+    id: 'allocation', t: 'allocation', full: 'memory allocation', c: 'MEMORY',
+    plain: 'Asking the system for a block of heap memory at runtime — what happens inside new, vector growth, and loading a sample. Takes an unpredictable amount of time.',
+    why: 'The audio callback has a hard deadline of a few milliseconds. One slow allocation inside it and the whole DAW glitches. Rule: allocate in prepareToPlay, never in processBlock.',
+    studio: 'Checkout paperwork at the gear warehouse — fine during setup, fatal mid-performance.',
+    uses: ['prepareToPlay sizing', 'Sample loading', 'Why push_back is banned in callbacks'],
+    mistake: 'Hidden allocations: push_back, resize, creating vectors as locals, string building — all allocate, all banned on the audio thread.',
+    remember: 'Allocation is unpredictable — keep it out of the audio callback, always.',
+    related: ['heap', 'vector', 'real-time-audio', 'audio-thread'],
+    appears: [{ z: 1, node: 'b4' }, { z: 2, label: 'real-time-safe rules' }],
+    search: ['new', 'malloc', 'resize', 'glitch'],
+  },
 ];
+
+;
+/* ===== src/js/data_glossary_b.js ===== */
+/* ============================================================
+   SIGNAL DICTIONARY — part B: Audio Code, DSP, Synths, Math,
+   Audio Engineering. Appended to DICT from part A.
+   ============================================================ */
+
+DICT.push(
+
+  /* ================= AUDIO CODE ================= */
+  {
+    id: 'thread', t: 'thread', c: 'AUDIO CODE',
+    plain: 'One independent lane of running code. A program can run several threads at once — and a plugin always does: at minimum, one drawing the interface and one processing audio.',
+    why: 'The audio thread and UI thread touch the same knobs at the same time. Coordinating them safely is a defining skill of plugin development (Zone 6).',
+    studio: 'Two engineers working the same session at once — one on the desk, one on the patch bay. Great, until they grab the same cable.',
+    uses: ['Audio processing', 'UI drawing', 'Sample loading in background'],
+    mistake: 'Sharing plain variables between threads and hoping. Zone 2\'s std::atomic and Zone 6\'s lock-free patterns are the real tools.',
+    remember: 'A plugin is always at least two lanes of code running at once.',
+    related: ['audio-thread', 'ui-thread', 'real-time-audio'],
+    appears: [{ z: 2, label: 'std::atomic' }, { z: 6, label: 'lock-free communication' }],
+    search: ['parallel', 'concurrent', 'lanes'],
+  },
+  {
+    id: 'audio-thread', t: 'audio thread', c: 'AUDIO CODE',
+    plain: 'The high-priority thread where the host calls your processBlock. It has a hard deadline: deliver the next block in a few milliseconds, every time, or the audio glitches.',
+    why: 'Everything real-time-safe programming is about happens here: no allocation, no file access, no locks, no logging — nothing with unpredictable timing.',
+    studio: 'The live performer: the show clock never stops, and nobody hands the performer paperwork mid-song.',
+    uses: ['processBlock', 'All your DSP', 'MIDI event handling'],
+    viz: { t: 'chain', nodes: ['DAW asks', 'processBlock()', 'audio out'], accent: 1, caption: 'a hard deadline, hundreds of times per second' },
+    mistake: 'Doing "just one quick" file read or allocation on it. One stall = one audible glitch, every time it happens.',
+    remember: 'The audio thread has a deadline that never, ever moves.',
+    related: ['real-time-audio', 'ui-thread', 'processblock', 'allocation'],
+    appears: [{ z: 1, node: 'b4' }, { z: 2, label: 'real-time rules' }, { z: 6, label: 'thread safety' }],
+    search: ['callback', 'deadline', 'glitch', 'realtime'],
+  },
+  {
+    id: 'ui-thread', t: 'UI thread', full: 'user interface (message) thread', c: 'AUDIO CODE',
+    plain: 'The thread that draws your plugin\'s window and responds to clicks and knob drags. In JUCE it\'s called the message thread.',
+    why: 'It\'s allowed to be slow — repainting, loading files, logging all belong here, never on the audio thread. Knowing which thread you\'re on decides what code is legal.',
+    studio: 'The front-of-house engineer: important, but the show doesn\'t stop if they take a second to sip coffee.',
+    uses: ['Editor painting', 'Knob interaction', 'File browsers', 'Meters (reading)'],
+    mistake: 'Touching audio state directly from UI code (or vice versa) — that\'s a data race. Parameters flow through APVTS instead.',
+    remember: 'Slow work lives on the UI thread — the audio thread never waits for it.',
+    related: ['audio-thread', 'thread', 'audioprocessoreditor', 'apvts'],
+    appears: [{ z: 3, label: 'editor basics' }, { z: 6, label: 'UI-thread safety' }],
+    aka: ['message thread'],
+    search: ['gui', 'interface', 'clicks', 'painting'],
+  },
+  {
+    id: 'real-time-audio', t: 'real-time audio', c: 'AUDIO CODE',
+    plain: 'Audio produced live, block by block, against a deadline — as opposed to rendering a file offline. Miss one deadline and the listener hears a glitch.',
+    why: 'Real-time safety is the discipline that separates plugins that glitch from plugins that ship: bounded work only, on the audio thread, every block.',
+    studio: 'Live performance vs. studio overdubs: on stage there are no second takes.',
+    uses: ['All plugin DSP', 'Why callbacks have rules', 'Buffer size tradeoffs'],
+    mistake: 'Testing only in ideal conditions. Real-time bugs appear under load — many tracks, small buffers, slow disks.',
+    remember: 'Real-time means the deadline is part of the spec.',
+    related: ['audio-thread', 'latency', 'buffer-size', 'allocation'],
+    appears: [{ z: 2, label: 'real-time-safe principles' }, { z: 6, label: 'deterministic behavior' }],
+    aka: ['realtime', 'real time'],
+    search: ['live', 'deadline', 'glitch', 'dropout'],
+  },
+  {
+    id: 'audio-callback', t: 'audio callback', c: 'AUDIO CODE',
+    plain: 'The function the host calls over and over — "here\'s the next block, process it, now." In JUCE, that function is processBlock. You never call it; the host does.',
+    why: 'This inversion — the DAW calls *you* — is the mental model behind all plugin code. Your DSP lives inside a function someone else fires hundreds of times a second.',
+    studio: 'The tape op handing you one reel at a time, on a fixed clock: "next reel. next reel. next reel."',
+    uses: ['processBlock', 'Standalone audio apps', 'The whole DSP lifecycle'],
+    viz: { t: 'chain', nodes: ['HOST', 'your callback', 'speakers'], accent: 1, caption: 'the host calls you — hundreds of times per second' },
+    mistake: 'Trying to "run" your own audio loop. Plugins don\'t run — they respond, block by block.',
+    remember: 'You don\'t call the DAW — the DAW calls you.',
+    related: ['processblock', 'audio-thread', 'block', 'host'],
+    appears: [{ z: 1, node: 'c6' }, { z: 3, label: 'processBlock' }],
+    aka: ['callback'],
+    search: ['processblock', 'called', 'next block'],
+  },
+  {
+    id: 'audio-buffer', t: 'audio buffer', c: 'AUDIO CODE',
+    plain: 'The container of samples handed to your plugin each callback: one row of floats per channel, a few hundred samples long. You read it, process it, and write the result back in place.',
+    why: 'Every effect you ever write edits this buffer. JUCE\'s AudioBuffer gives you getWritePointer(channel) — a float* straight into the audio.',
+    studio: 'A tray carrying the next small chunk of audio to your speakers — refill it before it leaves.',
+    uses: ['processBlock argument', 'In-place effects', 'Metering'],
+    viz: { t: 'buffer', n: 8, cursor: 2, highlight: 2, label: 'ONE CHANNEL OF THE BUFFER' },
+    mistake: 'Confusing the audio buffer (this block\'s samples) with your own storage buffers (delay lines etc.) — same word, different jobs.',
+    remember: 'The audio buffer is the tray of samples you must refill every callback.',
+    related: ['block', 'sample', 'vector', 'processblock', 'reference'],
+    appears: [{ z: 1, node: 'l6' }, { z: 3, label: 'AudioBuffer & channels' }],
+    aka: ['AudioBuffer', 'buffer'],
+    search: ['tray', 'samples', 'channel data'],
+  },
+  {
+    id: 'block', t: 'block', c: 'AUDIO CODE',
+    plain: 'One chunk of samples processed in a single callback — typically 32 to 2048 samples. The DAW hands blocks to your plugin one after another, seamlessly.',
+    why: 'Everything you compute per-block (like reading a knob once) vs per-sample (like advancing an oscillator) is an engineering decision you\'ll make constantly.',
+    studio: 'One reel in the endless relay of reels the tape op hands you.',
+    uses: ['processBlock unit of work', 'Parameter update timing', 'Metering windows'],
+    mistake: 'Assuming a fixed block size. Hosts change it — your code must handle any size up to the maximum given in prepareToPlay.',
+    remember: 'Audio flows as an endless relay of blocks — never assume their size.',
+    related: ['audio-buffer', 'buffer-size', 'audio-callback', 'sample'],
+    appears: [{ z: 1, node: 'l6' }, { z: 3, label: 'prepareToPlay & block sizes' }],
+    search: ['chunk', 'samples at once'],
+  },
+  {
+    id: 'sample', t: 'sample', c: 'AUDIO CODE',
+    plain: 'One measurement of a waveform\'s height at one instant — in code, one float, normally between -1.0 and +1.0. Tens of thousands per second make up what you hear. (In sampler-land, "a sample" also means a whole recorded clip.)',
+    why: 'The atom of digital audio. Every DSP algorithm is ultimately "do math on each sample."',
+    studio: 'One dot on the waveform display, zoomed all the way in.',
+    uses: ['All DSP math', 'Buffers', 'Metering'],
+    viz: { t: 'wave', type: 'samples' },
+    mistake: 'Forgetting samples routinely exceed ±1.0 inside float processing chains — only the converters at the very end truly clip.',
+    remember: 'A sample is one float: the waveform\'s height at one instant.',
+    related: ['sample-rate', 'float', 'audio-buffer', 'waveform'],
+    appears: [{ z: 1, node: 'l1' }, { z: 4, label: 'sample-level DSP' }],
+    search: ['dot', 'measurement', 'value'],
+  },
+  {
+    id: 'sample-rate', t: 'sample rate', c: 'AUDIO CODE',
+    plain: 'How many samples represent one second of audio — 44100 or 48000 in most sessions. It converts between time and sample counts: at 48 kHz, one second is 48,000 samples.',
+    why: 'Every time-based DSP value depends on it: a 500 ms delay is sampleRate/2 samples; an oscillator\'s step size is 2π·freq/sampleRate. Your plugin learns it in prepareToPlay.',
+    studio: 'The session\'s frame rate for audio — the grid everything time-based is measured against.',
+    uses: ['Delay times', 'Oscillator increments', 'Envelope rates', 'prepareToPlay'],
+    mistake: 'Hard-coding 44100. Sessions run at 48k, 96k, 192k — always use the rate the host gives you.',
+    remember: 'Never hard-code the sample rate — the host tells you in prepareToPlay.',
+    related: ['sample', 'buffer-size', 'preparetoplay', 'frequency'],
+    appears: [{ z: 1, node: 'l2' }, { z: 4, label: 'sample rate & time' }],
+    aka: ['fs', '44100', '48000'],
+    search: ['48k', '44.1', 'hz', 'per second'],
+  },
+  {
+    id: 'buffer-size', t: 'buffer size', c: 'AUDIO CODE',
+    plain: 'How many samples the host processes per callback — the setting you\'ve changed in your DAW\'s audio preferences a hundred times. Small = responsive but CPU-hungry; large = efficient but laggy.',
+    why: 'It sets your plugin\'s deadline: at 48 kHz and 128 samples, processBlock must finish in under 2.7 ms — every single time.',
+    studio: 'The tray size: small trays arrive constantly (low latency, more trips); big trays arrive rarely (efficient, but slower to react).',
+    uses: ['Latency tradeoff', 'The callback deadline', 'prepareToPlay maximum'],
+    mistake: 'Assuming it\'s constant — hosts can change it between callbacks. Handle any size up to the stated maximum.',
+    remember: 'Buffer size sets the deadline your DSP must always beat.',
+    related: ['latency', 'block', 'sample-rate', 'audio-thread'],
+    appears: [{ z: 3, label: 'prepareToPlay' }, { z: 4, label: 'buffer size tradeoffs' }],
+    search: ['128', '256', '512', 'latency setting'],
+  },
+  {
+    id: 'latency', t: 'latency', c: 'AUDIO CODE',
+    plain: 'The delay between cause and result — pressing a key and hearing the note. In digital audio it\'s mostly buffering: samples wait in trays before reaching your ears.',
+    why: 'Producers feel latency instantly. Some DSP (lookahead limiting, oversampling) adds its own — pro plugins report it to the host so the DAW can compensate.',
+    studio: 'The gap between hitting the pad and hearing the kick — the thing you\'ve fought in every tracking session.',
+    uses: ['Buffer size choice', 'Lookahead processing', 'Plugin delay compensation'],
+    mistake: 'Adding processing latency and not reporting it — everything the plugin touches lands late in the mix.',
+    remember: 'Latency is buffering; if your DSP adds any, report it to the host.',
+    related: ['buffer-size', 'block', 'oversampling'],
+    appears: [{ z: 4, label: 'buffer size & latency' }, { z: 6, label: 'plugin delay compensation' }],
+    search: ['delay', 'lag', 'slow response'],
+  },
+  {
+    id: 'denormals', t: 'denormal numbers', c: 'AUDIO CODE',
+    plain: 'Absurdly tiny float values (like 10⁻³⁸) that CPUs process far slower than normal numbers. Audio tails fading toward silence drift into this range.',
+    why: 'A reverb tail decays, values go denormal, CPU use spikes 10–100× on "silence." The fix: flush-to-zero mode or adding tiny offsets — standard practice in every pro plugin.',
+    studio: 'A fader so close to -∞ the desk starts stuttering trying to compute it.',
+    uses: ['Reverb/delay tails', 'Filter feedback paths', 'CPU spike hunts'],
+    mistake: 'Profiling with test tones only. Denormal spikes appear on decaying tails and silence — exactly what tone tests never show.',
+    remember: 'Near-silence can cost more CPU than sound — flush denormals to zero.',
+    related: ['float', 'cpu', 'filter'],
+    appears: [{ z: 4, label: 'denormals & DC offset' }],
+    aka: ['subnormal', 'denormal'],
+    search: ['cpu spike', 'tiny numbers', 'silence slow'],
+  },
+  {
+    id: 'parameter-smoothing', t: 'parameter smoothing', c: 'AUDIO CODE',
+    plain: 'Gliding a parameter from its old value to its new one over a few milliseconds instead of jumping instantly. Sudden jumps in gain or cutoff create audible clicks.',
+    why: 'The difference between a plugin that zippers and clicks under automation and one that feels expensive. Every continuous parameter in a shipping plugin is smoothed.',
+    studio: 'A motorized fader glides to its new position — it doesn\'t teleport.',
+    uses: ['Gain changes', 'Filter sweeps', 'Any automated knob'],
+    mistake: 'Applying the raw target value per block. Smooth toward the target per sample (JUCE\'s SmoothedValue does exactly this).',
+    remember: 'Parameters glide; they never teleport.',
+    related: ['automation', 'gain', 'apvts', 'dc-offset'],
+    appears: [{ z: 4, label: 'gain & parameter smoothing' }],
+    aka: ['smoothing', 'SmoothedValue'],
+    search: ['click', 'zipper', 'glide', 'jump'],
+  },
+
+  /* ================= DSP / MATH ================= */
+  {
+    id: 'dsp', t: 'DSP', full: 'Digital Signal Processing', c: 'DSP',
+    plain: 'Doing math on audio numbers to change the sound. Every effect and synth voice is DSP: multiply for gain, delay-and-mix for echo, feedback math for filters.',
+    why: 'DSP is the "what your plugin actually does" layer — everything else (UI, parameters, formats) exists to host it.',
+    studio: 'The circuitry of every pedal and rack unit you own — expressed as arithmetic.',
+    uses: ['Gain & mixing', 'Filters & EQs', 'Delays & reverbs', 'Synthesis'],
+    viz: { t: 'chain', nodes: ['input', 'math', 'output'], accent: 1, caption: 'effects are arithmetic applied to samples' },
+    mistake: 'Thinking DSP requires heavy math to start. Gain is one multiply; a delay is an array and an index. Depth comes gradually.',
+    remember: 'DSP is math on samples — starting with a single multiply.',
+    related: ['sample', 'gain', 'filter', 'oscillator'],
+    appears: [{ z: 1, node: 'p1' }, { z: 4, label: 'the DSP workshop' }],
+    search: ['digital signal processing', 'effects math', 'processing'],
+  },
+  {
+    id: 'gain', t: 'gain', c: 'DSP',
+    plain: 'A multiplier applied to a signal: 1.0 leaves it alone, 0.5 halves it (≈ -6 dB), 2.0 doubles it (≈ +6 dB), 0.0 silences it. Applied by multiplication, never addition.',
+    why: 'The first DSP you\'ll ever write — `sample * gain` — and a stage of nearly every effect thereafter (dry/wet, feedback, envelopes are all gains).',
+    studio: 'Every fader and trim knob you\'ve ever touched.',
+    uses: ['Volume controls', 'Dry/wet mixing', 'Feedback amounts', 'Velocity scaling'],
+    mistake: 'Adding instead of multiplying — addition shifts the waveform off center (DC offset) instead of making it louder.',
+    remember: 'Gain multiplies. 1.0 is unity; 0.5 is about -6 dB.',
+    related: ['decibel', 'amplitude', 'float', 'parameter-smoothing'],
+    appears: [{ z: 1, node: 'c1' }, { z: 1, node: 'p1' }, { z: 7, label: 'the gain plugin' }],
+    search: ['volume', 'level', 'louder', 'multiply'],
+  },
+  {
+    id: 'decibel', t: 'decibel (dB)', c: 'MATH',
+    plain: 'The logarithmic loudness scale that matches how ears actually hear. For amplitude: gain = 10^(dB/20). Landmarks: 0 dB = unchanged, -6 dB ≈ half, +6 dB ≈ double, -∞ = silence.',
+    why: 'Users think in dB; DSP multiplies by linear gain. The conversion between them appears in virtually every plugin you\'ll build.',
+    studio: 'The numbers printed on every fader you\'ve ever mixed with.',
+    uses: ['Gain knobs', 'Meters', 'Threshold controls', 'Fader laws'],
+    mistake: 'Using /10 in the formula — that\'s the power version. Amplitude (what faders control) uses /20: check that -6 dB gives ≈0.5.',
+    remember: 'gain = 10^(dB/20) — and -6 dB is half.',
+    related: ['gain', 'amplitude', 'float'],
+    appears: [{ z: 1, node: 'c1' }, { z: 1, node: 'p1' }],
+    aka: ['dB'],
+    search: ['loudness', 'volume scale', 'fader numbers'],
+  },
+  {
+    id: 'dc-offset', t: 'DC offset', full: 'direct-current offset', c: 'DSP',
+    plain: 'A constant value added to a signal, shifting the whole waveform off its center line. It carries no sound but eats headroom and thumps on start/stop.',
+    why: 'It\'s why gain multiplies instead of adds, and why some algorithms (rectification, certain distortions) need a DC-blocking filter after them.',
+    studio: 'A waveform sitting above the center line in your editor — the classic "remove DC offset" fix.',
+    uses: ['Why gain multiplies', 'Post-distortion cleanup', 'Metering accuracy'],
+    mistake: 'Adding a constant to "warm up" a signal — you\'ve added inaudible offset, not warmth, and lost headroom doing it.',
+    remember: 'Audio lives centered on zero — adding constants shifts it, gain multiplies it.',
+    related: ['gain', 'waveform', 'filter'],
+    appears: [{ z: 4, label: 'DC offset & blocking' }],
+    search: ['offset', 'center line', 'shifted waveform'],
+  },
+  {
+    id: 'waveform', t: 'waveform', c: 'DSP',
+    plain: 'The shape a signal traces over time — sine (pure), saw (bright, buzzy), square (hollow), noise (all frequencies at once). The shape determines the harmonic content you hear.',
+    why: 'Oscillators generate waveforms; effects reshape them. "Which waveform" is the first sound-design decision of any synth patch — and a switch statement in code.',
+    studio: 'The shapes on your synth\'s OSC section, and the picture in every audio editor.',
+    uses: ['Oscillator shapes', 'LFO shapes', 'Waveshaping targets'],
+    viz: { t: 'wave', type: 'saw', caption: 'a sawtooth — bright, every harmonic present' },
+    mistake: 'Generating naive digital saws/squares at audio rate — their sharp edges alias. Zone 4 covers band-limited versions.',
+    remember: 'The waveform\'s shape is its harmonic recipe.',
+    related: ['oscillator', 'sample', 'aliasing', 'lfo'],
+    appears: [{ z: 1, node: 'l5' }, { z: 4, label: 'oscillators & shapes' }],
+    search: ['shape', 'sine', 'saw', 'square'],
+  },
+  {
+    id: 'oscillator', t: 'oscillator', c: 'SYNTHS',
+    plain: 'The sound source of a synth: it generates a repeating waveform at a chosen frequency. In code, it advances a phase position each sample and outputs the wave\'s value at that position.',
+    why: 'You\'ll build one in Zone 1\'s final mission — phase, increment, wrap, output. Every synth you make afterward is oscillators plus shaping.',
+    studio: 'The OSC section — where sound begins before filters and envelopes shape it.',
+    uses: ['Synth voices', 'LFOs (slow oscillators)', 'Test tones', 'FM operators'],
+    viz: { t: 'wave', type: 'sine', caption: 'phase sweeps 0 → 2π, tracing the cycle' },
+    mistake: 'Resetting phase to 0 when it passes 2π instead of subtracting 2π — the lost fraction detunes the pitch.',
+    remember: 'An oscillator is a phase that advances and wraps, tracing a shape.',
+    related: ['phase', 'frequency', 'waveform', 'lfo', 'voice'],
+    appears: [{ z: 1, node: 'p2' }, { z: 4, label: 'band-limited oscillators' }, { z: 5, label: 'unison & detune' }],
+    aka: ['osc'],
+    search: ['sound source', 'tone', 'generator'],
+  },
+  {
+    id: 'frequency', t: 'frequency', c: 'DSP',
+    plain: 'How many times per second something repeats, measured in Hertz (Hz). For audio: pitch. A440 means the waveform completes 440 cycles every second.',
+    why: 'Oscillator pitch, filter cutoff, LFO rate — three knobs, one unit. Converting MIDI notes to Hz (A440 × 2^((note-69)/12)) is a synth rite of passage.',
+    studio: 'Pitch — and also the Hz numbers on your EQ.',
+    uses: ['Oscillator pitch', 'Filter cutoff', 'LFO rate', 'EQ bands'],
+    mistake: 'Confusing frequency (cycles per second) with sample rate (samples per second) — related grids, different things.',
+    remember: 'Frequency is repeats-per-second: pitch for oscillators, position for EQs.',
+    related: ['phase', 'sample-rate', 'oscillator', 'cutoff'],
+    appears: [{ z: 1, node: 'p2' }, { z: 4, label: 'frequency & pitch math' }],
+    aka: ['hz', 'hertz', 'pitch'],
+    search: ['pitch', 'note', 'hz', 'cycles'],
+  },
+  {
+    id: 'amplitude', t: 'amplitude', c: 'DSP',
+    plain: 'The height of a waveform — how far samples swing from zero. Bigger swings, louder sound. Gain scales amplitude; dB measures it.',
+    why: 'Amplitude is what your meters read, what compressors act on, and what every gain stage changes.',
+    studio: 'How tall the waveform is in your editor — the loudness dimension.',
+    uses: ['Metering', 'Compression', 'Envelopes (amplitude over time)'],
+    mistake: 'Equating amplitude with perceived loudness — perception is logarithmic (dB) and frequency-dependent.',
+    remember: 'Amplitude is the height of the swing; gain is what scales it.',
+    related: ['gain', 'decibel', 'envelope', 'sample'],
+    appears: [{ z: 4, label: 'amplitude & envelopes' }],
+    search: ['height', 'loudness', 'level'],
+  },
+  {
+    id: 'phase', t: 'phase', c: 'DSP',
+    plain: 'Position within a waveform\'s cycle, running 0 to 2π (then wrapping). An oscillator is nothing but a phase that advances by 2π·freq/sampleRate each sample.',
+    why: 'Phase is the state an oscillator carries between samples. Get its bookkeeping right (advance, wrap, keep precision) and synthesis works; get it wrong and pitch drifts.',
+    studio: 'Where in its cycle the wave currently is — what you\'re really adjusting when you time-align multi-mic\'d drums. (The \u2205 button on a DI is polarity inversion, often mislabeled "phase.")',
+    uses: ['Oscillator state', 'Phase cancellation', 'Stereo wideners', 'FM synthesis'],
+    mistake: 'Storing phase in a float that accumulates for hours — precision drifts. Use double for accumulators.',
+    remember: 'Phase is the oscillator\'s bookmark: advance it, wrap it, keep it precise.',
+    related: ['oscillator', 'frequency', 'double', 'sample-rate'],
+    appears: [{ z: 1, node: 'p2' }, { z: 4, label: 'phase & interpolation' }],
+    search: ['cycle position', 'cancellation', '2pi'],
+  },
+  {
+    id: 'envelope', t: 'envelope', c: 'SYNTHS',
+    plain: 'A control shape that changes a value over time — most famously ADSR: Attack (rise), Decay (fall), Sustain (hold level), Release (fade after key-up). Applied to amplitude, it turns raw tone into a note.',
+    why: 'Envelopes are why a synth note has life instead of being an unbroken drone. You\'ll implement one as a small state machine in Zone 4.',
+    studio: 'The ADSR knobs on every synth you own.',
+    uses: ['Amplitude shaping', 'Filter sweeps per note', 'Pitch blips', 'Sidechain-style ducking'],
+    viz: { t: 'adsr' },
+    mistake: 'Jumping levels instantly at stage changes — envelopes glide between stages, or they click.',
+    remember: 'An envelope is a value with a life cycle: rise, fall, hold, fade.',
+    related: ['attack', 'decay', 'sustain', 'release', 'amplitude', 'voice'],
+    appears: [{ z: 4, label: 'envelope state machines' }, { z: 5, label: 'per-voice envelopes' }],
+    aka: ['ADSR', 'eg', 'envelope generator'],
+    search: ['adsr', 'shape over time', 'note shape'],
+  },
+  {
+    id: 'attack', t: 'attack', c: 'SYNTHS',
+    plain: 'The first envelope stage: how long the value takes to rise from zero to full when the note starts. Short attack = instant hit; long attack = swell.',
+    why: 'Attack time is the difference between a pluck and a pad. In code it sets the per-sample rise rate of your envelope\'s first stage.',
+    studio: 'The knob that turns a stab into a swell.',
+    uses: ['Amp envelopes', 'Filter envelopes', 'Transient design', 'Compressor timing'],
+    mistake: 'A 0 ms attack straight to full level clicks — even "instant" attacks ramp over a millisecond or two.',
+    remember: 'Attack is the rise; even instant needs a tiny ramp.',
+    related: ['envelope', 'decay', 'sustain', 'release'],
+    appears: [{ z: 4, label: 'envelope stages' }],
+    search: ['rise', 'start', 'pluck', 'swell'],
+  },
+  {
+    id: 'decay', t: 'decay', c: 'SYNTHS',
+    plain: 'The second envelope stage: after the attack peak, how long the value takes to fall to the sustain level.',
+    why: 'Decay shapes the body of a note — snappy decay to low sustain reads as percussive; slow decay reads as singing.',
+    studio: 'The knob that decides how fast the initial hit settles into the held tone.',
+    uses: ['Amp envelopes', 'Filter plucks', 'Drum synthesis'],
+    mistake: 'Confusing decay (fall *to sustain*, key held) with release (fade *after key-up*).',
+    remember: 'Decay falls to sustain while the key is still down.',
+    related: ['envelope', 'attack', 'sustain', 'release'],
+    appears: [{ z: 4, label: 'envelope stages' }],
+    search: ['fall', 'settle'],
+  },
+  {
+    id: 'sustain', t: 'sustain', c: 'SYNTHS',
+    plain: 'The third envelope stage — and the odd one out: it\'s a level, not a time. The value the envelope holds for as long as the key stays down.',
+    why: 'Sustain 100% = organ; sustain 0% = pluck (the note dies even while held). Getting "level not time" right avoids a classic implementation bug.',
+    studio: 'How loud the note stays while you hold the key.',
+    uses: ['Amp envelopes', 'Filter hold levels', 'MIDI sustain pedal (related, different thing)'],
+    mistake: 'Implementing sustain as a duration. It\'s a level held indefinitely — until note-off starts the release.',
+    remember: 'Sustain is a level, not a time.',
+    related: ['envelope', 'decay', 'release', 'midi'],
+    appears: [{ z: 4, label: 'envelope stages' }, { z: 5, label: 'sustain pedal handling' }],
+    search: ['hold', 'held level'],
+  },
+  {
+    id: 'release', t: 'release', c: 'SYNTHS',
+    plain: 'The final envelope stage: how long the value takes to fade to zero after the key is let go.',
+    why: 'Release is why notes don\'t cut dead at note-off — and why a voice isn\'t free for stealing the instant its key lifts. Voices die when release *finishes*.',
+    studio: 'The tail after your finger leaves the key.',
+    uses: ['Note tails', 'Voice lifecycle', 'Reverb-like sustain'],
+    mistake: 'Freeing a voice at note-off instead of at end-of-release — audible clicks as tails get cut.',
+    remember: 'A note ends when release finishes, not when the finger lifts.',
+    related: ['envelope', 'sustain', 'voice', 'voice-stealing'],
+    appears: [{ z: 4, label: 'envelope stages' }, { z: 5, label: 'voice lifecycle' }],
+    search: ['tail', 'fade out', 'let go'],
+  },
+  {
+    id: 'filter', t: 'filter', c: 'EFFECTS',
+    plain: 'A process that reduces some frequencies and keeps others: low-pass keeps lows, high-pass keeps highs, band-pass keeps a band. In code, a short feedback equation applied per sample.',
+    why: 'The heart of subtractive synthesis and of every EQ. Your first filter (Zone 4) is a few lines that turn buzzy saws into warmth.',
+    studio: 'The cutoff knob you\'ve automated a thousand times.',
+    uses: ['Synth voices', 'EQs', 'DJ-style sweeps', 'De-essing'],
+    viz: { t: 'filtercurve' },
+    mistake: 'Modulating cutoff without smoothing, or pushing resonance until the feedback math blows up — filters need guard rails.',
+    remember: 'A filter is a per-sample feedback equation shaping the spectrum.',
+    related: ['cutoff', 'resonance', 'frequency', 'dsp'],
+    appears: [{ z: 4, label: 'your first filter' }, { z: 7, label: 'filter effect mission' }],
+    aka: ['lpf', 'hpf', 'low pass', 'high pass'],
+    search: ['eq', 'brightness', 'muffle', 'sweep'],
+  },
+  {
+    id: 'cutoff', t: 'cutoff', full: 'cutoff frequency', c: 'EFFECTS',
+    plain: 'The frequency where a filter starts working — above it (low-pass) or below it (high-pass), frequencies are progressively reduced.',
+    why: 'The single most automated knob in electronic music, and in code: one float, read by the filter equation, smoothed so sweeps don\'t zipper.',
+    studio: 'THE knob. The one your hand finds without looking.',
+    uses: ['Filter sweeps', 'Envelope→cutoff routing', 'LFO wobbles'],
+    mistake: 'Setting cutoff in raw Hz on a linear knob — ears hear pitch logarithmically; map the knob exponentially.',
+    remember: 'Cutoff is where the filter bites — map it logarithmically, smooth its moves.',
+    related: ['filter', 'resonance', 'frequency', 'parameter-smoothing'],
+    appears: [{ z: 4, label: 'filter parameters' }],
+    search: ['brightness', 'sweep', 'frequency knob'],
+  },
+  {
+    id: 'resonance', t: 'resonance', c: 'EFFECTS',
+    plain: 'A boost right at the filter\'s cutoff frequency, created by feeding some filter output back into itself. High resonance rings; extreme resonance self-oscillates into a whistle.',
+    why: 'Resonance is feedback, and feedback math can blow up — your filter code will clamp it. It\'s also what makes acid lines acid.',
+    studio: 'The squelch knob — 303 territory.',
+    uses: ['Acid basslines', 'Formant effects', 'Self-oscillating sines'],
+    mistake: 'Letting users push resonance into numerical blowup — clamp the feedback range in your setter.',
+    remember: 'Resonance is controlled feedback — musical until it isn\'t; clamp it.',
+    related: ['filter', 'cutoff', 'gain'],
+    appears: [{ z: 4, label: 'resonant filters' }],
+    aka: ['q'],
+    search: ['squelch', 'peak', 'acid', 'ring'],
+  },
+  {
+    id: 'lfo', t: 'LFO', full: 'Low-Frequency Oscillator', c: 'SYNTHS',
+    plain: 'An oscillator running below hearing range (say 0.1–20 Hz), used not as sound but as motion: its output wiggles other parameters — pitch for vibrato, amplitude for tremolo, cutoff for wobble.',
+    why: 'Code-wise it\'s the same phase-advance oscillator you built, just slower — and its output patches into parameters instead of speakers. Modulation architecture starts here.',
+    studio: 'The wobble source: vibrato, tremolo, auto-wah, dubstep bass — all LFO destinations.',
+    uses: ['Vibrato (→pitch)', 'Tremolo (→amp)', 'Wobble (→cutoff)', 'Auto-pan'],
+    viz: { t: 'wave', type: 'sine', caption: 'same oscillator — just slow, and aimed at a knob' },
+    mistake: 'Updating LFO-modulated values once per block — fast LFOs need per-sample (or smoothed) application to avoid stair-stepping.',
+    remember: 'An LFO is an oscillator aimed at a knob instead of a speaker.',
+    related: ['oscillator', 'frequency', 'cutoff', 'automation'],
+    appears: [{ z: 4, label: 'modulation' }, { z: 5, label: 'mod matrices' }, { z: 7, label: 'tremolo mission' }],
+    search: ['wobble', 'vibrato', 'tremolo', 'modulation'],
+  },
+  {
+    id: 'aliasing', t: 'aliasing', c: 'DSP',
+    plain: 'What happens when you generate or create frequencies above half the sample rate: they fold back down as inharmonic, metallic wrong-pitched tones that were never supposed to exist.',
+    why: 'Naive digital saws, hard distortion and fast modulation all alias. It\'s the signature "cheap digital" sound — and why pro plugins oversample or band-limit.',
+    studio: 'That harsh inharmonic fizz on a cheap digital distortion — frequencies folding back where they don\'t belong.',
+    uses: ['Why oscillators are band-limited', 'Why distortion oversamples', 'Sample-rate conversion'],
+    mistake: 'Testing distortion only on low notes — aliasing screams on high notes where harmonics cross the fold-back line.',
+    remember: 'Frequencies past half the sample rate don\'t disappear — they fold back wrong.',
+    related: ['oversampling', 'sample-rate', 'waveform'],
+    appears: [{ z: 4, label: 'aliasing & band-limiting' }],
+    search: ['fold', 'harsh', 'digital sound', 'nyquist'],
+  },
+  {
+    id: 'oversampling', t: 'oversampling', c: 'PERFORMANCE',
+    plain: 'Temporarily running DSP at a multiple of the session\'s sample rate (2×, 4×…), processing, then converting back down. The extra headroom pushes aliasing out of the audible fold-back zone.',
+    why: 'The standard cure for aliasing in distortions and saturators. Costs CPU and adds a little latency — a real engineering tradeoff you\'ll make.',
+    studio: 'The 2x/4x quality switch on your favorite saturation plugin.',
+    uses: ['Distortion & saturation', 'Clippers', 'Nonlinear filters'],
+    mistake: 'Oversampling everything "for quality" — linear processes like gain and delay don\'t alias; you\'d burn CPU for nothing.',
+    remember: 'Oversample nonlinear stages; linear ones don\'t need it.',
+    related: ['aliasing', 'sample-rate', 'latency', 'cpu'],
+    appears: [{ z: 4, label: 'oversampling' }],
+    search: ['2x', '4x', 'quality mode', 'hq'],
+  },
+  {
+    id: 'interpolation', t: 'interpolation', c: 'MATH',
+    plain: 'Estimating the value *between* two known samples. Reading a delay line at 123.4 samples, or repitching a sample, needs values at fractional positions — interpolation invents them smoothly.',
+    why: 'Fractional delays, pitch shifting, wavetable reading, sample playback at arbitrary rates — all live on interpolation. Linear (a straight line between neighbors) gets you far.',
+    studio: 'Playing a sample back at a different pitch — the machine reads between the recorded points.',
+    uses: ['Fractional delays', 'Sample repitching', 'Wavetable scanning', 'Chorus/flanger sweeps'],
+    mistake: 'Rounding to whole sample positions instead — pitch wobbles and zipper noise on every modulated delay.',
+    remember: 'Interpolation reads smoothly between samples — fractions matter.',
+    related: ['sample', 'phase', 'lfo'],
+    appears: [{ z: 4, label: 'delay lines & interpolation' }],
+    search: ['between samples', 'fractional', 'smooth read'],
+  },
+  {
+    id: 'voice', t: 'voice', c: 'SYNTHS',
+    plain: 'One note-playing unit inside a synth: its own oscillators, envelope, and filter, playing one note at a time. A synth\'s polyphony is its voice count.',
+    why: 'In code, a voice is one object of your Voice class — per-object state is what makes eight simultaneous notes possible. Managing them is Zone 5.',
+    studio: 'The "voices: 8" spec on a classic polysynth — eight notes max, then something gives.',
+    uses: ['Note playback', 'Polyphony', 'Unison stacking'],
+    viz: { t: 'voices' },
+    mistake: 'Sharing one envelope or phase across voices — every voice needs its own complete state.',
+    remember: 'A voice is one self-contained note machine; polyphony is a team of them.',
+    related: ['polyphony', 'voice-stealing', 'object', 'envelope', 'oscillator'],
+    appears: [{ z: 5, label: 'voices & allocation' }],
+    search: ['note', 'polysynth', 'simultaneous'],
+  },
+  {
+    id: 'polyphony', t: 'polyphony', c: 'SYNTHS',
+    plain: 'Playing multiple notes at once. A polyphonic synth keeps a pool of voices and assigns incoming notes to free ones; monophonic synths have exactly one voice.',
+    why: 'Voice pools, note-to-voice assignment, and what to do when the pool runs dry (voice stealing) — the core engineering of Zone 5\'s synth work.',
+    studio: 'Chords vs. bass lines: whether the instrument can say more than one thing at once.',
+    uses: ['Chord playing', 'Voice pool sizing', 'CPU budgeting per voice'],
+    mistake: 'Unbounded polyphony "so notes never cut" — each voice costs CPU; every real synth caps the pool.',
+    remember: 'Polyphony is a fixed pool of voices and a plan for when it runs out.',
+    related: ['voice', 'voice-stealing', 'cpu', 'midi'],
+    appears: [{ z: 5, label: 'polyphony' }, { z: 7, label: 'poly synth mission' }],
+    search: ['chords', 'multiple notes', 'mono poly'],
+  },
+  {
+    id: 'voice-stealing', t: 'voice stealing', c: 'SYNTHS',
+    plain: 'What a synth does when all voices are busy and a new note arrives: it steals one — usually the oldest or quietest — fades it fast, and reassigns it to the new note.',
+    why: 'Without stealing, the 9th note on an 8-voice synth is silently dropped. With clumsy stealing, tails cut with clicks. Graceful stealing is an audible quality mark.',
+    studio: 'Playing a 9-note chord on an 8-voice classic: one earlier note quietly bows out.',
+    uses: ['Note priority rules', 'Fast-release fades', 'Sustain pedal interactions'],
+    viz: { t: 'voices', steal: true },
+    mistake: 'Hard-cutting the stolen voice — steal with a millisecond fade, or every busy passage clicks.',
+    remember: 'When voices run out, steal gracefully — fade, then reassign.',
+    related: ['voice', 'polyphony', 'release', 'midi'],
+    appears: [{ z: 5, label: 'voice stealing' }],
+    search: ['too many notes', 'cut off', 'note priority'],
+  }
+);
+
+;
+/* ===== src/js/data_glossary_c.js ===== */
+/* ============================================================
+   SIGNAL DICTIONARY — part C: JUCE, Plugin Dev, MIDI, Tools,
+   Debugging, DAWs, Architecture. Appended to DICT.
+   ============================================================ */
+
+DICT.push(
+
+  /* ================= JUCE ================= */
+  {
+    id: 'juce', t: 'JUCE', full: 'Jules\' Utility Class Extensions', c: 'JUCE',
+    plain: 'The dominant C++ framework for building audio plugins: one codebase that builds VST3, AU, AAX and standalone apps, with audio, MIDI, UI and parameter systems included.',
+    why: 'It\'s the most widely used plugin framework — a huge share of commercial plugins are built on it. Zones 3+ of this course live in it.',
+    studio: 'The mixing desk of plugin development: everything patched and ready, so you build the music, not the wiring.',
+    uses: ['Plugin formats', 'AudioBuffer & MIDI', 'UI components', 'Parameters (APVTS)'],
+    mistake: 'Learning JUCE before C++ basics — JUCE is C++ all the way down, which is why this course does C++ first.',
+    remember: 'JUCE turns one C++ codebase into every plugin format.',
+    related: ['audioprocessor', 'apvts', 'vst3', 'cmake'],
+    appears: [{ z: 3, label: 'the whole zone' }],
+    search: ['framework', 'library', 'plugin sdk'],
+  },
+  {
+    id: 'audioprocessor', t: 'AudioProcessor', c: 'JUCE',
+    plain: 'The JUCE class your plugin *is*. You inherit it and fill in its methods — prepareToPlay, processBlock, state save/load — and the host talks to your plugin entirely through them.',
+    why: 'This is the frame every plugin hangs on. Understand its lifecycle and you understand how DAWs and plugins communicate.',
+    studio: 'The chassis of the rack unit: power, jacks and mounting standardized, your circuit inside.',
+    uses: ['Every plugin\'s core class', 'DSP lifecycle', 'State saving'],
+    viz: { t: 'chain', nodes: ['HOST', 'AudioProcessor', 'audio out'], accent: 1, caption: 'the host talks only through its methods' },
+    mistake: 'Doing UI work inside it — the processor is the engine; the editor (a separate class) is the panel.',
+    remember: 'Your plugin IS an AudioProcessor — the host speaks only through its methods.',
+    related: ['processblock', 'preparetoplay', 'audioprocessoreditor', 'class'],
+    appears: [{ z: 3, label: 'AudioProcessor lifecycle' }],
+    search: ['plugin class', 'processor'],
+  },
+  {
+    id: 'audioprocessoreditor', t: 'AudioProcessorEditor', c: 'JUCE',
+    plain: 'The JUCE class for your plugin\'s window: knobs, meters, graphics. It runs on the UI thread, may not exist at all (headless hosts), and gets created/destroyed as users open and close the window.',
+    why: 'The editor\'s come-and-go lifetime is why audio code must never assume it exists — a top source of real crashes.',
+    studio: 'The faceplate: what people touch. The engine keeps running whether or not the faceplate is visible.',
+    uses: ['Knobs & sliders', 'Meters & scopes', 'Preset browsers'],
+    mistake: 'Storing audio state in the editor — it dies when the window closes. State lives in the processor; the editor only displays it.',
+    remember: 'The editor is a temporary window onto a permanent engine.',
+    related: ['audioprocessor', 'ui-thread', 'apvts', 'gui'],
+    appears: [{ z: 3, label: 'editors & attachments' }],
+    aka: ['editor'],
+    search: ['window', 'interface', 'knobs on screen'],
+  },
+  {
+    id: 'preparetoplay', t: 'prepareToPlay()', c: 'JUCE',
+    plain: 'The method the host calls before audio starts, handing you the sample rate and maximum block size. Your backstage moment: size buffers, reset state, precompute tables.',
+    why: 'It\'s the one sanctioned place to allocate. Everything the audio thread will need must be ready when this returns.',
+    studio: 'Soundcheck: patch everything, set levels, tune — before the doors open.',
+    uses: ['Sizing delay lines', 'Resetting envelopes/phases', 'Computing wavetables'],
+    mistake: 'Assuming it runs once — hosts call it again on sample-rate or buffer changes. Make it safely re-runnable.',
+    remember: 'prepareToPlay is soundcheck: allocate and reset everything here.',
+    related: ['processblock', 'releaseresources', 'sample-rate', 'allocation'],
+    appears: [{ z: 1, node: 'c3' }, { z: 3, label: 'the lifecycle' }],
+    search: ['setup', 'before playback', 'soundcheck'],
+  },
+  {
+    id: 'processblock', t: 'processBlock()', c: 'JUCE',
+    plain: 'The audio callback itself: the host hands you an audio buffer and a MIDI buffer; you process them in place before the deadline. Called hundreds of times per second on the audio thread.',
+    why: 'Every piece of DSP you ever ship runs inside this method. Its real-time rules (no allocation, no locks, no I/O) define audio programming.',
+    studio: 'The performance: the tape op hands you the reel, you process it live, no retakes.',
+    uses: ['All your DSP', 'MIDI event handling', 'Metering taps'],
+    viz: { t: 'chain', nodes: ['audio + MIDI in', 'processBlock()', 'processed out'], accent: 1 },
+    mistake: 'Anything with unpredictable timing inside it: allocation, file access, locks, logging, UI calls.',
+    remember: 'processBlock is the performance — bounded work only, every time.',
+    related: ['audio-callback', 'audio-thread', 'audio-buffer', 'preparetoplay'],
+    appears: [{ z: 1, node: 'c6' }, { z: 1, node: 'b4' }, { z: 3, label: 'processBlock deep dive' }],
+    search: ['callback', 'process', 'main audio function'],
+  },
+  {
+    id: 'releaseresources', t: 'releaseResources()', c: 'JUCE',
+    plain: 'The method the host calls when audio stops — playback ends or the plugin is deactivated. Your chance to free big temporary resources the audio path was using.',
+    why: 'Completes the lifecycle triangle: prepareToPlay (setup) → processBlock (play) → releaseResources (teardown). Well-behaved plugins clean up here.',
+    studio: 'Load-out: strike the gear when the show closes.',
+    uses: ['Freeing scratch memory', 'Stopping background work'],
+    mistake: 'Forgetting that prepareToPlay may follow again — release/prepare can cycle many times per session.',
+    remember: 'Setup, play, teardown — releaseResources closes the loop.',
+    related: ['preparetoplay', 'processblock', 'destructor'],
+    appears: [{ z: 3, label: 'the lifecycle' }],
+    search: ['cleanup', 'stop', 'teardown'],
+  },
+  {
+    id: 'apvts', t: 'APVTS', full: 'AudioProcessorValueTreeState', c: 'JUCE',
+    plain: 'JUCE\'s parameter system: you declare every knob (name, range, default) in one layout; it syncs values with the host, makes every knob automatable, attaches UI controls, and saves/loads state.',
+    why: 'The bridge between the audio thread, the UI thread and the host. Nearly every modern JUCE plugin is built around one.',
+    studio: 'The patch memory + automation brain: every knob declared, recallable, and automatable.',
+    uses: ['Parameter layouts', 'Slider attachments', 'Preset save/load', 'Host automation'],
+    mistake: 'Bypassing it with raw member variables for knobs — you lose automation, state saving and thread safety in one stroke.',
+    remember: 'Declare every knob in APVTS — automation and presets come free.',
+    related: ['parameter', 'automation', 'preset', 'audioprocessor', 'ui-thread'],
+    appears: [{ z: 3, label: 'APVTS & attachments' }],
+    aka: ['value tree', 'AudioProcessorValueTreeState'],
+    search: ['parameters', 'knob system', 'state', 'save settings'],
+  },
+
+  /* ================= PLUGIN DEV ================= */
+  {
+    id: 'plugin', t: 'plugin', c: 'PLUGIN DEV',
+    plain: 'A piece of software that loads inside a host (your DAW) to process or generate audio. It doesn\'t run on its own — the host feeds it audio, MIDI, and a place to draw its window.',
+    why: 'Understanding the guest-in-a-host relationship explains everything: why callbacks exist, why crashes kill the DAW, why formats matter.',
+    studio: 'Outboard gear for the software age — racked inside the DAW instead of beside it.',
+    uses: ['Effects', 'Instruments', 'Meters & analyzers'],
+    viz: { t: 'chain', nodes: ['DAW (host)', 'your plugin', 'mix bus'], accent: 1 },
+    mistake: 'Forgetting you\'re a guest: a plugin that hogs CPU or crashes takes the whole session down with it.',
+    remember: 'A plugin is a guest in the host\'s house — a polite one survives.',
+    related: ['host', 'daw', 'vst3', 'audioprocessor'],
+    appears: [{ z: 3, label: 'plugin anatomy' }],
+    search: ['vst', 'effect', 'instrument'],
+  },
+  {
+    id: 'host', t: 'host', c: 'PLUGIN DEV',
+    plain: 'The application that loads plugins — usually a DAW, sometimes a live rig or plugin validator. It owns the audio driver, the transport, and calls every plugin\'s callback in turn.',
+    why: 'Hosts differ in how they call you: block sizes, automation timing, state handling. "Works in one host" is the start of testing, not the end.',
+    studio: 'The venue: it books you, sets the schedule, and controls the PA.',
+    uses: ['Callback scheduling', 'Automation playback', 'Plugin validation'],
+    mistake: 'Testing in a single DAW. Each host exercises your plugin differently — pros validate across several.',
+    remember: 'The host runs the show; plugins play the slots they\'re given.',
+    related: ['plugin', 'daw', 'automation'],
+    appears: [{ z: 6, label: 'DAW validation' }],
+    search: ['daw', 'loads plugins'],
+  },
+  {
+    id: 'daw', t: 'DAW', full: 'Digital Audio Workstation', c: 'DAWS',
+    plain: 'The software where music gets made — Ableton Live, FL Studio, Logic, Cubase, Pro Tools, Reaper. As a plugin developer, the DAW is the host that runs your code.',
+    why: 'You\'ve used DAWs for years as an instrument; now you\'ll meet them as runtime environments with different quirks, formats, and validation rules.',
+    studio: 'The studio itself — desk, tape machine and patchbay in one window.',
+    uses: ['Hosting your plugins', 'Automation & transport', 'Testing across vendors'],
+    mistake: 'Assuming all DAWs behave alike — buffer patterns, automation resolution and plugin scanning all differ.',
+    remember: 'To a plugin developer, a DAW is a runtime environment with opinions.',
+    related: ['host', 'plugin', 'automation'],
+    appears: [{ z: 6, label: 'DAW validation' }],
+    aka: ['ableton', 'fl studio', 'logic', 'reaper', 'cubase', 'pro tools'],
+    search: ['ableton', 'fl', 'logic', 'music software'],
+  },
+  {
+    id: 'preset', t: 'preset', c: 'PLUGIN DEV',
+    plain: 'A saved snapshot of every parameter — the plugin\'s complete recallable state. Load it and every knob returns to where it was.',
+    why: 'State save/restore is a hard product requirement: sessions must reopen exactly as saved, and old presets must still load in new versions (version migration, Zone 6).',
+    studio: 'Patch memory — the reason you can find that bass sound from last March.',
+    uses: ['Factory banks', 'Session state', 'A/B comparisons'],
+    mistake: 'Renaming or renumbering parameters between versions without a migration path — old sessions load scrambled.',
+    remember: 'A preset is the promise that state can always come back.',
+    related: ['apvts', 'automation', 'parameter'],
+    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, label: 'preset management' }, { z: 6, label: 'version migration' }],
+    aka: ['patch'],
+    search: ['save', 'recall', 'snapshot', 'patch'],
+  },
+  {
+    id: 'automation', t: 'automation', c: 'PLUGIN DEV',
+    plain: 'The DAW recording and replaying knob movements over time. During playback, the host streams parameter changes into your plugin — sometimes hundreds per second.',
+    why: 'Your parameters must handle rapid outside changes smoothly (no zipper noise) and thread-safely — automation is the stress test of parameter design.',
+    studio: 'Drawn fader rides and filter sweeps in your arrangement — now arriving as data into your own code.',
+    uses: ['Fader rides', 'Filter sweeps', 'Testing parameter smoothing'],
+    mistake: 'Reading parameters without smoothing — automation turns every step into a click.',
+    remember: 'Automation is the host playing your knobs — be ready for fast hands.',
+    related: ['apvts', 'parameter-smoothing', 'parameter', 'host'],
+    appears: [{ z: 3, label: 'parameters & hosts' }, { z: 6, label: 'automation testing' }],
+    search: ['fader rides', 'recorded knobs', 'moving parameters'],
+  },
+  {
+    id: 'vst', t: 'VST', full: 'Virtual Studio Technology', c: 'PLUGIN DEV',
+    plain: 'Steinberg\'s plugin standard — the family name behind "VST plugin." The current version is VST3; the older VST2 is discontinued for new development.',
+    why: 'It\'s the format this whole course ships toward. JUCE generates VST3 from your AudioProcessor without format-specific code.',
+    studio: 'The universal rack-mount standard of software gear.',
+    uses: ['Windows standard', 'Cross-DAW distribution'],
+    mistake: 'Chasing VST2 — licenses are no longer granted. New plugins target VST3 (plus AU on Mac).',
+    remember: 'VST is the family; VST3 is the format you\'ll actually build.',
+    related: ['vst3', 'au', 'aax', 'plugin'],
+    appears: [{ z: 3, label: 'formats & builds' }],
+    search: ['plugin format', 'steinberg'],
+  },
+  {
+    id: 'vst3', t: 'VST3', full: 'Virtual Studio Technology 3', c: 'PLUGIN DEV',
+    plain: 'The current VST standard: a .vst3 bundle supported by nearly every DAW on Windows and most elsewhere. Adds proper parameter handling, sidechains and per-note expression over VST2.',
+    why: 'The primary build target of this course — "make a VST3" is literally the goal on the box.',
+    studio: 'The current-generation connector standard — what new gear ships with.',
+    uses: ['Your build target', 'Windows & cross-platform DAWs'],
+    mistake: 'Editing/moving the built .vst3 by hand while a DAW has it loaded — build systems and scanners get confused; rebuild and rescan instead.',
+    remember: 'VST3 is the format your CMake build produces at the end of this road.',
+    related: ['vst', 'au', 'cmake', 'juce'],
+    appears: [{ z: 3, label: 'VST3 builds' }, { z: 7, label: 'shipping missions' }],
+    search: ['.vst3', 'format', 'build target'],
+  },
+  {
+    id: 'au', t: 'AU', full: 'Audio Units', c: 'PLUGIN DEV',
+    plain: 'Apple\'s plugin format — what Logic Pro and GarageBand load. Mac-only, validated by Apple\'s auval tool before a host will trust it.',
+    why: 'Shipping on Mac means shipping AU alongside VST3. JUCE builds both from the same code; auval failures are a rite of passage.',
+    studio: 'The Mac studio\'s house connector standard.',
+    uses: ['Logic & GarageBand support', 'Mac distribution'],
+    mistake: 'Skipping auval until release week — validate early; its errors are specific and fixable.',
+    remember: 'AU is the Logic-and-Mac format — auval is its gatekeeper.',
+    related: ['auv3', 'vst3', 'aax', 'juce'],
+    appears: [{ z: 6, label: 'DAW validation' }],
+    aka: ['audio unit', 'auval'],
+    search: ['logic', 'mac format', 'apple'],
+  },
+  {
+    id: 'auv3', t: 'AUv3', full: 'Audio Units version 3', c: 'PLUGIN DEV',
+    plain: 'The modern, sandboxed generation of Audio Units — and the plugin format of iPhone and iPad music apps. Distributed through the App Store.',
+    why: 'If your plugin should run in mobile DAWs (AUM, Logic for iPad, GarageBand iOS), AUv3 is the door. JUCE can target it.',
+    studio: 'Rack gear for the iPad rig.',
+    uses: ['iOS/iPadOS plugins', 'Sandboxed Mac hosts'],
+    mistake: 'Assuming desktop UI translates directly — touch screens and small windows need real design attention.',
+    remember: 'AUv3 is how plugins reach iPhone and iPad.',
+    related: ['au', 'vst3', 'plugin'],
+    appears: [{ z: 7, label: 'beyond desktop (future)' }],
+    search: ['ios', 'ipad', 'mobile plugin'],
+  },
+  {
+    id: 'aax', t: 'AAX', full: 'Avid Audio eXtension', c: 'PLUGIN DEV',
+    plain: 'Avid\'s plugin format — the only one Pro Tools loads. Building it requires Avid\'s SDK and, for release, plugin signing through their program.',
+    why: 'Pro Tools studios are a real market. JUCE supports AAX, but the signing/distribution hoops make it a later-stage step, not a first target.',
+    studio: 'The house standard of the big tracking rooms.',
+    uses: ['Pro Tools support', 'Commercial distribution'],
+    mistake: 'Worrying about AAX on day one — ship VST3/AU first; add AAX when Pro Tools users ask.',
+    remember: 'AAX = Pro Tools; save it for when you\'re shipping seriously.',
+    related: ['vst3', 'au', 'plugin'],
+    appears: [{ z: 7, label: 'commercial release (future)' }],
+    search: ['pro tools', 'avid'],
+  },
+
+  /* ================= MIDI ================= */
+  {
+    id: 'midi', t: 'MIDI', full: 'Musical Instrument Digital Interface', c: 'MIDI',
+    plain: 'The universal language of musical events: not sound, but messages — "note 60 pressed at velocity 100," "mod wheel moved," "sustain pedal down." Tiny, timestamped, and 40+ years universal.',
+    why: 'Your synth receives MIDI in processBlock (a MidiBuffer alongside the audio) and turns messages into voices. Parsing note-on/note-off correctly is the gateway to instruments.',
+    studio: 'The piano-roll data in your DAW — every dot is a message, not a sound.',
+    uses: ['Synth input', 'Controller mapping', 'Arpeggiators', 'Drum triggers'],
+    viz: { t: 'midimsg' },
+    mistake: 'Treating MIDI as audio — it\'s events with timestamps. A note-on at sample 240 must start the voice mid-block, not at the block edge.',
+    remember: 'MIDI is messages about music, never the sound itself.',
+    related: ['velocity', 'cc', 'pitch-bend', 'processblock', 'voice'],
+    appears: [{ z: 3, label: 'MIDI buffers' }, { z: 5, label: 'note handling' }],
+    search: ['notes', 'keyboard', 'piano roll', 'messages'],
+  },
+  {
+    id: 'velocity', t: 'velocity', c: 'MIDI',
+    plain: 'How hard a note was struck: 1–127, carried inside every note-on message. (Velocity 0 traditionally means note-off.)',
+    why: 'Velocity → loudness is the minimum; velocity → filter brightness and envelope speed is what makes a synth feel alive under fingers.',
+    studio: 'The difference between brushing a key and hammering it.',
+    uses: ['Loudness scaling', 'Brightness (→cutoff)', 'Sample layer switching'],
+    mistake: 'Mapping velocity to gain linearly — perception is curved; most instruments apply a velocity curve.',
+    remember: 'Velocity is strike strength: 1–127, curved before it hits the gain.',
+    related: ['midi', 'gain', 'envelope', 'voice'],
+    appears: [{ z: 5, label: 'velocity & expression' }],
+    search: ['hit strength', 'how hard', 'dynamics'],
+  },
+  {
+    id: 'pitch-bend', t: 'pitch bend', c: 'MIDI',
+    plain: 'The wheel that bends pitch smoothly — sent as its own high-resolution MIDI message (16,384 steps, center = no bend), separate from notes.',
+    why: 'Your synth applies bend by scaling every active voice\'s frequency — a per-voice multiplication and a range setting (usually ±2 semitones).',
+    studio: 'The left-hand wheel — whammy for keyboards.',
+    uses: ['Lead expression', 'Slides', 'MPE-style per-note bend (later)'],
+    mistake: 'Applying bend only to new notes — it must retune already-sounding voices live.',
+    remember: 'Pitch bend retunes sounding voices in real time — center means no bend.',
+    related: ['midi', 'frequency', 'mod-wheel', 'voice'],
+    appears: [{ z: 5, label: 'pitch bend' }],
+    search: ['bend wheel', 'slide', 'whammy'],
+  },
+  {
+    id: 'mod-wheel', t: 'mod wheel', full: 'modulation wheel', c: 'MIDI',
+    plain: 'The other wheel — a general-purpose expression control sent as CC 1, value 0–127. What it *does* is up to the patch: vibrato depth, filter opening, anything.',
+    why: 'Implementing mod wheel means routing one incoming CC to modulation destinations — your first taste of a mod matrix.',
+    studio: 'The wheel you push up for drama.',
+    uses: ['Vibrato depth', 'Filter opening', 'Any mapped destination'],
+    mistake: 'Hard-wiring mod wheel to one destination forever — make it a routable source from the start.',
+    remember: 'Mod wheel is CC 1: a knob whose meaning the patch decides.',
+    related: ['cc', 'midi', 'lfo'],
+    appears: [{ z: 5, label: 'mod routing' }],
+    search: ['modulation', 'expression wheel'],
+  },
+  {
+    id: 'cc', t: 'CC', full: 'Control Change', c: 'MIDI',
+    plain: 'The MIDI message type for controls: a controller number (0–127) plus a value (0–127). CC 1 = mod wheel, CC 7 = volume, CC 64 = sustain pedal, CC 74 = brightness…',
+    why: 'MIDI-learn, sustain pedal handling, hardware controller support — all CC parsing. Sustain (CC 64) in particular changes note-off behavior and trips up naive synths.',
+    studio: 'Every knob and pedal on your controller that isn\'t a key.',
+    uses: ['MIDI learn', 'Sustain pedal', 'Hardware mapping'],
+    mistake: 'Ignoring CC 64 — with sustain down, note-offs must be deferred until pedal-up, or held chords cut dead.',
+    remember: 'CC = numbered controller + value; CC 64 (sustain) changes note-off logic.',
+    related: ['midi', 'mod-wheel', 'sustain'],
+    appears: [{ z: 5, label: 'CC & sustain handling' }],
+    aka: ['control change', 'cc64', 'midi cc'],
+    search: ['controller', 'knob messages', 'sustain pedal'],
+  },
+  {
+    id: 'program-change', t: 'program change', c: 'MIDI',
+    plain: 'The MIDI message that says "switch to preset N" — one number, 0–127. Hardware-era preset switching that still works today.',
+    why: 'Live players expect program changes to swap your plugin\'s presets — ideally without clicks or dropouts, which makes it a small thread-safety exercise.',
+    studio: 'The patch-up/patch-down buttons on a stage keyboard.',
+    uses: ['Live preset switching', 'Song-section changes'],
+    mistake: 'Swapping state abruptly on the audio thread — preset changes should be handed over safely, tails respected.',
+    remember: 'Program change = "preset N, please" — switch it glitch-free.',
+    related: ['preset', 'midi', 'cc'],
+    appears: [{ z: 5, label: 'preset management' }],
+    search: ['preset switch', 'patch change'],
+  },
+
+  /* ================= TOOLS / DEBUGGING ================= */
+  {
+    id: 'compiler', t: 'compiler', c: 'TOOLS',
+    plain: 'The program that translates your C++ into machine code, checking every file for errors as it goes. It reports problems with a file, a line, and a message — often pointing one line *after* the real cause.',
+    why: 'The compiler is your strictest bandmate: it catches typos, type mistakes and misuse before they can crash a DAW. Reading its messages calmly is a superpower.',
+    studio: 'The mastering engineer who rejects the bounce — annoying until you realize they just saved your release.',
+    uses: ['Every build', 'Error checking', 'Optimization (release builds)'],
+    mistake: 'Reading the last error first. Fix error #1 — the rest are usually echoes.',
+    remember: 'The compiler is on your side; read its first complaint first.',
+    related: ['linker', 'compiler-error', 'build', 'source-file'],
+    appears: [{ z: 1, node: 'l12' }, { z: 1, node: 'e1' }],
+    search: ['build', 'translate', 'gcc', 'clang', 'msvc'],
+  },
+  {
+    id: 'linker', t: 'linker', c: 'TOOLS',
+    plain: 'The build stage after compiling: it stitches all the compiled pieces into one binary, wiring every function call to an actual function body. Missing a body? "undefined reference."',
+    why: '"Undefined reference" errors confuse everyone at first — they mean a promise (declaration) has no implementation, or a .cpp isn\'t in the build. Now you can read them.',
+    studio: 'The tech who wires every panel to its circuit before the show — and reports any control connected to nothing.',
+    uses: ['Final build step', 'Library linking', 'The undefined-reference error'],
+    mistake: 'Hunting a linker error inside your syntax — it\'s not a typo, it\'s a missing definition or missing file in the build.',
+    remember: 'Compiler checks files; linker connects them. "Undefined reference" = a promise with no body.',
+    related: ['compiler', 'linker-error', 'cmake', 'source-file'],
+    appears: [{ z: 1, node: 'l12' }, { z: 1, node: 'e3' }],
+    search: ['undefined reference', 'ld', 'link'],
+  },
+  {
+    id: 'compiler-error', t: 'compiler error', c: 'DEBUGGING',
+    plain: 'A build failure the compiler catches in one file: missing semicolon, unknown name, wrong type. Comes with a file, line and message — the line is where it *noticed*, often just after the cause.',
+    why: 'You\'ll see thousands. The skill: read the first error, check one line up, fix, rebuild. Walls of errors usually collapse from one fix.',
+    studio: 'A channel with no signal: check the patch one point upstream of where the meter died.',
+    uses: ['Everyday development', 'The e-challenges in Zone 1'],
+    mistake: 'Panicking at 40 errors. They\'re echoes — fix the first.',
+    remember: 'First error first; look one line above where it points.',
+    related: ['compiler', 'linker-error', 'debugger'],
+    appears: [{ z: 1, node: 'e1' }, { z: 1, node: 'e2' }],
+    search: ['expected semicolon', 'not declared', 'build failed'],
+  },
+  {
+    id: 'linker-error', t: 'linker error', c: 'DEBUGGING',
+    plain: 'A build failure at the stitching stage — most famously "undefined reference to X": the function X was declared but no compiled body exists anywhere.',
+    why: 'Two usual suspects: you never wrote the body, or its .cpp isn\'t listed in the build (CMake). No file/line given — which is exactly why beginners find it scary.',
+    studio: 'A patch label pointing at an empty rack slot — the wiring plan promised gear that was never installed.',
+    uses: ['Missing definitions', 'CMake file lists', 'Library setup'],
+    mistake: 'Rewriting your header to fix it — the header (declaration) is fine; the body or the build list is what\'s missing.',
+    remember: '"Undefined reference" = write the body, or add the .cpp to the build.',
+    related: ['linker', 'compiler-error', 'cmake', 'source-file'],
+    appears: [{ z: 1, node: 'e3' }],
+    search: ['undefined reference', 'unresolved external'],
+  },
+  {
+    id: 'debugger', t: 'debugger', c: 'DEBUGGING',
+    plain: 'A tool that pauses your running plugin at chosen lines (breakpoints) so you can inspect every variable and step through code one line at a time.',
+    why: 'Ten minutes in a debugger beats two hours of guessing. For crashes, it shows the exact line and the call stack that led there — including inside a running DAW.',
+    studio: 'Soloing one channel and walking the signal chain node by node until you find where the hum enters.',
+    uses: ['Crash diagnosis', 'Watching DSP values', 'Stepping through logic'],
+    mistake: 'Debugging by println everywhere (and never on the audio thread — logging blocks!). Breakpoints are faster and safer.',
+    remember: 'Breakpoints beat guesswork — attach the debugger before the third guess.',
+    related: ['undefined-behavior', 'debug-build', 'ide', 'audio-thread'],
+    appears: [{ z: 6, label: 'debugging crashes' }],
+    search: ['breakpoint', 'step through', 'inspect', 'crash'],
+  },
+  {
+    id: 'git', t: 'Git', c: 'TOOLS',
+    plain: 'Version control: it snapshots your whole codebase every time you commit, so you can compare, branch, and roll back to any previous state. Runs locally; GitHub is where snapshots get shared.',
+    why: 'DSP experiments break things — commit before each experiment and "undo" is always possible. Every serious plugin project lives in Git.',
+    studio: 'Infinite undo plus named takes and comps — for code. "Filter working v3 FINAL" without the folder chaos.',
+    uses: ['Save points before experiments', 'Branching ideas', 'Sharing via GitHub'],
+    mistake: 'Committing rarely, in giant lumps. Commit small and often — snapshots are free.',
+    remember: 'Commit before every experiment — Git makes fearless the default.',
+    related: ['github', 'build', 'cmake'],
+    appears: [{ z: 6, label: 'project workflow' }],
+    search: ['version control', 'commit', 'undo', 'history'],
+  },
+  {
+    id: 'github', t: 'GitHub', c: 'TOOLS',
+    plain: 'The main website for hosting Git repositories: your code\'s cloud home, plus issues, pull requests and automated builds (Actions). Where JUCE itself and most audio open source lives.',
+    why: 'Backup, collaboration, and CI builds of your plugin for Mac and Windows — plus the place you\'ll read other people\'s plugin code to learn.',
+    studio: 'Cloud backup + collab space for sessions — but for repositories.',
+    uses: ['Backup & sync', 'Reading JUCE source', 'CI builds (Actions)'],
+    mistake: 'Confusing Git (the tool on your machine) with GitHub (a hosting service for it).',
+    remember: 'Git is the tool; GitHub is its home on the internet.',
+    related: ['git', 'cmake', 'build'],
+    appears: [{ z: 6, label: 'sharing & CI' }],
+    search: ['repository', 'repo', 'cloud code'],
+  },
+  {
+    id: 'visual-studio', t: 'Visual Studio', c: 'TOOLS',
+    plain: 'Microsoft\'s full IDE for Windows: code editor, MSVC compiler and a first-class debugger in one. The standard environment for building Windows VST3s. (Not the same thing as VS Code.)',
+    why: 'On Windows, CMake generates Visual Studio projects, and its debugger attaches straight into a DAW running your plugin.',
+    studio: 'The big studio console of Windows development — everything in one surface.',
+    uses: ['Windows builds', 'Debugging inside DAWs', 'CMake integration'],
+    mistake: 'Mixing it up with VS Code — Visual Studio is the heavyweight IDE; VS Code is the lightweight editor.',
+    remember: 'Visual Studio = Windows IDE + compiler + debugger for your VST builds.',
+    related: ['vs-code', 'ide', 'debugger', 'cmake'],
+    appears: [{ z: 3, label: 'build environments' }],
+    aka: ['msvc'],
+    search: ['windows ide', 'microsoft'],
+  },
+  {
+    id: 'vs-code', t: 'VS Code', full: 'Visual Studio Code', c: 'TOOLS',
+    plain: 'Microsoft\'s free, lightweight code editor — extensions add C++ support, CMake tooling and debugging. Runs everywhere; the most popular editor in the world.',
+    why: 'A comfortable cross-platform home for JUCE + CMake projects, especially with the C++ and CMake Tools extensions.',
+    studio: 'A fast, modular project template — add just the devices you need.',
+    uses: ['Editing C++', 'CMake workflows', 'Integrated terminal & Git'],
+    mistake: 'Expecting a compiler in the box — VS Code is an editor; the C++ toolchain installs separately.',
+    remember: 'VS Code is the light, extensible editor; bring your own compiler.',
+    related: ['visual-studio', 'cursor-editor', 'ide', 'cmake'],
+    appears: [{ z: 3, label: 'build environments' }],
+    aka: ['vscode'],
+    search: ['editor', 'code editor'],
+  },
+  {
+    id: 'cursor-editor', t: 'Cursor', c: 'TOOLS',
+    plain: 'An AI-first code editor built on VS Code: same interface and extensions, with an AI that reads your whole project and can write or edit code from chat instructions.',
+    why: 'AI-assisted editors accelerate plugin work — but they\'re force multipliers, not replacements: you still review every audio-thread line the AI writes.',
+    studio: 'An assistant engineer who knows the whole session — fast hands, but you still approve the mix.',
+    uses: ['AI code edits', 'Explaining unfamiliar code', 'Refactoring'],
+    mistake: 'Shipping AI-written callback code unreviewed — allocation and locks sneak in exactly there.',
+    remember: 'AI editors accelerate you; real-time-safety review stays human.',
+    related: ['vs-code', 'claude-code', 'ide'],
+    appears: [{ z: 7, label: 'modern workflows' }],
+    search: ['ai editor', 'ai coding'],
+  },
+  {
+    id: 'claude-code', t: 'Claude Code', c: 'TOOLS',
+    plain: 'Anthropic\'s AI coding agent: it reads a whole repository, plans, edits files, runs builds and tests from natural-language instructions — in a terminal, editor, or the cloud.',
+    why: 'Agentic tools can scaffold a JUCE project, chase a linker error, or draft a DSP class. The skills this course teaches are what let you *direct and verify* that work.',
+    studio: 'A session engineer who can also solder: give clear notes, then check the patchbay yourself.',
+    uses: ['Project scaffolding', 'Build-error hunting', 'Test writing'],
+    mistake: 'Delegating understanding. AI writes faster than you; it shouldn\'t understand your audio thread better than you.',
+    remember: 'Direct the agent, verify the audio path — that\'s the workflow.',
+    related: ['cursor-editor', 'vs-code', 'git'],
+    appears: [{ z: 7, label: 'modern workflows' }],
+    search: ['ai agent', 'anthropic', 'assistant'],
+  },
+  {
+    id: 'cmake', t: 'CMake', c: 'TOOLS',
+    plain: 'The build-system generator for modern C++ projects: a CMakeLists.txt file lists your sources, settings and targets, and CMake produces the actual platform build (Visual Studio, Xcode, Makefiles).',
+    why: 'Modern JUCE is CMake-first: one text file declares your plugin, its formats (VST3/AU/Standalone) and its source files. Forgetting to list a .cpp here causes the classic linker error.',
+    studio: 'The stage plot + input list: one document, and any venue\'s crew can wire your show.',
+    uses: ['JUCE project setup', 'Adding source files', 'Choosing plugin formats'],
+    mistake: 'Editing generated project files instead of CMakeLists.txt — regeneration erases your changes.',
+    remember: 'CMakeLists.txt is the single source of truth for your build.',
+    related: ['build', 'linker-error', 'juce', 'source-file'],
+    appears: [{ z: 3, label: 'CMake project structure' }],
+    search: ['build system', 'cmakelists', 'project file'],
+  },
+  {
+    id: 'build', t: 'build', c: 'TOOLS',
+    plain: 'The whole process of turning source code into a runnable plugin: compile every .cpp, link the pieces, bundle the result into a .vst3 (or AU, or app).',
+    why: '"It builds" is the first gate every change must pass. Learning to read build output top-down turns red walls of text into a to-do list.',
+    studio: 'The bounce: everything rendered down into the deliverable.',
+    uses: ['Every development cycle', 'CI pipelines', 'Release packaging'],
+    mistake: 'Ignoring warnings because "it built" — warnings are the compiler predicting your next bug.',
+    remember: 'A build is compile + link + bundle — and warnings count.',
+    related: ['compiler', 'linker', 'cmake', 'debug-build', 'release-build'],
+    appears: [{ z: 3, label: 'first builds' }],
+    search: ['compile', 'make', 'bounce'],
+  },
+  {
+    id: 'debug-build', t: 'debug build', c: 'TOOLS',
+    plain: 'A build with optimizations off and extra checks on: slower to run, but crashes point at exact lines and the debugger can see everything.',
+    why: 'You develop in Debug so problems are visible and traceable. DSP can be 10× slower here — don\'t judge CPU performance from a Debug build.',
+    studio: 'The rough mix with the click and guide vocals still in — for working, not releasing.',
+    uses: ['Daily development', 'Crash tracing', 'Assertion checks'],
+    mistake: 'Profiling CPU in Debug — always measure performance in Release.',
+    remember: 'Develop in Debug; measure and ship in Release.',
+    related: ['release-build', 'debugger', 'build'],
+    appears: [{ z: 6, label: 'profiling & builds' }],
+    search: ['slow build', 'assertions', 'development mode'],
+  },
+  {
+    id: 'release-build', t: 'release build', c: 'TOOLS',
+    plain: 'A build with full optimizations on and debug checks off: what users actually run. Fast — and nearly opaque to debuggers.',
+    why: 'Real CPU usage, real denormal behavior, real performance — only a Release build tells the truth about them. Occasionally bugs appear *only* here (usually latent UB).',
+    studio: 'The mastered bounce that goes out the door.',
+    uses: ['Performance testing', 'Distribution', 'Final validation'],
+    mistake: 'Never testing Release until launch day — optimizations can surface bugs Debug hid.',
+    remember: 'Release is what ships — test it long before shipping day.',
+    related: ['debug-build', 'build', 'cpu', 'undefined-behavior'],
+    appears: [{ z: 6, label: 'profiling & packaging' }],
+    search: ['optimized', 'final build', 'ship'],
+  },
+
+  /* ================= ARCHITECTURE / HARDWARE ================= */
+  {
+    id: 'cpu', t: 'CPU', full: 'Central Processing Unit', c: 'PERFORMANCE',
+    plain: 'The chip that executes your code. Its speed budget is what the DAW\'s CPU meter shows — and what your plugin spends with every sample of math.',
+    why: 'Producers judge plugins by the CPU meter. Per-voice costs, denormals, and work-per-sample decisions all land here.',
+    studio: 'The DAW\'s CPU meter — the thing that ends sessions when it pins.',
+    uses: ['Performance budgets', 'Voice count limits', 'Optimization targets'],
+    mistake: 'Optimizing before measuring — profile first (in Release), then fix the actual hot spot.',
+    remember: 'Every sample of DSP spends CPU — measure before optimizing.',
+    related: ['ram', 'denormals', 'release-build', 'polyphony'],
+    appears: [{ z: 6, label: 'profiling' }],
+    search: ['processor', 'performance', 'meter', 'usage'],
+  },
+  {
+    id: 'ram', t: 'RAM', full: 'Random Access Memory', c: 'PERFORMANCE',
+    plain: 'The computer\'s fast working memory — where every running variable, buffer and loaded sample lives. Cleared when power goes off.',
+    why: 'Sample libraries eat gigabytes of it; delay lines and wavetables take their share. Memory footprint is part of plugin design.',
+    studio: 'How many sample libraries you can keep loaded before the machine groans.',
+    uses: ['Sample streaming decisions', 'Buffer budgets', 'Preset storage'],
+    mistake: 'Loading entire sample sets into RAM when streaming from disk (with a RAM preload buffer) scales better.',
+    remember: 'RAM is fast, finite working memory — budget it like CPU.',
+    related: ['memory', 'heap', 'cpu'],
+    appears: [{ z: 7, label: 'sampler mission' }],
+    search: ['memory', 'gigabytes', 'loaded samples'],
+  },
+  {
+    id: 'gui', t: 'GUI', full: 'Graphical User Interface', c: 'ARCHITECTURE',
+    plain: 'The visual front of your plugin — knobs, sliders, meters, graphics — everything users see and touch. In JUCE, built from Components inside the AudioProcessorEditor.',
+    why: 'The GUI runs on the UI thread, may not exist at all, and must never be touched from audio code — its lifecycle shapes plugin architecture.',
+    studio: 'The faceplate: what sells the unit and what hands actually touch.',
+    uses: ['Knobs & sliders', 'Meters', 'Preset browsers', 'Resizable layouts'],
+    mistake: 'Painting meters by reaching into audio data directly — meters read thread-safe copies, not the live buffer.',
+    remember: 'The GUI is a separate, optional, slower world — bridge to it safely.',
+    related: ['audioprocessoreditor', 'ui-thread', 'apvts'],
+    appears: [{ z: 3, label: 'editor basics' }, { z: 6, label: 'responsive interfaces' }],
+    search: ['interface', 'knobs', 'front panel', 'ui'],
+  },
+  {
+    id: 'api', t: 'API', full: 'Application Programming Interface', c: 'ARCHITECTURE',
+    plain: 'The set of functions and rules a library offers you — its control surface. "The JUCE API" means every class and method JUCE lets you call.',
+    why: 'Plugin development is living inside other people\'s APIs: JUCE\'s classes, the VST3 spec, the OS audio system. Reading API docs is a daily skill.',
+    studio: 'The jack panel of a rack unit: the manufacturer decided what you can patch; the manual tells you how.',
+    uses: ['JUCE classes', 'Plugin format specs', 'OS audio systems'],
+    mistake: 'Fighting an API instead of reading its docs — the intended path usually exists and is shorter.',
+    remember: 'An API is a library\'s control surface — learn the intended patching.',
+    related: ['juce', 'ide', 'gui'],
+    appears: [{ z: 3, label: 'the JUCE API' }],
+    search: ['library interface', 'docs', 'functions offered'],
+  },
+  {
+    id: 'ide', t: 'IDE', full: 'Integrated Development Environment', c: 'TOOLS',
+    plain: 'An all-in-one workspace for code: editor, build button, debugger and project browser in a single app. Visual Studio and Xcode are IDEs; VS Code is an editor that extensions grow into one.',
+    why: 'You\'ll live in one. The build-run-debug loop inside an IDE is the plugin developer\'s daily rhythm.',
+    studio: 'The full studio in one room: desk, monitors, outboard — no walking between rooms.',
+    uses: ['Editing', 'Building', 'Debugging', 'Project navigation'],
+    mistake: 'Tool-hopping weekly. Pick one, learn its debugger deeply, ship things.',
+    remember: 'The IDE is your studio room — know where everything is without looking.',
+    related: ['visual-studio', 'vs-code', 'debugger', 'build'],
+    appears: [{ z: 3, label: 'build environments' }],
+    search: ['editor', 'development environment', 'xcode'],
+  }
+);
 
 ;
 /* ===== src/js/engine.js ===== */
@@ -2715,6 +4279,7 @@ const Store = (() => {
       achievements: [],
       settings: { sound: true, motion: true, codeSize: 'm' },
       practiceCleared: 0,
+      dictViewed: [],
       createdAt: new Date().toISOString(),
     };
   }
@@ -2756,6 +4321,7 @@ const Store = (() => {
     s.dailyDone = s.dailyDone | 0;
     s.practiceCleared = s.practiceCleared | 0;
     if (!['s', 'm', 'l'].includes(s.settings.codeSize)) s.settings.codeSize = 'm';
+    s.dictViewed = Array.isArray(s.dictViewed) ? s.dictViewed.filter((x) => typeof x === 'string') : [];
     // deep-clean per-entry shapes so a hand-edited import can't poison renders
     const nodes = {};
     for (const [k, v] of Object.entries(s.nodes)) {
@@ -2999,6 +4565,13 @@ const Store = (() => {
   /* ---- settings / io ---- */
   function setSetting(k, v) { state.settings[k] = v; save(); }
 
+  function markDictViewed(id) {
+    if (!state.dictViewed.includes(id)) {
+      state.dictViewed.push(id);
+      save();
+    }
+  }
+
   function exportJson() { return JSON.stringify(state, null, 2); }
 
   function importJson(text) {
@@ -3029,7 +4602,7 @@ const Store = (() => {
     dailyToday, completeDaily,
     grant, drainAchievements,
     zoneMastery, bossReady,
-    setSetting, exportJson, importJson, reset,
+    setSetting, markDictViewed, exportJson, importJson, reset,
   };
 })();
 
@@ -3111,10 +4684,11 @@ const UI = (() => {
   }
 
   /* ---- inline markup: `code` and **bold** ---- */
-  function fmt(text) {
+  function fmt(text, opts) {
     let s = escapeHtml(text);
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    if (opts && opts.links && typeof Dict !== 'undefined') s = Dict.autoLink(s);
     return s;
   }
 
@@ -3527,6 +5101,65 @@ const Viz = (() => {
       return { svg: s.join(''), h: 140 };
     },
 
+    // ADSR envelope shape with labeled stages.
+    adsr() {
+      const s = [box(8, 8, 324, 84, C.line, false, '#07090B')];
+      const y0 = 78, yPeak = 18, ySus = 44;
+      const xA = 70, xD = 130, xS = 230, xR = 310;
+      s.push(`<path d="M 16 ${y0} L ${xA} ${yPeak} L ${xD} ${ySus} L ${xS} ${ySus} L ${xR} ${y0}" fill="none" stroke="${C.phos}" stroke-width="1.8"/>`);
+      s.push(`<line x1="16" y1="${y0}" x2="316" y2="${y0}" stroke="rgba(93,232,148,0.15)"/>`);
+      [[43, 'A'], [100, 'D'], [180, 'S'], [270, 'R']].forEach(([x, l]) => s.push(txt(x, 100, l, C.amber, 10, 'middle', 2)));
+      s.push(txt(180, 38, 'sustain = a LEVEL', C.faint, 8.5, 'middle'));
+      s.push(txt(170, 116, 'attack · decay · sustain · release — the note\'s life cycle', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 122 };
+    },
+
+    // Low-pass filter response curve with cutoff + resonance bump.
+    filtercurve() {
+      const s = [box(8, 8, 324, 80, C.line, false, '#07090B')];
+      s.push(`<path d="M 16 40 L 190 40 C 215 40, 210 24, 225 24 C 240 24, 238 84, 260 84 L 262 84" fill="none" stroke="${C.phos}" stroke-width="1.8"/>`);
+      s.push(`<line x1="225" y1="12" x2="225" y2="84" stroke="${C.amber}" stroke-width="1" stroke-dasharray="4 3"/>`);
+      s.push(txt(225, 104, 'cutoff', C.amber, 9, 'middle'));
+      s.push(txt(120, 30, 'passes', C.faint, 8.5, 'middle'));
+      s.push(txt(292, 40, 'cut', C.faint, 8.5, 'middle'));
+      s.push(txt(250, 20, 'resonance', C.dim, 8, 'start'));
+      s.push(txt(170, 118, 'low-pass: lows through, highs reduced past the cutoff', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 124 };
+    },
+
+    // Voice slots with held notes; steal mode shows the oldest being reassigned.
+    voices(o) {
+      const s = [];
+      s.push(txt(170, 14, o && o.steal ? '9th NOTE ARRIVES — ALL 8 BUSY' : 'VOICE POOL', C.dim, 9, 'middle', 1.5));
+      for (let i = 0; i < 8; i++) {
+        const x = 26 + i * 37;
+        const busy = i < (o && o.steal ? 8 : 5);
+        const stolen = o && o.steal && i === 0;
+        s.push(box(x, 24, 32, 34, stolen ? C.red : (busy ? C.phosDim : C.line), stolen, busy && !stolen ? 'rgba(93,232,148,0.06)' : 'none'));
+        s.push(txt(x + 16, 45, stolen ? '↻' : (busy ? '♪' : '·'), stolen ? C.red : (busy ? C.phos : C.faint), 11, 'middle'));
+        s.push(txt(x + 16, 70, 'v' + (i + 1), C.faint, 8, 'middle'));
+      }
+      s.push(txt(170, 90, o && o.steal ? 'oldest voice fades fast, then plays the new note' : 'each ♪ is one object of your Voice class', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 96 };
+    },
+
+    // A key press becoming a MIDI message.
+    midimsg() {
+      const s = [];
+      for (let i = 0; i < 5; i++) {
+        const x = 16 + i * 20;
+        const pressed = i === 2;
+        s.push(box(x, 16, 17, 44, pressed ? C.phosDim : C.line, false, pressed ? 'rgba(93,232,148,0.1)' : 'none'));
+      }
+      s.push(txt(66, 74, 'you press C4', C.faint, 8.5, 'middle'));
+      s.push(arrow(122, 38, 158, 38));
+      s.push(box(164, 14, 162, 48, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(245, 30, 'NOTE ON', C.amber, 9.5, 'middle', 1.5));
+      s.push(txt(245, 46, 'note: 60   velocity: 100', C.dim, 9.5, 'middle'));
+      s.push(txt(245, 74, 'a message — not a sound', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 84 };
+    },
+
     // Two layers: front panel (public / header) over circuitry (private / cpp).
     twoLayer(o) {
       const s = [];
@@ -3558,6 +5191,201 @@ const Viz = (() => {
   }
 
   return { render };
+})();
+
+;
+/* ===== src/js/dict.js ===== */
+/* ============================================================
+   Dict — Signal Dictionary logic: index, mastery computation,
+   scored search, abbreviation auto-linking, and the entry card
+   (rendered in the existing bottom-sheet pattern).
+   ============================================================ */
+
+const Dict = (() => {
+  const byId = {};
+  DICT.forEach((e) => { byId[e.id] = e; });
+
+  const LEVELS_ = [
+    { glyph: '○', label: 'never seen' },
+    { glyph: '◔', label: 'introduced' },
+    { glyph: '◑', label: 'practiced' },
+    { glyph: '◕', label: 'learned' },
+    { glyph: '●', label: 'mastered' },
+  ];
+
+  const ZONE_TITLES = { 1: 'C++ Signal Path', 2: 'Modern C++ for Audio', 3: 'JUCE Plugin Foundation', 4: 'DSP Workshop', 5: 'Synth Engineering', 6: 'Professional Plugin Engineering', 7: 'Final Product Missions' };
+
+  /* ---- mastery: derived from lesson progress + views ---- */
+  function z1Nodes(entry) {
+    return (entry.appears || []).filter((a) => a.z === 1 && a.node && Engine.NODES[a.node]);
+  }
+
+  function masteryLevel(entry) {
+    const viewed = (Store.state.dictViewed || []).includes(entry.id);
+    const nodes = z1Nodes(entry);
+    if (nodes.length === 0) return viewed ? 1 : 0;
+    const done = nodes.filter((n) => Store.isDone(n.node));
+    const anyUnlocked = nodes.some((n) => Store.isUnlocked('z1', n.node));
+    if (done.length === 0) return (viewed || anyUnlocked) ? 1 : 0;
+    if (done.length < nodes.length) return 2;
+    const weak = Store.weakList().some((w) => nodes.some((n) => n.node === w.nodeId));
+    if (weak) return 2;
+    const avg = done.reduce((s, n) => s + ((Store.state.nodes[n.node] || {}).stars || 0), 0) / done.length;
+    if (avg >= 2.999) return 4;
+    if (avg >= 2) return 3;
+    return 2;
+  }
+
+  function mastery(entry) {
+    const lvl = masteryLevel(entry);
+    return { level: lvl, ...LEVELS_[lvl] };
+  }
+
+  /* ---- search: term > full/aka > keywords > body text ---- */
+  function search(query, cat) {
+    const q = String(query || '').trim().toLowerCase();
+    let list = DICT.filter((e) => cat === 'ALL' || e.c === cat);
+    if (!q) return list.slice().sort((a, b) => a.t.localeCompare(b.t));
+    const scored = [];
+    for (const e of list) {
+      const t = e.t.toLowerCase();
+      let score = 0;
+      if (t === q) score = 120;
+      else if (t.startsWith(q)) score = 100;
+      else if (t.includes(q)) score = 85;
+      if (score < 75) {
+        const names = [e.full || '', ...(e.aka || [])].map((x) => x.toLowerCase());
+        if (names.some((n) => n && (n.includes(q) || q.includes(n)))) score = Math.max(score, 75);
+      }
+      if (score < 60) {
+        const kws = (e.search || []).map((x) => x.toLowerCase());
+        if (kws.some((k) => k.includes(q) || q.includes(k))) score = Math.max(score, 60);
+      }
+      if (score < 30) {
+        const body = (e.plain + ' ' + e.why + ' ' + e.studio).toLowerCase();
+        if (body.includes(q)) score = 30;
+      }
+      if (score > 0) scored.push([score, e]);
+    }
+    return scored.sort((a, b) => b[0] - a[0] || a[1].t.localeCompare(b[1].t)).map(([, e]) => e);
+  }
+
+  /* ---- abbreviation auto-linking in prose (first mention per block) ---- */
+  const LINKABLE = [
+    ['APVTS', 'apvts'], ['VST3', 'vst3'], ['AUv3', 'auv3'], ['CMake', 'cmake'],
+    ['MIDI', 'midi'], ['JUCE', 'juce'], ['ADSR', 'envelope'], ['AAX', 'aax'],
+    ['DSP', 'dsp'], ['DAW', 'daw'], ['GUI', 'gui'], ['CPU', 'cpu'],
+    ['RAM', 'ram'], ['API', 'api'], ['IDE', 'ide'], ['LFO', 'lfo'], ['VST', 'vst'],
+  ];
+
+  function autoLink(html) {
+    // Split into tag / text segments; skip linking inside <code> and existing links.
+    const parts = String(html).split(/(<[^>]+>)/);
+    let inCode = 0;
+    const linked = new Set();
+    for (let i = 0; i < parts.length; i++) {
+      const seg = parts[i];
+      if (seg.startsWith('<')) {
+        if (/^<code[\s>]/i.test(seg)) inCode++;
+        else if (/^<\/code>/i.test(seg)) inCode = Math.max(0, inCode - 1);
+        continue;
+      }
+      if (inCode || !seg) continue;
+      let out = seg;
+      for (const [abbr, id] of LINKABLE) {
+        if (linked.has(abbr) || !byId[id]) continue;
+        const re = new RegExp('\\b' + abbr + '\\b');
+        if (re.test(out)) {
+          out = out.replace(re, '<span class="term-link" role="link" tabindex="0" data-term="' + id + '">' + abbr + '</span>');
+          linked.add(abbr);
+        }
+      }
+      parts[i] = out;
+    }
+    return parts.join('');
+  }
+
+  /* ---- the entry card (bottom sheet) ---- */
+  let currentSheet = null;
+
+  function open(id) {
+    const e = byId[id];
+    if (!e) { UI.toast('Term not found in the dictionary'); return; }
+    if (currentSheet) { currentSheet.close(); currentSheet = null; }
+    Store.markDictViewed(e.id);
+    const { el, fmt } = UI;
+    const m = mastery(e);
+
+    const bits = [];
+    bits.push(el('div', { class: 'row between' },
+      el('span', { class: 'eyebrow phos' }, 'SIGNAL DICTIONARY'),
+      el('span', { class: 'mono small', style: 'color:var(--amber)', 'aria-label': 'mastery: ' + m.label }, m.glyph + ' ' + m.label.toUpperCase())));
+    bits.push(el('div', null,
+      el('div', { class: 'h-display' }, e.t),
+      e.full ? el('div', { class: 'dict-full' }, e.full) : null,
+      el('div', { class: 'mt-s' }, el('span', { class: 'chip' }, e.c))));
+
+    bits.push(el('div', null,
+      el('div', { class: 'eyebrow' }, 'PLAIN ENGLISH'),
+      el('p', { class: 'prose mt-s', style: 'font-size:14.5px', html: fmt(e.plain) })));
+
+    bits.push(el('div', null,
+      el('div', { class: 'eyebrow amber' }, 'WHY IT MATTERS FOR YOUR VST'),
+      el('p', { class: 'small mt-s', style: 'color:var(--ink-dim); line-height:1.55; max-width:62ch', html: fmt(e.why) })));
+
+    if (e.studio) bits.push(el('div', { class: 'callout analogy' },
+      el('div', { class: 'co-head' }, '🎹 STUDIO TAKE'),
+      el('div', { html: fmt(e.studio) })));
+
+    if (e.viz) bits.push(Viz.render(e.viz));
+
+    if (e.uses && e.uses.length) bits.push(el('div', null,
+      el('div', { class: 'eyebrow' }, 'REAL PLUGIN USE'),
+      el('div', { class: 'chips mt-s' }, e.uses.map((u) => el('span', { class: 'chip' }, u)))));
+
+    if (e.mistake) bits.push(el('div', { class: 'callout mistake' },
+      el('div', { class: 'co-head' }, '⚠ COMMON BEGINNER MISTAKE'),
+      el('div', { html: fmt(e.mistake) })));
+
+    if (e.remember) bits.push(el('div', { class: 'callout remember' },
+      el('div', { class: 'co-head' }, '💡 REMEMBER THIS'),
+      el('div', { class: 'co-body', html: fmt(e.remember) })));
+
+    const rel = (e.related || []).filter((r) => byId[r]);
+    if (rel.length) bits.push(el('div', null,
+      el('div', { class: 'eyebrow' }, 'RELATED TERMS'),
+      el('div', { class: 'chips mt-s' }, rel.map((r) =>
+        el('button', { class: 'chip', style: 'color:var(--phos); border-color:var(--phos-dim)', onclick: () => { Sfx.tap(); open(r); } }, '→ ' + byId[r].t)))));
+
+    if (e.appears && e.appears.length) {
+      bits.push(el('div', null,
+        el('div', { class: 'eyebrow' }, 'APPEARS IN THE CURRICULUM'),
+        el('div', { class: 'col mt-s', style: 'gap:2px' }, e.appears.map((a) => {
+          const node = a.node ? Engine.NODES[a.node] : null;
+          const live = a.z === 1 && node;
+          const label = node ? node.title : (a.label || '');
+          const unlocked = live && Store.isUnlocked('z1', a.node);
+          const done = live && Store.isDone(a.node);
+          return el('button', { class: 'appears-row', onclick: () => {
+            if (!live) { UI.toast('Zone ' + a.z + ' ships in a future update'); return; }
+            if (!unlocked) { UI.toast('Locked — progress through the map first'); return; }
+            if (currentSheet) { currentSheet.close(); currentSheet = null; }
+            App.openNode(a.node);
+          } },
+            el('span', { class: 'z-badge' + (live ? ' live' : '') }, 'Z' + a.z),
+            el('div', { style: 'min-width:0; text-align:left' },
+              el('div', { class: 'small' }, label),
+              el('div', { class: 'mono', style: 'font-size:9.5px; color:var(--ink-faint); letter-spacing:.08em' }, ZONE_TITLES[a.z] || '')),
+            el('span', { class: 'mono small', style: 'margin-left:auto; color:' + (done ? 'var(--phos)' : 'var(--ink-faint)') },
+              live ? (done ? '✓' : (unlocked ? '▶' : '🔒')) : 'SOON'));
+        }))));
+    }
+
+    currentSheet = UI.sheet(bits);
+    return currentSheet;
+  }
+
+  return { byId, mastery, search, autoLink, open, LEVELS: LEVELS_ };
 })();
 
 ;
@@ -4342,7 +6170,7 @@ const Views = (() => {
       if (step === 0) {
         slot.replaceChildren(
           el('div', { class: 'card raised' },
-            node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook) }) : null,
+            node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook, { links: true }) }) : null,
             el('div', { class: 'eyebrow phos' }, 'OBJECTIVE'),
             el('p', { class: 'prose mt-s', html: fmt(node.objective) }),
             el('div', { class: 'mt-m row wrap' },
@@ -4357,7 +6185,7 @@ const Views = (() => {
       if (sIdx < node.sections.length) {
         const s = node.sections[sIdx];
         const bits = [el('h2', { class: 'h-display', style: 'font-size:16px' }, s.h),
-          el('div', { class: 'prose', html: fmt(s.body) })];
+          el('div', { class: 'prose', html: fmt(s.body, { links: true }) })];
         if (s.viz) bits.push(Viz.render(s.viz));
         if (s.code) {
           bits.push(UI.codePanel(s.code, s.codeTitle));
@@ -4369,16 +6197,16 @@ const Views = (() => {
         }
         if (s.analogy) bits.push(el('div', { class: 'callout analogy' },
           el('div', { class: 'co-head' }, '⌁ Studio analogy'),
-          el('div', { html: fmt(s.analogy) })));
+          el('div', { html: fmt(s.analogy, { links: true }) })));
         if (s.mistake) {
           const mk = [el('div', { class: 'co-head' }, '✗ Common mistake')];
           if (s.mistake.code) mk.push(el('div', { class: 'code', style: 'margin:6px 0' }, el('pre', { html: UI.highlightCpp(s.mistake.code) })));
-          mk.push(el('div', { html: fmt(s.mistake.text) }));
+          mk.push(el('div', { html: fmt(s.mistake.text, { links: true }) }));
           bits.push(el('div', { class: 'callout mistake' }, mk));
         }
         if (s.warn) bits.push(el('div', { class: 'callout warn' },
           el('div', { class: 'co-head' }, '⚠ Worth knowing'),
-          el('div', { html: fmt(s.warn) })));
+          el('div', { html: fmt(s.warn, { links: true }) })));
         slot.replaceChildren(el('div', { class: 'card col', style: 'gap:12px' }, bits), nextBtn(sIdx === node.sections.length - 1 ? 'To the checks' : 'Next'));
         return;
       }
@@ -4416,13 +6244,13 @@ const Views = (() => {
         el('div', { class: 'eyebrow phos' }, '\uD83C\uDF9B INSIDE A REAL PLUGIN'),
         el('div', { class: 'col gap-s' }, node.inside.map((x) => el('div', { class: 'plugin-use' },
           el('span', { class: 'pu-name' }, x.name),
-          el('span', { class: 'pu-desc', html: fmt(x.use) }))))));
+          el('span', { class: 'pu-desc', html: fmt(x.use, { links: true }) }))))));
       if (node.analogyPanel) endPanels.push(el('div', { class: 'callout analogy' },
         el('div', { class: 'co-head' }, '\uD83C\uDFB9 STUDIO ANALOGY'),
-        el('div', { html: fmt(node.analogyPanel) })));
+        el('div', { html: fmt(node.analogyPanel, { links: true }) })));
       if (node.beginnerMistake) endPanels.push(el('div', { class: 'callout mistake' },
         el('div', { class: 'co-head' }, '\u26A0 COMMON BEGINNER MISTAKE'),
-        el('div', { html: fmt(node.beginnerMistake) })));
+        el('div', { html: fmt(node.beginnerMistake, { links: true }) })));
       if (node.remember) endPanels.push(el('div', { class: 'callout remember' },
         el('div', { class: 'co-head' }, '\uD83D\uDCA1 REMEMBER THIS'),
         el('div', { class: 'co-body', html: fmt(node.remember) })));
@@ -4455,7 +6283,7 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'eyebrow amber' }, nodeKindLabel(node).toUpperCase() + (alreadyDone ? ' · REPLAY' : '')),
       el('h1', { class: 'h-display' }, node.title),
-      node.intro ? el('p', { class: 'small dim', style: 'max-width:62ch' }, node.intro) : null));
+      node.intro ? el('p', { class: 'small dim', style: 'max-width:62ch', html: fmt(node.intro, { links: true }) }) : null));
 
     main.appendChild(el('div', { class: 'card' }, sequenceRunner({
       eyebrow: 'CHALLENGE',
@@ -4485,7 +6313,7 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'eyebrow phos' }, 'MINI-PROJECT MISSION' + (alreadyDone ? ' · REPLAY' : '')),
       el('h1', { class: 'h-display' }, node.title),
-      el('p', { class: 'small dim', style: 'max-width:62ch' }, node.brief),
+      el('p', { class: 'small dim', style: 'max-width:62ch', html: fmt(node.brief, { links: true }) }),
       savedStep > 0 && !alreadyDone ? el('p', { class: 'mono small', style: 'color:var(--amber)' }, 'RESUMING AT STEP ' + (savedStep + 1)) : null));
 
     main.appendChild(el('div', { class: 'card' }, sequenceRunner({
@@ -4705,26 +6533,27 @@ const Views = (() => {
   function glossary() {
     const main = el('div', { class: 'main' });
     main.appendChild(el('div', { class: 'col gap-s' },
-      el('div', { class: 'eyebrow phos' }, 'GLOSSARY'),
-      el('h1', { class: 'h-display' }, 'The signal dictionary')));
+      el('div', { class: 'eyebrow phos' }, 'SIGNAL DICTIONARY'),
+      el('h1', { class: 'h-display' }, 'The signal dictionary'),
+      el('p', { class: 'small dim', style: 'max-width:62ch' }, DICT.length + ' terms — each one a mini-lesson: plain English, why it matters, a studio take, and where it appears in the curriculum.'),
+      el('div', { class: 'mastery-legend' }, Dict.LEVELS.map((l) => l.glyph + ' ' + l.label).join('   '))));
 
     let filter = '';
     let cat = 'ALL';
-    const cats = ['ALL', 'C++', 'DSP', 'JUCE', 'TOOLS'];
 
-    const search = el('input', { type: 'search', placeholder: 'Search terms…', 'aria-label': 'Search glossary',
-      oninput: (e) => { filter = e.target.value.toLowerCase(); renderList(); } });
+    const search = el('input', { type: 'search', placeholder: 'Search — try "memory", "volume", "wobble"…', 'aria-label': 'Search the signal dictionary',
+      oninput: (e) => { filter = e.target.value; renderList(); } });
     main.appendChild(el('div', { class: 'search-row' }, search));
 
-    const chipRow = el('div', { class: 'chips' });
-    cats.forEach((c) => {
-      const b = el('button', { class: 'chip', onclick: () => { cat = c; renderChips(); renderList(); } }, c);
-      chipRow.appendChild(b);
+    const chipRow = el('div', { class: 'cat-row' });
+    DICT_CATS.forEach((c) => {
+      chipRow.appendChild(el('button', { class: 'chip', onclick: () => { Sfx.tap(); cat = c; renderChips(); renderList(); } }, c));
     });
     function renderChips() {
       [...chipRow.children].forEach((b, i) => {
-        b.style.borderColor = cats[i] === cat ? 'var(--phos)' : '';
-        b.style.color = cats[i] === cat ? 'var(--phos)' : '';
+        const on = DICT_CATS[i] === cat;
+        b.style.borderColor = on ? 'var(--phos)' : '';
+        b.style.color = on ? 'var(--phos)' : '';
       });
     }
     renderChips();
@@ -4734,25 +6563,18 @@ const Views = (() => {
     main.appendChild(listCard);
 
     function renderList() {
-      const items = GLOSSARY.filter((g) =>
-        (cat === 'ALL' || g.c === cat) &&
-        (!filter || g.t.toLowerCase().includes(filter) || g.d.toLowerCase().includes(filter)));
+      const items = Dict.search(filter, cat);
       if (items.length === 0) {
-        listCard.replaceChildren(el('p', { class: 'dim small', style: 'padding:8px 0' }, 'No terms match. Try a shorter search.'));
+        listCard.replaceChildren(el('p', { class: 'dim small', style: 'padding:8px 0' }, 'No terms match. Try a shorter search — or a producer word like "wobble" or "volume".'));
         return;
       }
       listCard.replaceChildren(...items.map((g) => {
-        const body = el('div', { class: 'gloss-body hidden' },
-          el('div', null, g.d),
-          g.a ? el('div', { class: 'aud' }, el('b', null, 'STUDIO TAKE — '), g.a) : null);
-        const btn = el('button', { class: 'gloss-term', 'aria-expanded': 'false', onclick: () => {
-          const open = !body.classList.contains('hidden');
-          body.classList.toggle('hidden', open);
-          btn.setAttribute('aria-expanded', String(!open));
-        } },
+        const m = Dict.mastery(g);
+        const btn = el('button', { class: 'gloss-term', onclick: () => { Sfx.tap(); Dict.open(g.id); } },
+          el('span', { class: 'gloss-glyph', style: 'color:' + (m.level >= 2 ? 'var(--phos)' : (m.level === 1 ? 'var(--amber)' : 'var(--ink-faint)')), 'aria-label': m.label }, m.glyph),
           el('span', { class: 't' }, g.t),
           el('span', { class: 'c' }, g.c));
-        return el('div', { class: 'gloss-item' }, btn, body);
+        return el('div', { class: 'gloss-item' }, btn);
       }));
     }
     renderList();
@@ -5046,6 +6868,16 @@ const App = (() => {
 
   function boot() {
     try {
+      // tap-to-define: abbreviations in prose open their dictionary card
+      document.addEventListener('click', (e) => {
+        const tl = e.target.closest && e.target.closest('.term-link');
+        if (tl) { e.preventDefault(); e.stopPropagation(); Sfx.tap(); Dict.open(tl.dataset.term); }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const tl = e.target.closest && e.target.closest('.term-link');
+        if (tl) { e.preventDefault(); Dict.open(tl.dataset.term); }
+      });
       applyCodeSize();
       applyMotion();
       go('dashboard');

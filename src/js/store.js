@@ -21,6 +21,7 @@ const Store = (() => {
       achievements: [],
       settings: { sound: true, motion: true, codeSize: 'm' },
       practiceCleared: 0,
+      dictViewed: [],
       createdAt: new Date().toISOString(),
     };
   }
@@ -62,6 +63,7 @@ const Store = (() => {
     s.dailyDone = s.dailyDone | 0;
     s.practiceCleared = s.practiceCleared | 0;
     if (!['s', 'm', 'l'].includes(s.settings.codeSize)) s.settings.codeSize = 'm';
+    s.dictViewed = Array.isArray(s.dictViewed) ? s.dictViewed.filter((x) => typeof x === 'string') : [];
     // deep-clean per-entry shapes so a hand-edited import can't poison renders
     const nodes = {};
     for (const [k, v] of Object.entries(s.nodes)) {
@@ -305,6 +307,13 @@ const Store = (() => {
   /* ---- settings / io ---- */
   function setSetting(k, v) { state.settings[k] = v; save(); }
 
+  function markDictViewed(id) {
+    if (!state.dictViewed.includes(id)) {
+      state.dictViewed.push(id);
+      save();
+    }
+  }
+
   function exportJson() { return JSON.stringify(state, null, 2); }
 
   function importJson(text) {
@@ -335,6 +344,6 @@ const Store = (() => {
     dailyToday, completeDaily,
     grant, drainAchievements,
     zoneMastery, bossReady,
-    setSetting, exportJson, importJson, reset,
+    setSetting, markDictViewed, exportJson, importJson, reset,
   };
 })();

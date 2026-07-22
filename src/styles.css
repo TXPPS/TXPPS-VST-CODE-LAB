@@ -542,6 +542,41 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .gloss-body .aud { margin-top: 7px; color: var(--ink); }
 .gloss-body .aud b { color: var(--phos); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; }
 
+/* ---------- signal dictionary ---------- */
+.term-link {
+  color: var(--phos);
+  border-bottom: 1px dashed var(--phos-dim);
+  cursor: pointer;
+}
+.term-link:active { background: var(--phos-glow); }
+.mastery-legend {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+  color: var(--ink-faint); white-space: pre-wrap;
+}
+.cat-row {
+  display: flex; gap: 8px;
+  overflow-x: auto; padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.cat-row::-webkit-scrollbar { display: none; }
+.cat-row .chip { flex: none; }
+.gloss-glyph { font-family: var(--mono); font-size: 14px; flex: none; width: 22px; text-align: center; }
+.dict-full { font-size: 13px; color: var(--ink-dim); font-style: italic; margin-top: 2px; }
+.appears-row {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; width: 100%; text-align: left;
+  padding: 4px 0; border-radius: var(--rad-sm);
+}
+.appears-row:active { background: var(--bg2); }
+.z-badge {
+  flex: none; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 6px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint);
+}
+.z-badge.live { border-color: var(--phos-dim); color: var(--phos); }
+
 /* ---------- modal / sheet ---------- */
 .sheet-veil {
   position: fixed; inset: 0; z-index: 60;

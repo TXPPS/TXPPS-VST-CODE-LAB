@@ -224,6 +224,65 @@ const Viz = (() => {
       return { svg: s.join(''), h: 140 };
     },
 
+    // ADSR envelope shape with labeled stages.
+    adsr() {
+      const s = [box(8, 8, 324, 84, C.line, false, '#07090B')];
+      const y0 = 78, yPeak = 18, ySus = 44;
+      const xA = 70, xD = 130, xS = 230, xR = 310;
+      s.push(`<path d="M 16 ${y0} L ${xA} ${yPeak} L ${xD} ${ySus} L ${xS} ${ySus} L ${xR} ${y0}" fill="none" stroke="${C.phos}" stroke-width="1.8"/>`);
+      s.push(`<line x1="16" y1="${y0}" x2="316" y2="${y0}" stroke="rgba(93,232,148,0.15)"/>`);
+      [[43, 'A'], [100, 'D'], [180, 'S'], [270, 'R']].forEach(([x, l]) => s.push(txt(x, 100, l, C.amber, 10, 'middle', 2)));
+      s.push(txt(180, 38, 'sustain = a LEVEL', C.faint, 8.5, 'middle'));
+      s.push(txt(170, 116, 'attack · decay · sustain · release — the note\'s life cycle', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 122 };
+    },
+
+    // Low-pass filter response curve with cutoff + resonance bump.
+    filtercurve() {
+      const s = [box(8, 8, 324, 80, C.line, false, '#07090B')];
+      s.push(`<path d="M 16 40 L 190 40 C 215 40, 210 24, 225 24 C 240 24, 238 84, 260 84 L 262 84" fill="none" stroke="${C.phos}" stroke-width="1.8"/>`);
+      s.push(`<line x1="225" y1="12" x2="225" y2="84" stroke="${C.amber}" stroke-width="1" stroke-dasharray="4 3"/>`);
+      s.push(txt(225, 104, 'cutoff', C.amber, 9, 'middle'));
+      s.push(txt(120, 30, 'passes', C.faint, 8.5, 'middle'));
+      s.push(txt(292, 40, 'cut', C.faint, 8.5, 'middle'));
+      s.push(txt(250, 20, 'resonance', C.dim, 8, 'start'));
+      s.push(txt(170, 118, 'low-pass: lows through, highs reduced past the cutoff', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 124 };
+    },
+
+    // Voice slots with held notes; steal mode shows the oldest being reassigned.
+    voices(o) {
+      const s = [];
+      s.push(txt(170, 14, o && o.steal ? '9th NOTE ARRIVES — ALL 8 BUSY' : 'VOICE POOL', C.dim, 9, 'middle', 1.5));
+      for (let i = 0; i < 8; i++) {
+        const x = 26 + i * 37;
+        const busy = i < (o && o.steal ? 8 : 5);
+        const stolen = o && o.steal && i === 0;
+        s.push(box(x, 24, 32, 34, stolen ? C.red : (busy ? C.phosDim : C.line), stolen, busy && !stolen ? 'rgba(93,232,148,0.06)' : 'none'));
+        s.push(txt(x + 16, 45, stolen ? '↻' : (busy ? '♪' : '·'), stolen ? C.red : (busy ? C.phos : C.faint), 11, 'middle'));
+        s.push(txt(x + 16, 70, 'v' + (i + 1), C.faint, 8, 'middle'));
+      }
+      s.push(txt(170, 90, o && o.steal ? 'oldest voice fades fast, then plays the new note' : 'each ♪ is one object of your Voice class', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 96 };
+    },
+
+    // A key press becoming a MIDI message.
+    midimsg() {
+      const s = [];
+      for (let i = 0; i < 5; i++) {
+        const x = 16 + i * 20;
+        const pressed = i === 2;
+        s.push(box(x, 16, 17, 44, pressed ? C.phosDim : C.line, false, pressed ? 'rgba(93,232,148,0.1)' : 'none'));
+      }
+      s.push(txt(66, 74, 'you press C4', C.faint, 8.5, 'middle'));
+      s.push(arrow(122, 38, 158, 38));
+      s.push(box(164, 14, 162, 48, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(245, 30, 'NOTE ON', C.amber, 9.5, 'middle', 1.5));
+      s.push(txt(245, 46, 'note: 60   velocity: 100', C.dim, 9.5, 'middle'));
+      s.push(txt(245, 74, 'a message — not a sound', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 84 };
+    },
+
     // Two layers: front panel (public / header) over circuitry (private / cpp).
     twoLayer(o) {
       const s = [];
