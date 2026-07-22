@@ -533,13 +533,15 @@ const Views = (() => {
     const st = Store.state;
     const lv = Store.level();
     const lp = Store.levelProgress();
-    const mastery = Store.zoneMastery();
     const nextId = Store.nextNode();
     const nextNodeObj = nextId ? Engine.NODES[nextId] : null;
+    const curZone = nextId ? Store.zoneOfNode(nextId) : ZONES.filter((z) => z.status === 'live').slice(-1)[0];
+    const mastery = Store.zoneMastery(curZone ? curZone.id : 'z1');
     const daily = Store.dailyToday();
     const weak = Store.weakConcepts().slice(0, 4);
-    const order = ZONES[0].nodeOrder;
-    const doneCount = order.filter(Store.isDone).length;
+    const order = Store.liveOrder();
+    const zoneOrder = curZone ? curZone.nodeOrder : order;
+    const doneCount = zoneOrder.filter(Store.isDone).length;
 
     // recently completed (last 3 with stars)
     const recent = order.filter(Store.isDone).slice(-3).reverse()
@@ -570,15 +572,15 @@ const Views = (() => {
     // continue learning
     if (nextNodeObj) {
       grid.appendChild(el('button', { class: 'card raised card-tap span2', onclick: () => App.openNode(nextId) },
-        el('div', { class: 'eyebrow phos' }, 'CONTINUE LEARNING — ZONE 1'),
+        el('div', { class: 'eyebrow phos' }, 'CONTINUE LEARNING — ZONE ' + (curZone ? curZone.num : 1)),
         el('div', { class: 'h-display', style: 'margin-top:6px' }, nextNodeObj.title),
         el('div', { class: 'h-sub mt-s' }, nodeKindLabel(nextNodeObj)),
         el('div', { class: 'mt-m' }, el('span', { class: 'btn primary sm', style: 'pointer-events:none' }, '▶ Continue')),
       ));
     } else {
       grid.appendChild(el('div', { class: 'card raised span2' },
-        el('div', { class: 'eyebrow phos' }, 'ZONE 1 COMPLETE'),
-        el('div', { class: 'h-sub mt-s' }, 'You\'ve cleared everything currently built. Sharpen mastery in Practice Mode, or replay any lesson from the map. Zones 2–7 arrive in future updates.')));
+        el('div', { class: 'eyebrow phos' }, 'ALL CURRENT ZONES COMPLETE'),
+        el('div', { class: 'h-sub mt-s' }, 'You\'ve cleared everything currently built. Sharpen mastery in Practice Mode, or replay any node from the map. The next zone arrives in a future update.')));
     }
 
     // daily challenge
@@ -598,10 +600,10 @@ const Views = (() => {
 
     // zone progress
     grid.appendChild(el('div', { class: 'card' },
-      el('div', { class: 'eyebrow' }, 'ZONE 1 PROGRESS'),
-      el('div', { class: 'mt-m meter' }, el('i', { style: 'width:' + Math.round((doneCount / order.length) * 100) + '%' })),
+      el('div', { class: 'eyebrow' }, 'ZONE ' + (curZone ? curZone.num : 1) + ' PROGRESS'),
+      el('div', { class: 'mt-m meter' }, el('i', { style: 'width:' + Math.round((doneCount / zoneOrder.length) * 100) + '%' })),
       el('div', { class: 'row between mt-s' },
-        el('span', { class: 'mono small dim tnum' }, doneCount + ' / ' + order.length + ' nodes'),
+        el('span', { class: 'mono small dim tnum' }, doneCount + ' / ' + zoneOrder.length + ' nodes'),
         el('span', { class: 'mono small faint tnum' }, 'MASTERY ' + mastery.pct + '%'))));
 
     // weak concepts
@@ -763,7 +765,7 @@ const Views = (() => {
     for (let i = 0; i < totalSteps; i++) { const d = el('i'); dotEls.push(d); dots.appendChild(d); }
 
     main.appendChild(el('div', { class: 'col gap-s' },
-      el('div', { class: 'eyebrow phos' }, 'LESSON — ZONE 1' + (alreadyDone ? ' · REPLAY' : '')),
+      el('div', { class: 'eyebrow phos' }, 'LESSON — ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + (alreadyDone ? ' · REPLAY' : '')),
       el('h1', { class: 'h-display' }, node.title),
       dots));
 
@@ -779,9 +781,12 @@ const Views = (() => {
         slot.replaceChildren(
           el('div', { class: 'card raised' },
             node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook, { links: true }) }) : null,
-            el('div', { class: 'eyebrow phos' }, 'OBJECTIVE'),
+            el('div', { class: 'eyebrow phos' }, 'MISSION BRIEF'),
             el('p', { class: 'prose mt-s', html: fmt(node.objective) }),
             el('div', { class: 'mt-m row wrap' },
+              node.diff ? el('span', { class: 'chip', style: 'color:var(--amber); border-color:var(--amber)' },
+                '●'.repeat(node.diff) + '○'.repeat(3 - node.diff) + ' ' + ['INTRO', 'CORE', 'DEEP'][node.diff - 1]) : null,
+              node.time ? el('span', { class: 'chip' }, node.time) : null,
               el('span', { class: 'chip' }, node.sections.length + ' concepts'),
               el('span', { class: 'chip' }, node.checks.length + ' checks'),
               el('span', { class: 'chip' }, '+' + XP_RULES.lesson + ' XP' + (alreadyDone ? ' (already earned)' : '')))),
@@ -862,6 +867,15 @@ const Views = (() => {
       if (node.remember) endPanels.push(el('div', { class: 'callout remember' },
         el('div', { class: 'co-head' }, '\uD83D\uDCA1 REMEMBER THIS'),
         el('div', { class: 'co-body', html: fmt(node.remember) })));
+      const conceptChip = (id) => Dict.byId[id]
+        ? el('button', { class: 'chip', style: 'color:var(--phos); border-color:var(--phos-dim)', onclick: () => { Sfx.tap(); Dict.open(id); } }, Dict.byId[id].t)
+        : el('span', { class: 'chip' }, id);
+      if (node.builds && node.builds.length) endPanels.push(el('div', { class: 'card col', style: 'gap:8px' },
+        el('div', { class: 'eyebrow' }, 'BUILDS ON'),
+        el('div', { class: 'chips' }, node.builds.map(conceptChip))));
+      if (node.leads && node.leads.length) endPanels.push(el('div', { class: 'card col', style: 'gap:8px' },
+        el('div', { class: 'eyebrow amber' }, 'LEADS TO'),
+        el('div', { class: 'chips' }, node.leads.map(conceptChip))));
       slot.replaceChildren(
         el('div', { class: 'card raised col', style: 'gap:12px' },
           el('div', { class: 'eyebrow phos' }, 'RECAP'),
@@ -946,7 +960,7 @@ const Views = (() => {
      ===================================================================== */
   function boss(params) {
     const node = Engine.NODES[params.id];
-    const ready = Store.bossReady();
+    const ready = Store.bossReady(node.id);
     const main = el('div', { class: 'main' });
     main.appendChild(el('div', { class: 'back-row' },
       el('button', { class: 'back-btn', onclick: () => App.go('map') }, UI.icon('back'), ' RETREAT')));
@@ -958,8 +972,8 @@ const Views = (() => {
         el('p', { class: 'small dim' }, node.brief)));
       main.appendChild(el('div', { class: 'card col', style: 'gap:12px' },
         el('div', { class: 'eyebrow' }, 'ENTRY REQUIREMENTS'),
-        reqRow('All 12 lessons complete', ready.lessonsDone),
-        reqRow('Both mini-projects complete', ready.projectsDone),
+        reqRow('All ' + ready.totalLessons + ' Zone ' + ready.zoneNum + ' lessons complete', ready.lessonsDone),
+        reqRow('All ' + ready.totalProjects + ' zone missions complete', ready.projectsDone),
         reqRow('Average lesson mastery ≥ ★★ (yours: ' + ready.avgStars.toFixed(1) + ')', ready.avgStars >= ready.need),
         el('p', { class: 'small faint' }, 'Raise mastery by replaying lessons — stars only ever go up.'),
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Train in Practice Mode')));
@@ -969,7 +983,7 @@ const Views = (() => {
     let started = false;
     const intro = el('div', { class: 'col', style: 'gap:14px' },
       el('div', { class: 'boss-banner col', style: 'gap:10px' },
-        el('div', { class: 'eyebrow red' }, '☠ ZONE 1 BOSS' + (Store.isDone(node.id) ? ' · CLEARED — REPLAY' : '')),
+        el('div', { class: 'eyebrow red' }, '☠ ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' BOSS' + (Store.isDone(node.id) ? ' · CLEARED — REPLAY' : '')),
         el('h1', { class: 'h-display' }, node.title),
         el('p', { class: 'small', style: 'color:var(--ink-dim)' }, node.brief),
         el('div', { class: 'row wrap mt-s' },
@@ -1196,7 +1210,7 @@ const Views = (() => {
     const st = Store.state;
     const lv = Store.level();
     const mastery = Store.zoneMastery();
-    const order = ZONES[0].nodeOrder;
+    const order = Store.liveOrder();
     const doneCount = order.filter(Store.isDone).length;
     const main = el('div', { class: 'main' });
 
@@ -1210,8 +1224,8 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'statgrid' },
       el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, st.xp.toLocaleString()), el('div', { class: 'k' }, 'Total XP')),
       el('div', { class: 'stat amber' }, el('div', { class: 'v tnum' }, String(st.streak.count || 0)), el('div', { class: 'k' }, 'Day streak')),
-      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, doneCount + '/' + order.length), el('div', { class: 'k' }, 'Zone 1 nodes')),
-      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, mastery.pct + '%'), el('div', { class: 'k' }, 'Zone mastery'))));
+      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, doneCount + '/' + order.length), el('div', { class: 'k' }, 'Nodes cleared')),
+      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, mastery.pct + '%'), el('div', { class: 'k' }, 'Zone 1 mastery'))));
 
     // achievements
     main.appendChild(el('div', { class: 'card' },
@@ -1224,7 +1238,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, ZONE1_LESSONS.map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),

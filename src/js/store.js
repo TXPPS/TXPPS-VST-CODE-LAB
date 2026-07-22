@@ -162,11 +162,21 @@ const Store = (() => {
 
   function isDone(id) { return !!(state.nodes[id] && state.nodes[id].done); }
 
-  // Sequential unlock within a zone. Everything before the first
-  // incomplete node is replayable; the first incomplete node is next.
+  // Concatenated node order across all live zones — unlock is
+  // sequential through the whole curriculum.
+  function liveOrder() {
+    return ZONES.filter((z) => z.status === 'live').flatMap((z) => z.nodeOrder);
+  }
+
+  function zoneOfNode(nodeId) {
+    return ZONES.find((z) => z.nodeOrder && z.nodeOrder.includes(nodeId)) || null;
+  }
+
+  // Sequential unlock. Everything before the first incomplete node is
+  // replayable; the first incomplete node is next. (zoneId kept for
+  // call-site compatibility; the walk is global.)
   function isUnlocked(zoneId, nodeId) {
-    const order = (ZONES.find((z) => z.id === zoneId) || {}).nodeOrder || [];
-    for (const id of order) {
+    for (const id of liveOrder()) {
       if (id === nodeId) return true;
       if (!isDone(id)) return false;
     }
@@ -174,8 +184,7 @@ const Store = (() => {
   }
 
   function nextNode() {
-    const order = ZONES[0].nodeOrder;
-    for (const id of order) if (!isDone(id)) return id;
+    for (const id of liveOrder()) if (!isDone(id)) return id;
     return null;
   }
 
@@ -206,6 +215,8 @@ const Store = (() => {
       if (id === 'p1') grant('gain_staged');
       if (id === 'p2') grant('osc_online');
       if (id === 'boss1') grant('zone1_clear');
+      if (id === 'boss2') grant('zone2_clear');
+      if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }
@@ -283,8 +294,14 @@ const Store = (() => {
   function drainAchievements() { const q = achQueue; achQueue = []; return q; }
 
   /* ---- mastery ---- */
-  function zoneMastery() {
-    const lessons = ZONE1_LESSONS.map((l) => l.id);
+  function zoneLessons(zoneId) {
+    const z = ZONES.find((zz) => zz.id === zoneId);
+    if (!z || !z.nodeOrder) return [];
+    return z.nodeOrder.filter((id) => Engine.NODES[id] && Engine.NODES[id].kind === 'lesson');
+  }
+
+  function zoneMastery(zoneId) {
+    const lessons = zoneLessons(zoneId || 'z1');
     const doneLessons = lessons.filter(isDone);
     if (doneLessons.length === 0) return { pct: 0, avgStars: 0, doneLessons: 0, totalLessons: lessons.length };
     const totalStars = doneLessons.reduce((s, id) => s + (state.nodes[id].stars || 0), 0);
@@ -297,11 +314,13 @@ const Store = (() => {
     };
   }
 
-  function bossReady() {
-    const m = zoneMastery();
+  function bossReady(bossId) {
+    const zone = zoneOfNode(bossId || 'boss1') || ZONES[0];
+    const m = zoneMastery(zone.id);
     const lessonsDone = m.doneLessons === m.totalLessons;
-    const projectsDone = isDone('p1') && isDone('p2');
-    return { ready: lessonsDone && projectsDone && m.avgStars >= 2, lessonsDone, projectsDone, avgStars: m.avgStars, need: 2 };
+    const projects = zone.nodeOrder.filter((id) => Engine.NODES[id] && Engine.NODES[id].kind === 'project');
+    const projectsDone = projects.every(isDone);
+    return { ready: lessonsDone && projectsDone && m.avgStars >= 2, lessonsDone, projectsDone, avgStars: m.avgStars, need: 2, totalLessons: m.totalLessons, totalProjects: projects.length, zoneNum: zone.num };
   }
 
   /* ---- settings / io ---- */
@@ -339,7 +358,7 @@ const Store = (() => {
     get storageOk() { return storageOk; },
     save, todayStr, touchStreak,
     level, levelTitle, levelProgress, addXp,
-    nodeState, isDone, isUnlocked, nextNode, completeNode, setProjectStep, starsFor,
+    nodeState, isDone, isUnlocked, nextNode, liveOrder, zoneOfNode, completeNode, setProjectStep, starsFor,
     markWeak, clearWeak, weakList, weakConcepts,
     dailyToday, completeDaily,
     grant, drainAchievements,

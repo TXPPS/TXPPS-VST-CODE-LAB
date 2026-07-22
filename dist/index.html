@@ -767,10 +767,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z2', num: 2, title: 'MODERN C++ FOR AUDIO', status: 'planned',
-    tagline: 'RAII, smart pointers, real-time safety',
-    desc: 'Ownership, move semantics, atomics, lambdas, templates — and why the audio callback forbids allocation.',
-    topics: ['RAII', 'unique_ptr / shared_ptr', 'enum class', 'templates in practice', 'lambdas', 'std::array', 'std::atomic', 'move semantics', 'allocation-free callbacks', 'real-time safety rules'],
+    id: 'z2', num: 2, title: 'MODERN C++ FOR AUDIO', status: 'live',
+    tagline: 'Professional C++ techniques used in real VST plugins',
+    desc: 'Ownership, RAII, smart pointers, move semantics, atomics and lock-free thinking — modern C++ taught entirely through plugin development.',
+    nodeOrder: [
+      'm1', 'm2', 'm3', 'mo1', 'm4', 'mc1', 'me1', 'm5', 'm6', 'mb1',
+      'mc2', 'm7', 'mb2', 'p3', 'm8', 'mc3', 'm9', 'me2', 'm10', 'mb3',
+      'm11', 'mc4', 'p4', 'm12', 'm13', 'mb4', 'm14', 'mc5', 'mo2',
+      'm15', 'p5', 'boss2',
+    ],
   },
   {
     id: 'z3', num: 3, title: 'JUCE PLUGIN FOUNDATION', status: 'planned',
@@ -825,6 +830,8 @@ const ACHIEVEMENTS = [
   { id: 'daily_driver', name: 'DAILY DRIVER', desc: 'Complete 5 daily challenges.' },
   { id: 'level_5', name: 'LEVEL 5', desc: 'Reach level 5.' },
   { id: 'zone1_clear', name: 'ZONE 1 CLEARED', desc: 'Defeat the Zone 1 boss.' },
+  { id: 'zone2_clear', name: 'ZONE 2 CLEARED', desc: 'Exorcise the Haunted Synth.' },
+  { id: 'modern_hands', name: 'MODERN HANDS', desc: 'Complete all three Zone 2 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -842,6 +849,8 @@ const DAILY_POOL = [
   'l1.q1', 'l1.q3', 'l2.q1', 'l3.q1', 'l4.q1', 'l4.q3', 'l5.q1', 'l6.q1',
   'l6.q2', 'l7.q1', 'l7.q3', 'l8.q1', 'l9.q1', 'l9.q2', 'l10.q1', 'l10.q2',
   'l11.q2', 'l12.q1', 'l12.q2', 'c1.q1', 'b1.q1', 'e1.q1', 'o1.q1', 'b4.q1',
+  'm1.q1', 'm3.q1', 'm4.q2', 'm6.q1', 'm8.q3', 'm9.q2', 'm13.q1', 'm14.q3',
+  'mc1.q1', 'mb4.q1', 'me1.q1', 'mb2.q1',
 ];
 
 ;
@@ -2491,6 +2500,1803 @@ const ZONE1_CHALLENGES = [
 ];
 
 ;
+/* ===== src/js/data_zone2_lessons.js ===== */
+/* ============================================================
+   ZONE 2 — MODERN C++ FOR AUDIO: lessons m1–m8.
+   Same lesson shape as Zone 1, plus:
+     time: estimated completion ('~6 MIN')
+     diff: difficulty 1–3 (rendered as dots)
+     builds: [dict ids] — links to previous concepts
+     leads:  [dict ids] — links to future concepts
+   ============================================================ */
+
+const ZONE2_LESSONS = [
+
+  /* ---------------------------------------------------------- M1 */
+  {
+    id: 'm1', kind: 'lesson', title: 'Who Owns This Sound?', short: 'Ownership & lifetime',
+    concepts: ['ownership'], time: '~5 MIN', diff: 1,
+    hook: 'A voice starts playing. The note ends. The voice is gone. Who decided when it died? In C++, every object has exactly one answer to that question — and getting it wrong is where plugins crash.',
+    objective: 'See that every object has a birth, a life, and a death — and that something always owns the decision.',
+    sections: [
+      {
+        h: 'Every object has a lifetime',
+        body: 'From Zone 1: locals die at their closing brace. That death is the end of a **lifetime** — birth (constructor), life, death (destructor). Nothing in C++ lives forever by accident; something always decides when each object goes.',
+        viz: { t: 'lifetime' },
+        code: 'void noteOn()\n{\n    Envelope env;   // born here\n    // ... used ...\n}                   // dies here — automatically',
+        codeTitle: 'a lifetime in braces',
+      },
+      {
+        h: 'Ownership: who is responsible',
+        body: 'The **owner** of an object is whatever is responsible for its death. A local is owned by its scope. A **member** is owned by its object: your processor owns its oscillators, so they live exactly as long as the plugin does. One clear owner per thing = no leaks, no double-frees, no mystery crashes.',
+        code: 'class SynthEngine {\nprivate:\n    SineOsc osc;          // owned member:\n    double  phase = 0.0;  // lives as long as the engine\n};',
+        codeTitle: 'members live with their owner',
+        warn: 'The question to ask about every object from now on: **who owns this, and when does it die?** The rest of this zone is tools for answering it well.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'ownership',
+        prompt: 'When does a local variable\'s lifetime end?',
+        options: [
+          { t: 'At the closing brace of the scope it was declared in', why: '' },
+          { t: 'When the program exits', why: 'That\'s only true for globals. Locals die far earlier — at their scope\'s end.' },
+          { t: 'When you stop using it', why: 'The compiler may optimize, but the *rule* is scope: the closing brace is the guarantee.' },
+          { t: 'Never — memory is permanent', why: 'Stack memory is reclaimed constantly. That\'s why returning a local\'s address dangles.' },
+        ],
+        answer: 0,
+        explain: 'Scope is the lifetime contract: born at the declaration, destroyed at the closing brace. Automatic, guaranteed, in reverse order of creation.',
+      },
+      {
+        type: 'predict', concept: 'ownership',
+        prompt: 'The host calls this three times. What does count hold at the end of each call?',
+        code: 'void processBlock(/*...*/)\n{\n    int count = 0;\n    ++count;\n}',
+        options: [
+          { t: '1 every time — count is reborn each call', why: '' },
+          { t: '1, then 2, then 3', why: 'count is a local: it dies at the closing brace and a fresh one is born next call. Counting across blocks needs a *member*.' },
+          { t: '3 every time', why: 'Each call starts from a brand-new count = 0.' },
+          { t: 'Random garbage', why: 'It\'s explicitly initialized to 0 — no garbage. Just no memory between calls either.' },
+        ],
+        answer: 0,
+        explain: 'Locals restart from scratch every call. State that must survive between blocks — a phase, a counter, a delay line — belongs in a member, owned by the plugin object.',
+      },
+      {
+        type: 'fill', concept: 'ownership',
+        prompt: 'Name the special function that runs at the moment a Voice dies.',
+        code: 'class Voice {\npublic:\n    ___()\n    {\n        // cleanup runs here, automatically\n    }\n};',
+        accept: ['~Voice'],
+        placeholder: 'name',
+        hint: 'Same name as the class, with one character in front.',
+        mistakes: [
+          { match: '^Voice$', msg: 'That\'s the constructor — the power-ON sequence. The power-OFF sequence adds a tilde: `~Voice`.' },
+        ],
+        explain: '`~Voice()` is the destructor: it runs automatically the instant a Voice\'s lifetime ends. You met it in the dictionary — this zone puts it to work.',
+      },
+    ],
+    recap: [
+      'Every object: born (constructor), lives, dies (destructor).',
+      'Locals are owned by their scope; members are owned by their object.',
+      'State that must survive between blocks lives in members.',
+      'Always ask: who owns this, and when does it die?',
+    ],
+    inside: [
+      { name: 'Synth', use: 'voices are owned by the engine — they die when it does' },
+      { name: 'Sampler', use: 'loaded sample data has one owner deciding when to unload' },
+      { name: 'Any plugin', use: 'the DAW creates and destroys your plugin object constantly' },
+    ],
+    analogyPanel: 'Ownership is the gear list with names on it: every rack unit has exactly one person responsible for striking it after the show. Two names on one unit — or none — is how gear gets lost.',
+    beginnerMistake: 'Declaring state inside processBlock and expecting it to persist. Locals are reborn every call — a phase or counter declared there resets forever.',
+    remember: 'Every object has one owner, and the owner decides when it dies.',
+    builds: ['scope', 'constructor', 'destructor'],
+    leads: ['raii', 'smart-pointer'],
+  },
+
+  /* ---------------------------------------------------------- M2 */
+  {
+    id: 'm2', kind: 'lesson', title: 'Backstage Memory: Stack vs Heap', short: 'Stack, heap, dynamic memory',
+    concepts: ['memory'], time: '~5 MIN', diff: 1,
+    hook: 'Some gear lives on your pedalboard — grabbed instantly, packed up after each song. Some lives in the warehouse — room for anything, but every checkout takes paperwork. Your program\'s memory works exactly like that.',
+    objective: 'Know which memory your objects live in, what dynamic allocation really costs, and why you\'ll never hand-manage it.',
+    sections: [
+      {
+        h: 'Two kinds of memory',
+        body: 'The **stack**: fast, automatic, small — locals live here and vanish at the closing brace. The **heap**: the big flexible pool — sample libraries and delay lines live here, requested at runtime. Requesting heap memory is called **allocation**, and its timing is unpredictable.',
+        viz: { t: 'twoLayer', top: 'STACK — automatic, fast', topSub: 'locals; gone at return', bottom: 'HEAP — requested, flexible', bottomSub: 'big & persistent; someone must release it', caption: 'pedalboard vs warehouse' },
+      },
+      {
+        h: 'Manual heap management — see it once, then never again',
+        body: 'Old C++ managed the heap by hand: `new` checks memory out, `delete` returns it. Forget the delete → **leak**. Delete twice → crash. This course shows it once so you can read old code — and then replaces it entirely with tools that can\'t forget.',
+        mistake: { code: 'SineOsc* osc = new SineOsc();  // checked out...\n// ...forgot delete — leaked forever', text: 'A DAW session runs for hours and reloads plugins constantly. Small leaks compound into gigabytes. Modern C++ (next lesson) makes forgetting impossible.' },
+        warn: 'Zone 1\'s rule still stands and now you know why: allocation is warehouse paperwork — fine in `prepareToPlay`, never in `processBlock`.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'memory',
+        prompt: 'Where does a local variable like `float mix = 0.5f;` live?',
+        options: [
+          { t: 'On the stack — automatic, freed at scope end', why: '' },
+          { t: 'On the heap', why: 'The heap is for runtime-requested memory. Plain locals get fast automatic stack slots.' },
+          { t: 'In the CPU forever', why: 'Registers hold values briefly, but the variable\'s home is a stack slot with a scoped lifetime.' },
+          { t: 'In the plugin\'s preset file', why: 'Presets are saved state on disk — memory at runtime is stack or heap.' },
+        ],
+        answer: 0,
+        explain: 'Locals live on the stack: created instantly, destroyed at the brace, zero cleanup code. The heap is for what\'s big or must outlive its scope.',
+      },
+      {
+        type: 'predict', concept: 'memory',
+        prompt: 'This runs once at startup. What\'s the long-term consequence?',
+        code: 'void loadClick()\n{\n    float* click = new float[48000];\n    // ... uses it ... but never: delete[] click;\n}',
+        options: [
+          { t: 'The memory stays reserved forever — a leak', why: '' },
+          { t: 'C++ frees it at the closing brace', why: 'The *pointer* dies at the brace — the heap block it pointed at does not. That orphaned block is the leak.' },
+          { t: 'It crashes immediately', why: 'Leaks are silent — that\'s what makes them dangerous. The cost shows up hours later.' },
+          { t: 'Nothing — the DAW cleans up plugins', why: 'Only when the whole process exits. Across a long session with many plugin reloads, leaks pile up.' },
+        ],
+        answer: 0,
+        explain: 'new without delete orphans the block: no one owns it, no one can free it. This is exactly the class of bug RAII (next lesson) makes structurally impossible.',
+      },
+      {
+        type: 'fill', concept: 'memory',
+        prompt: 'Give the delay line its memory in the sanctioned place — before audio starts.',
+        code: 'std::vector<float> delayLine;\n\nvoid prepareToPlay(double sampleRate, int maxBlockSize)\n{\n    delayLine.___((int) sampleRate * 2);\n}',
+        accept: ['resize'],
+        placeholder: 'method',
+        hint: 'The vector should actually contain that many zeroed samples.',
+        mistakes: [
+          { match: '^push_back$', msg: 'One sample at a time, possibly reallocating each step. Set the full size in one call: resize.' },
+        ],
+        explain: 'resize in prepareToPlay: the warehouse paperwork happens backstage, and the audio thread only ever reads and writes memory that already exists.',
+      },
+    ],
+    recap: [
+      'Stack: automatic, fast, scoped. Heap: big, flexible, must be released.',
+      'new/delete is legacy manual management — read it, don\'t write it.',
+      'A leak is heap memory whose owner forgot it.',
+      'Allocate in prepareToPlay; never in processBlock.',
+    ],
+    inside: [
+      { name: 'Sampler', use: 'gigabytes of sample data live on the heap' },
+      { name: 'Delay', use: 'the delay line is one heap block, sized backstage' },
+      { name: 'Every plugin', use: 'the plugin object itself is heap-allocated by the host' },
+    ],
+    analogyPanel: 'Stack = pedalboard: instant access, packed up automatically after each song. Heap = warehouse: room for anything, paperwork per checkout, and someone must sign gear back in.',
+    beginnerMistake: 'Believing the pointer dying frees the memory. The sticky note gets thrown away; the warehouse shelf stays booked in your name forever.',
+    remember: 'The stack cleans itself; the heap only ever gets cleaned by its owner.',
+    builds: ['stack', 'heap', 'allocation', 'pointer'],
+    leads: ['raii', 'unique-ptr'],
+  },
+
+  /* ---------------------------------------------------------- M3 */
+  {
+    id: 'm3', kind: 'lesson', title: 'RAII: Cleanup That Can\'t Be Forgotten', short: 'RAII — automatic cleanup',
+    concepts: ['raii'], time: '~6 MIN', diff: 2,
+    hook: 'The best crews don\'t rely on remembering to strike the stage — the venue\'s house rules do it automatically at close, every night, even when the show ends early. C++ has house rules like that. They\'re called RAII.',
+    objective: 'Wire acquisition to constructors and release to destructors, so cleanup happens automatically — even on early exits.',
+    sections: [
+      {
+        h: 'The pattern with the terrible name',
+        body: '**RAII** (Resource Acquisition Is Initialization) is simple despite the name: **acquire in the constructor, release in the destructor.** Since destructors run automatically at end of life, the release can never be forgotten — not even when the function exits early.',
+        viz: { t: 'chain', nodes: ['ctor: acquire', 'object alive', 'dtor: release'], accent: 2, caption: 'release is wired to death — it cannot be skipped' },
+        code: 'class SampleFile {\npublic:\n    SampleFile(const char* path) { open(path); }  // acquire\n    ~SampleFile()                { close(); }     // release\n};',
+        codeTitle: 'RAII in four lines',
+        breakdown: [
+          ['SampleFile(...)', 'constructor: takes the resource (opens the file)'],
+          ['~SampleFile()', 'destructor: returns it (closes the file)'],
+          ['{ SampleFile f("kick.wav"); }', 'use it in a scope…'],
+          ['}', '…and the close happens here, guaranteed'],
+        ],
+      },
+      {
+        h: 'You already use it everywhere',
+        body: 'std::vector is RAII: it frees its samples in its destructor. Every modern C++ tool for files, memory and locks is RAII. Plugins live and die constantly inside DAWs — RAII is why a well-written plugin can be loaded and unloaded ten thousand times without leaking a byte.',
+        warn: 'Next lesson applies RAII to the heap itself: a pointer that deletes what it owns, automatically. Manual `delete` disappears from your life.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'raii',
+        prompt: 'What guarantees that an RAII object\'s resource gets released?',
+        options: [
+          { t: 'The destructor runs automatically when the object\'s lifetime ends', why: '' },
+          { t: 'The programmer remembers to call release()', why: 'That\'s exactly the manual pattern RAII replaces — human memory is the unreliable part.' },
+          { t: 'The operating system checks periodically', why: 'The OS reclaims everything only at process exit — far too late for a 12-hour session.' },
+          { t: 'The compiler warns if you forget', why: 'Compilers can\'t generally know a resource needed releasing. RAII moves the guarantee into the language rules themselves.' },
+        ],
+        answer: 0,
+        explain: 'Destructors are the one thing C++ promises to run at end of life. Tie release to the destructor and cleanup stops being a task — it becomes physics.',
+      },
+      {
+        type: 'predict', concept: 'raii',
+        prompt: 'The early return fires. Does the file get closed?',
+        code: 'void analyze(const char* path)\n{\n    SampleFile file(path);   // RAII: closes in destructor\n    if (tooQuiet())\n        return;              // early exit!\n    process(file);\n}',
+        options: [
+          { t: 'Yes — the destructor runs at the return, closing it', why: '' },
+          { t: 'No — the return skips the cleanup', why: 'Early returns end the scope, and ending the scope runs destructors. That\'s the whole superpower.' },
+          { t: 'Only if process() was reached', why: 'Cleanup is tied to lifetime, not to which lines executed.' },
+          { t: 'The file stays open until the DAW quits', why: 'That would be a manual-cleanup bug — RAII exists precisely to prevent it.' },
+        ],
+        answer: 0,
+        explain: 'Every path out of the scope — normal end, early return, even an exception — runs the destructor. With manual close() calls, the early return would have leaked the file handle.',
+      },
+      {
+        type: 'fill', concept: 'raii',
+        prompt: 'Complete the RAII pair: the destructor returns what the constructor took.',
+        code: 'class DeviceLock {\npublic:\n    DeviceLock()  { openAudioDevice(); }\n    ~DeviceLock() { ___ }\n};',
+        accept: ['closeAudioDevice();', 'closeAudioDevice()'],
+        placeholder: 'statement',
+        hint: 'Mirror the constructor: what\'s the opposite of openAudioDevice()?',
+        explain: 'Acquire in the constructor, release in the destructor — perfectly mirrored. Anyone using DeviceLock now literally cannot forget to close the device.',
+      },
+    ],
+    recap: [
+      'RAII: acquire in the constructor, release in the destructor.',
+      'Destructors run on every exit path — cleanup is guaranteed.',
+      'vector, smart pointers, locks: modern C++ is RAII throughout.',
+      'Plugins reload constantly; RAII is why that\'s safe.',
+    ],
+    inside: [
+      { name: 'Sampler', use: 'sample file handles close themselves when the object dies' },
+      { name: 'Every plugin', use: 'buffers free themselves when the processor is destroyed' },
+      { name: 'JUCE', use: 'the framework is RAII end to end — you\'ll inherit the habit' },
+    ],
+    analogyPanel: 'RAII is the venue\'s house rule: gear checked out at load-in is automatically signed back in at close — even when the show ends early. No checklist, no forgetting.',
+    beginnerMistake: 'Writing init()/cleanup() function pairs and calling them manually. One early return, one forgotten call, and the resource leaks. Put the pair in the constructor/destructor instead.',
+    remember: 'Tie cleanup to the destructor and it can never be forgotten.',
+    builds: ['constructor', 'destructor', 'scope'],
+    leads: ['unique-ptr', 'vector'],
+  },
+
+  /* ---------------------------------------------------------- M4 */
+  {
+    id: 'm4', kind: 'lesson', title: 'unique_ptr: One Owner Per Oscillator', short: 'std::unique_ptr',
+    concepts: ['smart-pointers'], time: '~6 MIN', diff: 2,
+    hook: 'One oscillator. One owner. When the owner is gone, the oscillator is gone — automatically, every time. That\'s not discipline; that\'s a type. You\'ll use this when we build the voice engine in Zone 5.',
+    objective: 'Own heap objects through std::unique_ptr, so delete happens automatically and double-owners are impossible.',
+    sections: [
+      {
+        h: 'A pointer that owns',
+        body: '`std::unique_ptr<SineOsc>` is RAII applied to the heap: a pointer that **deletes what it owns** in its destructor. Create with `std::make_unique`. There is exactly one owner — the compiler *refuses to copy it*, which makes double-delete impossible by construction.',
+        viz: { t: 'owners', mode: 'unique' },
+        code: '#include <memory>\n\nauto osc = std::make_unique<SineOsc>();\nosc->setFrequency(440.0f);   // -> just like a raw pointer\n// scope ends → SineOsc deleted, automatically',
+        codeTitle: 'sole ownership',
+        breakdown: [
+          ['std::make_unique<SineOsc>()', 'build a SineOsc on the heap, wrapped in its owner'],
+          ['auto osc', 'the owner: a std::unique_ptr<SineOsc>'],
+          ['osc->', 'use it exactly like a pointer'],
+          ['(scope ends)', 'the destructor deletes the oscillator — no delete keyword, ever'],
+        ],
+      },
+      {
+        h: 'Using and moving it',
+        body: 'Check it like any pointer (`if (osc)`), reach members with `->`. To hand ownership to someone else, you **move** it — the full story next-next lesson. In plugins: your processor owns its DSP modules and its editor through unique_ptr. It\'s the default owning type of modern JUCE.',
+        code: 'std::unique_ptr<SineOsc> a = std::make_unique<SineOsc>();\nauto b = a;              // ✗ refuses to build: no copies\nauto c = std::move(a);   // ✓ ownership handed to c; a is now empty',
+        codeTitle: 'no copies — only handovers',
+      },
+    ],
+    checks: [
+      {
+        type: 'fill', concept: 'smart-pointers',
+        prompt: 'Create the filter on the heap, owned properly from birth.',
+        code: '#include <memory>\n\nauto filter = std::___<LadderFilter>();',
+        accept: ['make_unique<LadderFilter>', 'make_unique<LadderFilter>()'],
+        placeholder: 'make_...<...>',
+        hint: 'The factory function that builds an object inside a unique_ptr.',
+        mistakes: [
+          { match: 'new', msg: 'Almost — but naked `new` is the legacy path. The modern one-step: `std::make_unique<LadderFilter>()`.' },
+          { match: '^make_shared', msg: 'make_shared builds *shared* ownership. One owner (the common case) wants make_unique.' },
+        ],
+        explain: 'std::make_unique<T>() builds the object and its owner in one safe step. From today, this replaces `new` in everything you write.',
+      },
+      {
+        type: 'mcq', concept: 'smart-pointers',
+        prompt: 'Why does the compiler refuse to *copy* a unique_ptr?',
+        options: [
+          { t: 'Two owners would both delete the same object — a guaranteed crash', why: '' },
+          { t: 'Copying pointers is slow', why: 'Copying a pointer is trivially cheap — the ban is about ownership logic, not speed.' },
+          { t: 'unique_ptr objects are too large to copy', why: 'It\'s essentially one pointer wide. Size isn\'t the issue; double-delete is.' },
+          { t: 'It\'s a temporary language limitation', why: 'It\'s the entire design: "unique" is enforced by deleting the copy operations on purpose.' },
+        ],
+        answer: 0,
+        explain: 'If two unique_ptrs owned one oscillator, both destructors would delete it — the classic double-free crash. Making copies *uncompilable* turns a runtime disaster into a build error.',
+      },
+      {
+        type: 'predict', concept: 'smart-pointers',
+        prompt: 'After the move, what does `a` hold?',
+        code: 'auto a = std::make_unique<SineOsc>();\nauto b = std::move(a);\n\nif (a) render(); else rest();',
+        options: [
+          { t: 'a is empty (nullptr) — rest() runs', why: '' },
+          { t: 'a still owns the oscillator — render() runs', why: 'Move *transfers* ownership. b owns it now; a was left holding nothing.' },
+          { t: 'Both own it now', why: 'That would be shared ownership — a different tool (next lesson). unique means unique.' },
+          { t: 'It fails to compile', why: 'Moving a unique_ptr is exactly the sanctioned way to hand ownership over. It compiles cleanly.' },
+        ],
+        answer: 0,
+        explain: 'std::move hands the oscillator to b and leaves a as a well-defined empty pointer. Always treat a moved-from unique_ptr as null until you give it something new.',
+      },
+    ],
+    recap: [
+      'unique_ptr = RAII ownership of one heap object.',
+      'Create with std::make_unique — never naked new.',
+      'Copies refuse to compile; ownership transfers by move.',
+      'Moved-from unique_ptrs are empty (null).',
+    ],
+    inside: [
+      { name: 'Synth', use: 'the engine owns each voice: vector of unique_ptr<Voice>' },
+      { name: 'JUCE', use: 'createEditor() hands ownership of the new editor to the host' },
+      { name: 'Effects', use: 'DSP modules owned by the processor, freed with it' },
+    ],
+    analogyPanel: 'A unique_ptr is a flight case with one name on it. Whoever holds the case owns the gear inside — hand the case over and you\'ve handed the responsibility too. Two names on one case is simply not allowed.',
+    beginnerMistake: 'Calling `new` out of habit and storing it raw "just for now." There is no for-now: make_unique costs nothing extra and can\'t leak.',
+    remember: 'One owner, automatic delete: make_unique is the new new.',
+    builds: ['pointer', 'raii', 'nullptr'],
+    leads: ['move-semantics', 'smart-pointer'],
+  },
+
+  /* ---------------------------------------------------------- M5 */
+  {
+    id: 'm5', kind: 'lesson', title: 'shared_ptr: The Shared Sample Bank', short: 'shared_ptr & weak_ptr',
+    concepts: ['smart-pointers'], time: '~6 MIN', diff: 2,
+    hook: 'One piano sample bank, four sampler instances playing from it. Who unloads it? The answer every studio knows: the last one out turns off the lights.',
+    objective: 'Share one resource between several owners with std::shared_ptr — and observe without owning via weak_ptr.',
+    sections: [
+      {
+        h: 'Counted owners',
+        body: '`std::shared_ptr<SampleBank>` allows **many owners of one object**. It keeps a live count: each copy adds an owner, each destruction removes one — and when the count hits **zero**, the object is deleted. Create with `std::make_shared`.',
+        viz: { t: 'owners', mode: 'shared' },
+        code: 'auto bank = std::make_shared<SampleBank>("piano");\nauto user2 = bank;      // copying is ALLOWED: count → 2\n// each owner dying: count 2 → 1 → 0 → bank unloads',
+        codeTitle: 'last one out unloads it',
+      },
+      {
+        h: 'weak_ptr: a backstage pass, not a key',
+        body: '`std::weak_ptr` **observes** a shared object without owning it — it never keeps the object alive. Before use you ask `lock()`: "still there?" — you get a real shared_ptr, or empty. Default to unique_ptr though: shared ownership costs counting work and blurs responsibility. (Advanced corner: a shared_ptr can carry a **custom deleter** — special strike-crew instructions for resources that need unusual cleanup.)',
+        code: 'std::weak_ptr<SampleBank> peek = bank;\n\nif (auto alive = peek.lock())   // still loaded?\n    alive->play(60);',
+        codeTitle: 'observe, don\'t own',
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'smart-pointers',
+        prompt: 'When is the SampleBank actually unloaded?',
+        code: 'auto a = std::make_shared<SampleBank>();  // count: 1\nauto b = a;                               // count: 2\na.reset();                                // a lets go\nb.reset();                                // b lets go',
+        options: [
+          { t: 'At b.reset() — the count reaches zero there', why: '' },
+          { t: 'At a.reset() — a created it, so a\'s release kills it', why: 'Creation order doesn\'t matter — only the count. After a.reset(), b still holds it: count 1.' },
+          { t: 'Immediately when b copied a', why: 'Copying *adds* an owner (count 2) — nothing is freed by sharing more.' },
+          { t: 'Never — shared objects leak by design', why: 'Reference counting exists precisely so the last release frees it, deterministically.' },
+        ],
+        answer: 0,
+        explain: 'Owner count: 1 → 2 → 1 → 0. Deletion happens exactly at the 0, whoever causes it. The last one out turns off the lights.',
+      },
+      {
+        type: 'mcq', concept: 'smart-pointers',
+        prompt: 'What is std::weak_ptr for?',
+        options: [
+          { t: 'Watching a shared object without keeping it alive', why: '' },
+          { t: 'A slower version of shared_ptr', why: 'It\'s not about speed — it\'s about *not owning*: a weak_ptr never extends a lifetime.' },
+          { t: 'Owning objects that might be null', why: 'Any smart pointer can be empty. weak_ptr\'s specialty is observation without ownership.' },
+          { t: 'Sharing between plugins in different DAWs', why: 'Smart pointers live inside one process — this is about ownership, not inter-app sharing.' },
+        ],
+        answer: 0,
+        explain: 'weak_ptr is the backstage pass: you can check whether the resource is still around (lock()) but your pass never keeps the venue open. It also breaks ownership cycles — a Zone 6 story.',
+      },
+      {
+        type: 'fill', concept: 'smart-pointers',
+        prompt: 'Several samplers must share one reverb impulse response. Declare the member.',
+        code: 'class SamplerVoice {\nprivate:\n    std::___<ImpulseResponse> ir;\n};',
+        accept: ['shared_ptr'],
+        placeholder: 'smart pointer',
+        hint: 'Many owners, one resource, freed by the last.',
+        mistakes: [
+          { match: '^unique_ptr$', msg: 'unique_ptr allows exactly one owner — but several voices need this at once. Shared ownership: shared_ptr.' },
+          { match: '^weak_ptr$', msg: 'A weak_ptr wouldn\'t keep the impulse response alive at all. The voices must co-own it: shared_ptr.' },
+        ],
+        explain: 'shared_ptr<ImpulseResponse>: every voice co-owns the data; the IR unloads automatically when the last voice releases it.',
+      },
+    ],
+    recap: [
+      'shared_ptr = counted co-ownership; deletion at count zero.',
+      'Copying is allowed — each copy is another owner.',
+      'weak_ptr observes without owning; check with lock().',
+      'Default to unique_ptr; share only when sharing is real.',
+    ],
+    inside: [
+      { name: 'Sampler', use: 'many voices share one loaded sample set' },
+      { name: 'Convolution', use: 'impulse responses shared across channels' },
+      { name: 'Preset system', use: 'UI safely *observes* engine data via weak references' },
+    ],
+    analogyPanel: 'shared_ptr is the studio sign-out sheet with multiple names: the room stays booked while anyone\'s name is on it, and the last person to sign out kills the lights. weak_ptr is a visitor pass — you can look in, but your presence keeps nothing open.',
+    beginnerMistake: 'Reaching for shared_ptr everywhere "to be safe." Unclear ownership is not safety — it\'s the opposite. One owner (unique_ptr) is the default; sharing is the exception with a reason.',
+    remember: 'shared_ptr: the last owner out turns off the lights.',
+    builds: ['smart-pointer', 'raii'],
+    leads: ['thread', 'atomic'],
+  },
+
+  /* ---------------------------------------------------------- M6 */
+  {
+    id: 'm6', kind: 'lesson', title: 'Copy, Move & const Correctness', short: 'Move semantics, const',
+    concepts: ['move-semantics'], time: '~7 MIN', diff: 2,
+    hook: 'You can ship a collaborator a copy of your 2 GB session — slow, doubles the storage. Or you can hand them the hard drive. Modern C++ knows both gestures, and audio buffers care deeply about the difference.',
+    objective: 'Know when C++ copies and when it moves, request moves with std::move — and lock everything read-only with const.',
+    sections: [
+      {
+        h: 'Copy duplicates; move hands over',
+        body: 'A **copy** duplicates all contents — for a one-second buffer, 48,000 floats cloned. A **move** hands over the internals (essentially repointing one pointer) and leaves the source *valid but empty*. `std::move(x)` doesn\'t move anything itself — it marks x as "you may pillage this."',
+        viz: { t: 'moveviz' },
+        code: 'std::vector<float> temp = renderIR();\n\nstd::vector<float> a = temp;             // COPY: all floats cloned\nstd::vector<float> b = std::move(temp);  // MOVE: pointer handover\n// temp is now valid but empty — size() == 0',
+        codeTitle: 'copy vs move',
+        breakdown: [
+          ['= temp', 'copy: duplicate every element'],
+          ['= std::move(temp)', 'move: take temp\'s internals wholesale'],
+          ['std::move', 'a cast, not an action: "permission to pillage"'],
+          ['temp (after)', 'valid but empty — don\'t read it expecting data'],
+        ],
+      },
+      {
+        h: 'const correctness: promises the compiler enforces',
+        body: 'Zone 1\'s `const` grows up here. A method marked const — `float getGain() const` — promises to change **nothing** in the object, and the compiler holds you to it. Read-only parameters stay `const&`. Pro C++ is const **by default**: every promise you write is a whole category of bug you can\'t have.',
+        code: 'class GainStage {\npublic:\n    float getGain() const   { return gain; }  // promise: read-only\n    void  setGain(float g)  { gain = g; }     // mutating: no const\nprivate:\n    float gain = 1.0f;\n};',
+        codeTitle: 'const methods',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'move-semantics',
+        prompt: 'Why is moving a large audio buffer cheap when copying it is expensive?',
+        options: [
+          { t: 'Move hands over the internal pointer; copy duplicates every sample', why: '' },
+          { t: 'Move compresses the audio first', why: 'No audio is touched at all — that\'s the point. Only the ownership handle changes hands.' },
+          { t: 'Move deletes the data', why: 'Nothing is deleted — the same block of samples simply gets a new owner.' },
+          { t: 'They cost the same; move is just newer syntax', why: 'For a 48,000-float buffer: copy touches 48,000 floats, move touches ~3 pointers. Vastly different.' },
+        ],
+        answer: 0,
+        explain: 'A vector is a small handle pointing at a big heap block. Copy clones the block; move re-labels it. For audio-sized data, that\'s the difference between milliseconds and nanoseconds.',
+      },
+      {
+        type: 'predict', concept: 'move-semantics',
+        prompt: 'What does this print?',
+        code: 'std::vector<float> temp(48000, 0.0f);\nstd::vector<float> ir = std::move(temp);\nstd::cout << temp.size();',
+        options: [
+          { t: '`0` — temp was left valid but empty', why: '' },
+          { t: '`48000` — both hold the data', why: 'That would be a copy. Move transferred the block wholesale; temp holds nothing now.' },
+          { t: 'Garbage / crash', why: 'Moved-from standard objects are *valid* — safe to query, just empty. Reading .size() is fine; expecting data isn\'t.' },
+          { t: 'It fails to compile', why: 'Moving a vector is core modern C++ — compiles and is encouraged.' },
+        ],
+        answer: 0,
+        explain: 'After a move, the source is a well-defined empty vector: size 0, safe to reuse or refill — but the samples live in `ir` now. Using a moved-from object *as if it still had the data* is the classic mistake.',
+      },
+      {
+        type: 'fill', concept: 'move-semantics',
+        prompt: 'The freshly rendered wavetable should be handed into the member — not cloned.',
+        code: 'void setTable(std::vector<float> newTable)\n{\n    table = std::___(newTable);\n}',
+        accept: ['move'],
+        placeholder: 'one word',
+        hint: 'Grant permission to pillage.',
+        mistakes: [
+          { match: '^copy$', msg: 'There is no std::copy for this job (that\'s an algorithm) — and cloning is exactly what we\'re avoiding. Hand it over: std::move.' },
+        ],
+        explain: 'std::move(newTable) lets the member take the table\'s internals directly. The parameter was the last stop for that data — pillaging it is free performance.',
+      },
+    ],
+    recap: [
+      'Copy duplicates contents; move transfers them.',
+      'std::move = permission, not action; source ends valid-but-empty.',
+      'Never read a moved-from object expecting its old data.',
+      'const methods and const& params: promises the compiler enforces.',
+    ],
+    inside: [
+      { name: 'Sampler', use: 'loaded sample data is moved into place, never cloned' },
+      { name: 'Wavetable synth', use: 'freshly computed tables move into the engine' },
+      { name: 'Preset system', use: 'big preset blobs transfer by move on load' },
+    ],
+    analogyPanel: 'Copy is bouncing a duplicate of the session to a second drive. Move is handing over the drive itself: instant, nothing duplicated — but your hands are empty afterward.',
+    beginnerMistake: 'Using a variable after moving from it and wondering where the data went. std::move means the drive left the building — check your hands before you read.',
+    remember: 'Move hands over the hard drive; copy burns a duplicate. Audio-sized data moves.',
+    builds: ['reference', 'const', 'vector'],
+    leads: ['move-semantics', 'audio-buffer'],
+  },
+
+  /* ---------------------------------------------------------- M7 */
+  {
+    id: 'm7', kind: 'lesson', title: 'Modern Containers for Audio', short: 'std::array, vector practices',
+    concepts: ['containers'], time: '~6 MIN', diff: 2,
+    hook: 'Racks come in two kinds: the welded 4-slot case that never changes, and the expandable touring rig you configure per show. C++ gives you exactly those two — and audio code needs both, in the right places.',
+    objective: 'Choose std::array for fixed sizes and use std::vector like a professional: capacity planned, growth never on stage.',
+    sections: [
+      {
+        h: 'std::array — the welded rack',
+        body: '`std::array<float, 4>` is a fixed row whose **size is part of the type** — settled at compile time, living happily on the stack, zero allocation ever. Filter coefficient sets, small windows, per-channel state: if the size never changes, array beats vector.',
+        code: 'std::array<float, 4> coeffs { 0.1f, 0.4f, 0.4f, 0.1f };\nfloat first = coeffs[0];\nint   n     = (int) coeffs.size();   // knows its size: 4',
+        codeTitle: 'fixed at compile time',
+      },
+      {
+        h: 'vector, played professionally',
+        body: 'For runtime sizes, vector — with two pro habits. **resize(n)** sets the element count (zero-filled); **reserve(n)** pre-books capacity without creating elements. Both may allocate — so both belong in `prepareToPlay`. On the audio thread the vector is read and written, never grown. One contiguous block also keeps the CPU\'s cache happy — the Zone 2 finale explains why that matters.',
+        mistake: { code: 'delayLine.reserve(48000);\ndelayLine[0] = 0.5f;   // ✗ size is still 0 — out of bounds!', text: 'reserve books the warehouse space but puts nothing on the shelves. Indexing needs *elements*: that\'s resize.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'fill', concept: 'containers',
+        prompt: 'A biquad filter always has exactly 5 coefficients. Declare the right container.',
+        code: 'std::array<float, ___> coeffs;',
+        accept: ['5'],
+        placeholder: 'size',
+        hint: 'The size is written into the type itself.',
+        explain: 'std::array<float, 5>: the count is compile-time fact — no allocation, no resizing, and the compiler knows the bounds.',
+      },
+      {
+        type: 'mcq', concept: 'containers',
+        prompt: 'What does `delayLine.reserve(48000)` actually do?',
+        options: [
+          { t: 'Books capacity for 48,000 floats — but the vector still holds zero elements', why: '' },
+          { t: 'Creates 48,000 zero-valued floats', why: 'That\'s resize. reserve is capacity only — the shelves are booked but empty.' },
+          { t: 'Locks the vector so it can never grow', why: 'reserve sets a floor on capacity, not a ceiling — later growth is still possible (and still allocates).' },
+          { t: 'Nothing — it\'s deprecated', why: 'reserve is a core tool: it front-loads allocation so later push_backs don\'t reallocate.' },
+        ],
+        answer: 0,
+        explain: 'reserve = capacity, resize = size. Index only what resize (or push_back) actually created. Mixing these up is the out-of-bounds bug you met in Zone 1 — now you know its anatomy.',
+      },
+      {
+        type: 'predict', concept: 'containers',
+        prompt: 'What prints?',
+        code: 'std::vector<float> buf;\nbuf.reserve(512);\nstd::cout << buf.size();',
+        options: [
+          { t: '`0` — capacity changed, size didn\'t', why: '' },
+          { t: '`512`', why: 'reserve creates no elements. size() counts elements — still zero.' },
+          { t: 'Garbage', why: 'size() is always well-defined; the answer is exactly 0.' },
+          { t: 'It fails to compile', why: 'Perfectly legal — and a perfect illustration of size vs capacity.' },
+        ],
+        answer: 0,
+        explain: 'Capacity 512, size 0: room booked, shelves empty. buf[0] here would be out of bounds — the reserve-then-index trap in its purest form.',
+      },
+    ],
+    recap: [
+      'std::array: size in the type, stack-friendly, zero allocation.',
+      'vector: resize = elements, reserve = capacity only.',
+      'Both resize and reserve may allocate → prepareToPlay territory.',
+      'Contiguous data is fast data (finale lesson explains).',
+    ],
+    inside: [
+      { name: 'EQ', use: 'biquad coefficients: std::array<float, 5> per band' },
+      { name: 'Delay', use: 'the line: one vector, resized backstage' },
+      { name: 'Synth', use: 'wavetables in vectors; per-voice state in arrays' },
+    ],
+    analogyPanel: 'std::array is the welded 4-slot rack — permanent, instant, no paperwork. vector is the touring rig — configure it at load-in (prepareToPlay), never re-rack it mid-set.',
+    beginnerMistake: 'reserve() followed by indexing. Capacity is a booking, not gear on shelves — index only what resize or push_back actually created.',
+    remember: 'Fixed size → std::array. Runtime size → vector, sized backstage.',
+    builds: ['array', 'vector', 'allocation'],
+    leads: ['audio-buffer'],
+  },
+
+  /* ---------------------------------------------------------- M8 */
+  {
+    id: 'm8', kind: 'lesson', title: 'Maybe-Values: optional & variant', short: 'std::optional, std::variant',
+    concepts: ['modern-types'], time: '~6 MIN', diff: 2,
+    hook: 'A synth voice between notes isn\'t playing "note zero" — it\'s playing nothing. For years C++ faked "nothing" with magic numbers like -1. Modern C++ says it honestly.',
+    objective: 'Express "maybe a value" with std::optional and "one of several types" with std::variant — no magic numbers.',
+    sections: [
+      {
+        h: 'std::optional — honestly maybe',
+        body: '`std::optional<int> currentNote` holds an int **or nothing at all**. Ask `has_value()`, read with `*note` or `note.value_or(fallback)`. The type itself now documents that no-note is a real state — and the compiler makes you handle it.',
+        code: 'std::optional<int> currentNote;      // starts: nothing\ncurrentNote = 64;                     // now: a note\n\nif (currentNote.has_value())\n    play(*currentNote);\n\nint n = currentNote.value_or(60);     // value, or fallback',
+        codeTitle: 'a voice\'s maybe-note',
+        breakdown: [
+          ['std::optional<int>', 'an int OR genuinely nothing'],
+          ['has_value()', '"is anything in there?"'],
+          ['*currentNote', 'read the value (only after checking!)'],
+          ['value_or(60)', 'the value — or your fallback, no branching'],
+        ],
+      },
+      {
+        h: 'std::variant — one of several',
+        body: '`std::variant<float, bool, int>` holds **exactly one** of the listed types at a time — a typed selector switch. Perfect for parameter values that may be a knob (float), a switch (bool), or a choice (int). Ask what\'s inside with `std::get_if<float>(&v)` — you\'ll meet it again in the parameter systems of Zone 3.',
+        code: 'std::variant<float, bool> value = 0.7f;   // a knob\nvalue = true;                              // now a switch\n\nif (auto* f = std::get_if<float>(&value))\n    applyGain(*f);',
+        codeTitle: 'one slot, several possible types',
+      },
+    ],
+    checks: [
+      {
+        type: 'fill', concept: 'modern-types',
+        prompt: 'Only play if the voice actually has a note.',
+        code: 'std::optional<int> note;\n\nif (note.___())\n    play(*note);',
+        accept: ['has_value', 'has_value()'],
+        placeholder: 'method',
+        hint: '"Is anything in there?"',
+        explain: 'has_value() is the honest check — no comparing against -1 and hoping everyone remembers the convention.',
+      },
+      {
+        type: 'predict', concept: 'modern-types',
+        prompt: 'No note has been set. What prints?',
+        code: 'std::optional<int> note;\nstd::cout << note.value_or(60);',
+        options: [
+          { t: '`60` — the fallback, because note is empty', why: '' },
+          { t: '`0`', why: 'An empty optional has no value at all — value_or returns *your* fallback, which is 60.' },
+          { t: 'Garbage', why: 'value_or is exactly the safe path: value if present, fallback if not. Never garbage.' },
+          { t: 'It crashes', why: 'Unchecked *note could misbehave — value_or exists so you never have to risk that.' },
+        ],
+        answer: 0,
+        explain: 'value_or(60): "the note if there is one, middle C if not" — a full if/else in one readable call.',
+      },
+      {
+        type: 'mcq', concept: 'modern-types',
+        prompt: 'What does `std::variant<float, bool, int>` hold?',
+        options: [
+          { t: 'Exactly one value, which is a float OR a bool OR an int at any moment', why: '' },
+          { t: 'All three values at once', why: 'That would be a struct. A variant is a selector: one slot, one occupant.' },
+          { t: 'A list of mixed values', why: 'A list is a vector. Variant holds a single value of one of the listed types.' },
+          { t: 'Three optionals', why: 'Close in spirit, but variant guarantees exactly one is active — never zero, never two.' },
+        ],
+        answer: 0,
+        explain: 'A variant is a typed selector switch: one slot whose occupant\'s type can change among the listed options. Parameter systems love it: knob, switch, or choice — one storage type.',
+      },
+    ],
+    recap: [
+      'optional<T>: a T or honestly nothing — no magic -1s.',
+      'has_value() / value_or() make emptiness safe to handle.',
+      'variant<A,B,C>: exactly one of the listed types at a time.',
+      'Both make invalid states unrepresentable — pro C++\'s favorite trick.',
+    ],
+    inside: [
+      { name: 'Synth', use: 'a voice\'s current note: optional<int> between notes' },
+      { name: 'Parameters', use: 'a value that\'s knob/switch/choice: variant' },
+      { name: 'Preset system', use: 'loadPreset returns optional<Preset> — it can fail honestly' },
+    ],
+    analogyPanel: 'optional is an insert slot that can be genuinely empty — not "occupied by silence." variant is a combo jack: one hole, several plug types, exactly one plugged at a time.',
+    beginnerMistake: 'Encoding "nothing" as -1 or 0 and forgetting the convention three files later. optional writes the maybe into the type, where it can\'t be forgotten.',
+    remember: 'optional = maybe a value; variant = one of several. Say it in the type.',
+    builds: ['bool', 'enum', 'template'],
+    leads: ['apvts', 'variant'],
+  },
+];
+
+;
+/* ===== src/js/data_zone2_lessons_b.js ===== */
+/* ============================================================
+   ZONE 2 — lessons m9–m15 (appended to ZONE2_LESSONS).
+   ============================================================ */
+
+ZONE2_LESSONS.push(
+
+  /* ---------------------------------------------------------- M9 */
+  {
+    id: 'm9', kind: 'lesson', title: 'Cleaner Wiring: enum class, auto & Friends', short: 'enum class, auto, range-for',
+    concepts: ['modern-syntax'], time: '~6 MIN', diff: 1,
+    hook: 'In Zone 1 your waveform selector ran on raw numbers — case 0, case 1. It worked. But professionals label the ring. Modern C++ has four small tools that make everyday code cleaner and safer at once.',
+    objective: 'Label selectors with enum class, let auto infer obvious types, and sweep buffers with range-based for loops.',
+    sections: [
+      {
+        h: 'enum class: the labeled selector ring',
+        body: '`enum class Waveform { sine, saw, square };` creates a type whose only values are those names. No silent conversion to int, no nonsense value 47, and a `switch` over it can warn when a position is missing. Every mode selector you write from now on uses this.',
+        code: 'enum class Waveform { sine, saw, square };\n\nWaveform wave = Waveform::saw;\n\nswitch (wave) {\n    case Waveform::sine:   /* ... */ break;\n    case Waveform::saw:    /* ... */ break;\n    case Waveform::square: /* ... */ break;\n}',
+        codeTitle: 'a type-safe selector',
+      },
+      {
+        h: 'auto and range-based for',
+        body: '`auto` asks the compiler to infer an obvious type — perfect for `auto osc = std::make_unique<SineOsc>();` where the type is written once already. And the **range-based for** sweeps a whole container: `for (auto& s : buffer)`. That `&` is load-bearing: with it you edit the real samples; without it you edit throwaway copies. (`constexpr` from Zone 1 and `inline` for small header functions round out the kit — you\'ll meet inline again at project-layout time.)',
+        mistake: { code: 'for (auto s : buffer)   // ✗ s is a COPY\n    s *= gain;          // the buffer never changes!', text: 'The missing & is Zone 1\'s "effect does nothing" bug wearing modern clothes: `for (auto& s : buffer)` edits the real audio.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'fill', concept: 'modern-syntax',
+        prompt: 'Upgrade the selector to the type-safe kind.',
+        code: 'enum ___ FilterMode { lowPass, highPass, bandPass };',
+        accept: ['class', 'struct'],
+        placeholder: 'keyword',
+        hint: 'One word turns a loose enum into a scoped, type-safe one.',
+        explain: '`enum class` scopes the names (FilterMode::lowPass) and blocks silent int conversion — the compiler now guards your selector.',
+      },
+      {
+        type: 'predict', concept: 'modern-syntax',
+        prompt: 'What happens to the buffer?',
+        code: 'std::vector<float> buffer(4, 0.8f);\n\nfor (auto s : buffer)\n    s *= 0.5f;\n\nstd::cout << buffer[0];',
+        options: [
+          { t: '`0.8` — the loop halved copies; the buffer is untouched', why: '' },
+          { t: '`0.4` — every sample was halved', why: 'That needs `auto&`. Without the &, each s is a fresh copy — modified, then discarded.' },
+          { t: '`0` — the buffer was cleared', why: 'Nothing clears anything — the writes just land on copies and evaporate.' },
+          { t: 'It fails to compile', why: 'Legal C++ — silently useless, which is worse than an error.' },
+        ],
+        answer: 0,
+        explain: 'for (auto s : …) copies each element into s. The halving happens to the copy and vanishes. One character — `auto&` — makes it process the real audio.',
+      },
+      {
+        type: 'fill', concept: 'modern-syntax',
+        prompt: 'Fix that exact bug: make the loop touch the real samples.',
+        code: 'for (auto___ s : buffer)\n    s *= gain;',
+        accept: ['&', ' &'],
+        placeholder: 'character',
+        hint: 'The alias character from Zone 1.',
+        explain: '`auto&` makes s a reference — a second label on each actual sample. Now the gain lands on the audio, not on ghosts.',
+      },
+    ],
+    recap: [
+      'enum class = scoped, type-safe selector positions.',
+      'auto infers obvious types — use where the type is clear.',
+      'for (auto& s : buffer) sweeps real elements; the & is load-bearing.',
+      'constexpr and inline: compile-time values, header-friendly small functions.',
+    ],
+    inside: [
+      { name: 'Synth', use: 'Waveform and FilterMode selectors as enum class' },
+      { name: 'Every effect', use: 'range-for over channels and samples' },
+      { name: 'JUCE', use: 'the codebase you\'ll read is written in exactly this style' },
+    ],
+    analogyPanel: 'enum class is the silkscreened label ring around a selector — only real positions exist. Range-for is running the whole tape head-to-tail without managing the counter yourself.',
+    beginnerMistake: 'for (auto s : buffer) without the & — processing copies while the mix stays dry. If a range-for "does nothing," check for the missing &.',
+    remember: 'Label selectors with enum class; sweep buffers with for (auto& s : buffer).',
+    builds: ['enum', 'switch-statement', 'loop', 'reference'],
+    leads: ['template', 'apvts'],
+  },
+
+  /* ---------------------------------------------------------- M10 */
+  {
+    id: 'm10', kind: 'lesson', title: 'Lambdas: Patchable Behavior', short: 'Lambdas, captures, std::function',
+    concepts: ['lambdas'], time: '~7 MIN', diff: 2,
+    hook: '"When the red light comes on, mute channel 3." The best studio instructions are taped exactly where they\'re needed. C++ lets you write little unnamed functions the same way — right at the spot where they\'ll fire.',
+    objective: 'Write lambdas, choose captures deliberately, and store behavior in std::function — the pattern behind every knob callback.',
+    sections: [
+      {
+        h: 'A function without a name',
+        body: 'A **lambda** is a small inline function: `[capture](arguments) { body }`. The magic is the **capture list** `[...]` — which outside variables the lambda may use. This is how UI code says "when this knob moves, do that":',
+        code: 'gainSlider.onValueChange = [this]\n{\n    updateGain();   // fires every time the knob moves\n};',
+        codeTitle: 'a knob callback',
+        breakdown: [
+          ['[this]', 'capture: let the lambda reach this object\'s members'],
+          ['(no args)', 'this callback receives nothing — it just reacts'],
+          ['{ updateGain(); }', 'the taped-up instruction itself'],
+          ['onValueChange =', 'the slider stores it, and fires it later'],
+        ],
+      },
+      {
+        h: 'Captures — and the box that stores them',
+        body: '`[=]` captures used variables **by copy** (a snapshot); `[&]` **by reference** (live view — dangerous if the lambda outlives the scope!); `[this]` grants access to the object\'s members. `std::function<void()>` is the storage box: it can hold any callable with that shape, which is how sliders keep your lambda until the knob actually moves.',
+        mistake: { code: 'auto makeCallback() {\n    float localGain = 0.5f;\n    return [&] { apply(localGain); }; // ✗ captures a local\n}                                     //   by reference — it dies!', text: 'The lambda outlives localGain — a dangling capture, the lambda-shaped cousin of Zone 1\'s dangling pointer. Capture locals by value.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'lambdas',
+        prompt: 'What does the capture list `[...]` of a lambda control?',
+        options: [
+          { t: 'Which outside variables the lambda may use, and whether by copy or reference', why: '' },
+          { t: 'The lambda\'s arguments', why: 'Arguments live in the parentheses. The brackets govern access to *surrounding* variables.' },
+          { t: 'Which thread the lambda runs on', why: 'Threads are a separate world (two lessons ahead) — captures are about variable access.' },
+          { t: 'How fast the lambda runs', why: 'Captures affect semantics (copy vs live reference), not speed in any way you\'d tune here.' },
+        ],
+        answer: 0,
+        explain: 'The capture list is the patch bay between the lambda and its surroundings: nothing gets in unless you patch it — by copy [=], by reference [&], or via the object [this].',
+      },
+      {
+        type: 'fill', concept: 'lambdas',
+        prompt: 'The callback needs to call a member function of this editor. Capture accordingly.',
+        code: 'cutoffSlider.onValueChange = [___]\n{\n    updateFilter();   // a member of this editor\n};',
+        accept: ['this', '&'],
+        placeholder: 'capture',
+        hint: 'Members belong to an object — capture the object\'s handle.',
+        mistakes: [
+          { match: '^=$', msg: 'That compiles — [=] silently grabs `this` too — but that implicit capture is deprecated in modern C++. Say what you mean: [this].' },
+        ],
+        explain: '[this] is the standard JUCE UI capture: the lambda gets the editor\'s handle and can call its members. (It also means the editor must outlive the callback — JUCE\'s components manage that for their own sliders.)',
+      },
+      {
+        type: 'predict', concept: 'lambdas',
+        prompt: 'What does the callback print when fired?',
+        code: 'float gain = 0.5f;\nauto show = [=] { std::cout << gain; };  // capture by COPY\ngain = 2.0f;\nshow();',
+        options: [
+          { t: '`0.5` — the copy was taken at creation', why: '' },
+          { t: '`2.0` — it sees the live value', why: 'That\'s [&] behavior. [=] snapshots the value at the moment the lambda is born.' },
+          { t: 'Garbage', why: 'A by-copy capture is self-contained and always safe — it printed its snapshot.' },
+          { t: 'It fails to compile', why: 'Textbook-legal — and a textbook illustration of copy-capture semantics.' },
+        ],
+        answer: 0,
+        explain: '[=] photographs the scene at creation: the lambda carries gain = 0.5 inside itself forever. [&] would watch the live variable instead — powerful, and only safe while that variable is alive.',
+      },
+    ],
+    recap: [
+      'Lambda = [capture](args){ body } — behavior written in place.',
+      '[=] copies, [&] references (lifetime beware), [this] reaches members.',
+      'std::function stores any matching callable for later.',
+      'Dangling captures are the lambda-shaped dangling pointer.',
+    ],
+    inside: [
+      { name: 'Editor', use: 'every slider\'s onValueChange is a lambda' },
+      { name: 'Async work', use: '"when the file finishes loading, do this"' },
+      { name: 'Timers', use: 'metering updates fire a stored callback' },
+    ],
+    analogyPanel: 'A lambda is a taped-up instruction at the exact spot on the desk where it applies. The capture list is which cables you patched into it — snapshots or live feeds.',
+    beginnerMistake: 'Capturing locals with [&] and letting the lambda outlive them. The instruction survives; the things it points at don\'t. Locals get captured by value.',
+    remember: 'Lambdas are instructions taped where they fire; captures decide what they can touch.',
+    builds: ['function', 'lambda', 'scope'],
+    leads: ['audioprocessoreditor', 'ui-thread'],
+  },
+
+  /* ---------------------------------------------------------- M11 */
+  {
+    id: 'm11', kind: 'lesson', title: 'Templates, Namespaces & Project Layout', short: 'Templates, namespaces, files',
+    concepts: ['templates'], time: '~6 MIN', diff: 2,
+    hook: 'By now you\'ve typed std::vector<float> fifty times without ceremony. You\'ve been using templates all along — time to read them fluently, and to organize a project bigger than one file.',
+    objective: 'Read nested template types calmly, wrap your utilities in a namespace, and lay out files like a professional plugin project.',
+    sections: [
+      {
+        h: 'Reading (and once in a while writing) templates',
+        body: 'A **template** is a recipe with a type plugged in: `std::vector<float>` is the vector recipe cooked for floats. Read nested ones inside-out: `std::vector<std::unique_ptr<Voice>>` = "a resizable row of sole-ownership handles to Voices" — the exact type of a synth\'s voice pool. Writing one is rarer, but small utilities earn it:',
+        code: 'template <typename T>\nT wrapPhase(T phase, T period)\n{\n    return (phase >= period) ? phase - period : phase;\n}\n// works for float AND double — one recipe',
+        codeTitle: 'one recipe, any float type',
+      },
+      {
+        h: 'Namespaces and the shape of a real project',
+        body: 'Wrap your own code in a **namespace** (`namespace txpps { ... }`) so your Filter never collides with anyone else\'s. And as the file count grows, structure follows roles: `dsp/` for engines, `ui/` for components, one class per .h/.cpp pair. Tiny functions defined in headers get marked **inline** — the Zone 1 panel/circuit split, scaled up to a product.',
+        viz: { t: 'twoLayer', top: 'dsp/ — SynthEngine, Voice, Filter', topSub: 'the sound', bottom: 'ui/ — Editor, Knobs, Meters', bottomSub: 'the panel', caption: 'folders by role — the standard plugin layout' },
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'templates',
+        prompt: 'How do you read `std::vector<std::unique_ptr<Voice>>`?',
+        options: [
+          { t: 'A resizable row of sole-ownership handles, each owning one Voice', why: '' },
+          { t: 'A Voice that owns many vectors', why: 'Read inside-out: unique_ptr<Voice> is the element; vector of those is the container.' },
+          { t: 'A copy of every Voice', why: 'unique_ptrs never copy their Voices — each element *owns* one, exactly once.' },
+          { t: 'A syntax error — templates can\'t nest', why: 'Nesting is everyday C++: containers of smart pointers are the standard voice-pool type.' },
+        ],
+        answer: 0,
+        explain: 'Inside-out: Voice → owned by unique_ptr → collected in a vector. This precise type is your Zone 5 voice pool — growable backstage, each voice with one clear owner.',
+      },
+      {
+        type: 'fill', concept: 'templates',
+        prompt: 'Declare the voice pool: a resizable row where each element solely owns a Voice.',
+        code: 'std::vector<std::___<Voice>> voices;',
+        accept: ['unique_ptr'],
+        placeholder: 'owner type',
+        hint: 'One owner per voice — the smart pointer from three lessons ago.',
+        mistakes: [
+          { match: '^shared_ptr$', msg: 'Nothing else co-owns a voice — the engine is its one owner. unique_ptr keeps that truth in the type.' },
+        ],
+        explain: 'std::vector<std::unique_ptr<Voice>> — the canonical voice pool. Sized in prepareToPlay, owned unambiguously, freed automatically.',
+      },
+      {
+        type: 'mcq', concept: 'templates',
+        prompt: 'Your project has grown to a synth engine, three DSP modules and an editor. Best layout?',
+        options: [
+          { t: 'Folders by role (dsp/, ui/), one class per .h/.cpp pair, your code in a namespace', why: '' },
+          { t: 'Everything in main.cpp until it hurts', why: 'It already hurts at this size: no reuse, brutal merge conflicts, and each build recompiles everything.' },
+          { t: 'One giant header with all the code', why: 'Every file including it recompiles the world on any change — and inline-everything bloats the build.' },
+          { t: 'A new folder per function', why: 'Over-fragmentation is its own maze. Classes are the natural file unit; folders group by role.' },
+        ],
+        answer: 0,
+        explain: 'Role folders + one class per header/source pair + a project namespace: the layout every JUCE plugin you\'ll read in Zone 3 uses. Structure is a gift to future-you.',
+      },
+    ],
+    recap: [
+      'Templates: recipes with types plugged in — read nested ones inside-out.',
+      'vector<unique_ptr<Voice>> is the canonical voice pool type.',
+      'namespace txpps { } prevents name collisions at scale.',
+      'Folders by role, one class per .h/.cpp pair, inline for tiny header functions.',
+    ],
+    inside: [
+      { name: 'Synth', use: 'the voice pool type is a nested template' },
+      { name: 'JUCE', use: 'juce:: is a namespace; AudioBuffer<float> is a template' },
+      { name: 'Your repo', use: 'dsp/ and ui/ folders from your very first real plugin' },
+    ],
+    analogyPanel: 'A template is one enclosure design built for guitar, bass, or synth level. A namespace is the group prefix on a big desk — Drums/Kick and Keys/Kick coexist peacefully.',
+    beginnerMistake: 'Panicking at nested angle brackets. Read inside-out, one layer at a time — every scary template type is a plain sentence wearing punctuation.',
+    remember: 'Read templates inside-out; organize files by role; wrap your world in a namespace.',
+    builds: ['template', 'namespace', 'header-file', 'unique-ptr'],
+    leads: ['juce', 'cmake'],
+  },
+
+  /* ---------------------------------------------------------- M12 */
+  {
+    id: 'm12', kind: 'lesson', title: 'When Things Go Wrong: Assertions & Exceptions', short: 'assert, exceptions, RT rules',
+    concepts: ['error-handling'], time: '~6 MIN', diff: 2,
+    hook: 'A good tuner pedal screams at rehearsal and stays silent at the gig. C++ has both channels for handling trouble — and one iron rule about which is allowed anywhere near the audio thread.',
+    objective: 'Trip impossible states early with assertions, know what exceptions are — and why they\'re banned from the audio thread.',
+    sections: [
+      {
+        h: 'Assertions: rehearsal tripwires',
+        body: '`assert(condition)` checks an assumption in **debug builds** and stops loudly at the exact line when it\'s false. In **release builds** it compiles away to nothing — zero cost for users. JUCE\'s version is `jassert`. Use them to document what must be true: indexes in range, pointers non-null, sizes prepared.',
+        code: 'void startVoice(int index)\n{\n    jassert(index < kMaxVoices);  // debug: screams here\n    voices[index]->start();       // release: check vanishes\n}',
+        codeTitle: 'a tripwire',
+      },
+      {
+        h: 'Exceptions — and the audio-thread ban',
+        body: '**Exceptions** (`throw` / `catch`) handle rare failures like a missing sample file: normal flow stops and control jumps to a handler. Fine on the UI thread. On the **audio thread: never.** Throwing has unpredictable cost, and an exception escaping into the host is a crash. Audio code reports trouble with return values and `std::optional` — honest, bounded, silent-at-the-gig.',
+        mistake: { code: 'void processBlock(...)\n{\n    if (!tableReady)\n        throw std::runtime_error("no table"); // ✗ never here\n}', text: 'The real-time list grows one final entry: no allocation, no locks, no I/O, no logging — **and no throwing** — on the audio thread.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'error-handling',
+        prompt: 'What does `assert(index < kMaxVoices)` do in a release build?',
+        options: [
+          { t: 'Nothing at all — it compiles away completely', why: '' },
+          { t: 'Shows the user an error dialog', why: 'Assertions are developer tripwires, not user UI — and in release they don\'t even exist.' },
+          { t: 'Slows the plugin slightly', why: 'Zero cost in release is the design: all the checking happens in your debug sessions.' },
+          { t: 'Throws an exception', why: 'A failed debug assert halts at the line for the debugger — no exceptions involved.' },
+        ],
+        answer: 0,
+        explain: 'Debug: a screaming tripwire at the exact broken line. Release: not a single instruction. That trade is why you can assert generously.',
+      },
+      {
+        type: 'mcq', concept: 'error-handling',
+        prompt: 'Why are exceptions banned on the audio thread?',
+        options: [
+          { t: 'Throwing has unpredictable cost, and an escaping exception crashes the host', why: '' },
+          { t: 'Exceptions don\'t work in plugins at all', why: 'They work fine on the UI thread — file dialogs and loaders use them. The ban is specifically real-time.' },
+          { t: 'They\'re too old-fashioned', why: 'Age isn\'t the issue — determinism is. The callback deadline tolerates no surprises.' },
+          { t: 'The compiler forbids it', why: 'The compiler happily builds a throw in processBlock. The discipline is yours — which is why it must be a habit.' },
+        ],
+        answer: 0,
+        explain: 'The audio thread\'s contract is bounded time, every block. Stack unwinding is unbounded, and hosts don\'t catch your exceptions. Report trouble with return values or optional instead.',
+      },
+      {
+        type: 'fill', concept: 'error-handling',
+        prompt: 'Guard the assumption the JUCE way: this index must be in range (debug builds only).',
+        code: 'void noteOn(int voiceIndex)\n{\n    ___(voiceIndex < kMaxVoices);\n    voices[voiceIndex]->start();\n}',
+        accept: ['jassert', 'assert'],
+        placeholder: 'macro',
+        hint: 'JUCE\'s flavor starts with a j.',
+        explain: 'jassert (or plain assert): rehearsal tripwires that vanish at the gig. Generous asserting is how professionals catch impossible states the same day they\'re written.',
+      },
+    ],
+    recap: [
+      'assert / jassert: loud in debug, free in release.',
+      'Assert your assumptions: ranges, non-null, prepared sizes.',
+      'Exceptions: fine for UI-thread failures, never on the audio thread.',
+      'Audio code reports trouble via return values and optional.',
+    ],
+    inside: [
+      { name: 'JUCE', use: 'jassert fires constantly in debug when you misuse an API' },
+      { name: 'Sampler', use: 'file loading throws on the UI thread; playback never does' },
+      { name: 'Every plugin', use: 'the RT rule list: no alloc, locks, I/O, logging — or throwing' },
+    ],
+    analogyPanel: 'assert is the tuner that screams at rehearsal and doesn\'t exist at the gig. Exceptions are a fire alarm — appropriate in the lobby (UI), unthinkable mid-take (audio thread).',
+    beginnerMistake: 'Wrapping processBlock code in try/catch "to be safe." That\'s not safety — the throw itself is the hazard. Design the audio path so it cannot need to throw.',
+    remember: 'Assert generously in debug; never throw where the deadline lives.',
+    builds: ['debug-build', 'undefined-behavior', 'optional'],
+    leads: ['audio-thread', 'real-time-audio'],
+  },
+
+  /* ---------------------------------------------------------- M13 */
+  {
+    id: 'm13', kind: 'lesson', title: 'Two Threads, One Synth', short: 'Threads, races, mutex danger',
+    concepts: ['threading'], time: '~7 MIN', diff: 3,
+    hook: 'You drag the cutoff knob *while* the synth is rendering audio. Two hands on the same instrument, the same microsecond. Nothing in Zone 1 prepared that knob for this — and most real plugin bugs are born right here.',
+    objective: 'See what a race condition actually is, and why the obvious fix — a lock — is forbidden where the deadline lives.',
+    sections: [
+      {
+        h: 'The race',
+        body: 'Your plugin runs (at least) two **threads**: the UI thread moving knobs, the audio thread rendering blocks. When both touch the same plain variable with no coordination, you get a **race condition**: half-written values, stale reads, corruption — randomly, rarely, and worst of all *differently on every machine*.',
+        viz: { t: 'lanes' },
+        code: 'float cutoff = 1000.0f;        // plain float — shared!\n\n// UI thread:      cutoff = 8000.0f;\n// audio thread:   filter.set(cutoff);  // may read a mangled value',
+        codeTitle: 'a race in two lines',
+      },
+      {
+        h: 'Why the obvious fix is worse',
+        body: 'The classic answer is a **mutex** (mutual exclusion lock): one thread at a time. But if the audio thread ever *waits* for the UI thread to release a lock — while the UI is busy repainting — the block misses its deadline. That\'s a dropout, delivered by your "fix." **Never lock on the audio thread.** The real bridge arrives next lesson.',
+        viz: { t: 'lanes', blocked: true },
+        mistake: { code: 'void processBlock(...)\n{\n    std::lock_guard lock(mutex);  // ✗ audio thread may WAIT here\n    // ... render ...\n}', text: 'A lock that\'s ever contested turns the hard deadline into a coin flip. Mutexes belong to the UI/background world.' },
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'threading',
+        prompt: 'What is a race condition?',
+        options: [
+          { t: 'Two threads touching the same data with no coordination — results depend on timing luck', why: '' },
+          { t: 'Code that runs too fast', why: 'Speed isn\'t the problem — *uncoordinated simultaneous access* is. Slow code races just as badly.' },
+          { t: 'Two plugins competing for CPU', why: 'That\'s load balancing. Races are about shared memory inside one program.' },
+          { t: 'A compiler error about threads', why: 'That\'s the tragedy: races compile silently and pass your tests. They fail on stage.' },
+        ],
+        answer: 0,
+        explain: 'A race is timing-dependent corruption: whichever thread wins the microsecond decides the result. It works in every demo and fails in one studio in Berlin — the worst bug class in audio.',
+      },
+      {
+        type: 'mcq', concept: 'threading',
+        prompt: 'What\'s the worst-case outcome of locking a mutex inside processBlock?',
+        options: [
+          { t: 'The audio thread waits for the UI thread — the deadline is missed and audio drops out', why: '' },
+          { t: 'Slightly higher CPU on the meter', why: 'The cost isn\'t average load — it\'s the *unbounded wait* when the lock is contested at the wrong moment.' },
+          { t: 'The UI freezes forever', why: 'Usually the UI is the one *holding* the lock; it\'s the audio thread left waiting past its deadline.' },
+          { t: 'Nothing — mutexes are instant', why: 'Uncontested, nearly. Contested, the wait is unbounded — and contested-at-the-worst-moment is what live sessions do best.' },
+        ],
+        answer: 0,
+        explain: 'Priority inversion in one sentence: the real-time thread ends up waiting on the leisurely one. One contested lock = one audible glitch. This single rule explains half of professional plugin architecture.',
+      },
+      {
+        type: 'predict', concept: 'threading',
+        prompt: 'Both threads run this once, at the same time, on a shared plain int starting at 0. What can `count` be afterward?',
+        code: '// shared: int count = 0;\n// each thread executes:\ncount = count + 1;',
+        options: [
+          { t: 'Sometimes 2, sometimes 1 — it\'s a race', why: '' },
+          { t: 'Always 2', why: 'Only with coordination. Both can read 0, both write 1 — one increment silently vanishes.' },
+          { t: 'Always 1', why: 'They *can* interleave safely and produce 2 — the point is you can\'t know which you\'ll get.' },
+          { t: 'Always 0', why: 'Each thread definitely writes something ≥1 — the question is whether one update is lost.' },
+        ],
+        answer: 0,
+        explain: 'Read-modify-write is three steps; interleave two threads\' steps and an update can vanish. "Usually 2, occasionally 1, depends on the machine" — that sentence is why the next lesson exists.',
+      },
+    ],
+    recap: [
+      'A plugin is always ≥2 threads: UI and audio.',
+      'Races = uncoordinated shared access; timing decides the damage.',
+      'Mutexes fix races but can block — never lock on the audio thread.',
+      'The real-time rule list: no alloc, I/O, logging, throwing — or locks.',
+    ],
+    inside: [
+      { name: 'Every plugin', use: 'every knob is UI-thread data the audio thread needs' },
+      { name: 'Meters', use: 'audio writes levels; UI reads them — a race waiting to happen' },
+      { name: 'Preset load', use: 'a background thread swapping state under a running engine' },
+    ],
+    analogyPanel: 'Two engineers, one desk, no talkback: each grabs the same fader at the same instant. A mutex is "one person at the desk at a time" — fine, until the performer is the one left waiting outside.',
+    beginnerMistake: '"It worked when I tested it." Races don\'t show up on your machine at your buffer size — they show up on stage. Absence of glitches is not evidence of thread safety.',
+    remember: 'Two threads share your plugin — and the audio thread must never be made to wait.',
+    builds: ['thread', 'audio-thread', 'ui-thread'],
+    leads: ['atomic', 'mutex'],
+  },
+
+  /* ---------------------------------------------------------- M14 */
+  {
+    id: 'm14', kind: 'lesson', title: 'Atomics & Lock-Free Thinking', short: 'std::atomic, producer/consumer',
+    concepts: ['threading'], time: '~7 MIN', diff: 3,
+    hook: 'A relay team doesn\'t stop to discuss the baton — the handoff is a single, indivisible gesture. C++ has that gesture for data. It\'s called an atomic, and it\'s how every knob in every modern plugin actually reaches the audio.',
+    objective: 'Bridge threads with std::atomic — indivisible reads and writes, no locks — and meet the producer/consumer pattern.',
+    sections: [
+      {
+        h: 'The indivisible handoff',
+        body: '`std::atomic<float>` guarantees every read and write is **indivisible** — no thread can ever see a half-written value — and it\'s lock-free on every desktop platform you\'ll ship to. UI thread `store()`s, audio thread `load()`s. This is the standard bridge for parameter values, and it\'s exactly what APVTS (AudioProcessorValueTreeState) hands you in Zone 3.',
+        viz: { t: 'lanes', atomic: true },
+        code: 'std::atomic<float> targetCutoff { 1000.0f };\n\n// UI thread (knob moved):\ntargetCutoff.store(newValue);\n\n// audio thread (each block):\nfloat cutoff = targetCutoff.load();',
+        codeTitle: 'the parameter bridge',
+        breakdown: [
+          ['std::atomic<float>', 'a float with indivisible access — no torn values, ever'],
+          ['{ 1000.0f }', 'initialized like any member'],
+          ['.store(x)', 'the UI thread\'s write — safe mid-render'],
+          ['.load()', 'the audio thread\'s read — bounded, no waiting'],
+        ],
+      },
+      {
+        h: 'Lock-free thinking: producer / consumer',
+        body: 'Atomics carry single values. For *streams* of events — MIDI from the UI, level data to meters — the pattern is **producer/consumer**: one thread pushes into a pre-allocated ring queue (a FIFO — First In, First Out), the other pops, and atomics track the positions. No locks anywhere. JUCE ships one as `AbstractFifo`; Zone 6 goes deep.',
+        viz: { t: 'fifo' },
+        warn: 'Loaded values still jump — pair the atomic with Zone 4\'s parameter smoothing: load the *target*, then glide per sample.',
+      },
+    ],
+    checks: [
+      {
+        type: 'fill', concept: 'threading',
+        prompt: 'The knob just moved on the UI thread. Publish the new value safely.',
+        code: 'std::atomic<float> targetGain { 1.0f };\n\nvoid sliderChanged(float newValue)\n{\n    targetGain.___(newValue);\n}',
+        accept: ['store'],
+        placeholder: 'method',
+        hint: 'The writing half of the handoff.',
+        mistakes: [
+          { match: '^load$', msg: 'load is the *reading* side (audio thread). The UI is publishing: store.' },
+        ],
+        explain: '.store() publishes indivisibly: whenever the audio thread looks, it sees the complete old value or the complete new one — never a mangled in-between.',
+      },
+      {
+        type: 'fill', concept: 'threading',
+        prompt: 'Now the audio thread picks the value up, once per block.',
+        code: 'void processBlock(...)\n{\n    float gain = targetGain.___();\n    // ... smooth toward it, then apply ...\n}',
+        accept: ['load'],
+        placeholder: 'method',
+        hint: 'The reading half.',
+        explain: '.load() is bounded and never waits — legal on the audio thread. The loaded target then feeds a smoother so the gain glides instead of stepping.',
+      },
+      {
+        type: 'mcq', concept: 'threading',
+        prompt: 'In a producer/consumer FIFO between UI and audio, who does what?',
+        options: [
+          { t: 'One thread pushes events in; the other pops them out — positions tracked by atomics, no locks', why: '' },
+          { t: 'Both threads push and pop freely', why: 'The classic lock-free FIFO is single-producer/single-consumer — one writer, one reader, by design.' },
+          { t: 'The queue grows whenever it\'s full', why: 'Growing allocates — banned. Real-time FIFOs are pre-allocated rings; full means drop or handle, never grow.' },
+          { t: 'A mutex guards each end', why: 'The entire point is *no* locks: atomic read/write positions keep both ends safe and bounded.' },
+        ],
+        answer: 0,
+        explain: 'One producer, one consumer, a pre-allocated ring, atomic positions: the pattern behind MIDI queues, meter taps and preset handoffs in every serious plugin. Zone 6 has you build one.',
+      },
+    ],
+    recap: [
+      'std::atomic = indivisible reads/writes, no locks, no torn values.',
+      'UI store()s, audio load()s — the standard parameter bridge.',
+      'Streams of events flow through pre-allocated producer/consumer FIFOs.',
+      'Pair loaded targets with smoothing — atomics deliver, smoothers glide.',
+    ],
+    inside: [
+      { name: 'Every plugin', use: 'each APVTS parameter reaches audio as an atomic' },
+      { name: 'Meters', use: 'audio stores levels; the UI loads and repaints' },
+      { name: 'MIDI FX', use: 'UI-generated events queue through a lock-free FIFO' },
+    ],
+    analogyPanel: 'An atomic is a relay baton: the handoff is one indivisible gesture — you hold it or you don\'t, never half. A FIFO is the tape loop between rooms: one room records onto it, the other plays from it, nobody waits.',
+    beginnerMistake: 'Making a shared float atomic and calling the job done — then reading it per-sample and wondering about zipper noise. Atomics move the value safely; smoothing makes it musical. You need both.',
+    remember: 'UI stores, audio loads: the atomic handoff is how knobs reach the sound.',
+    builds: ['thread', 'race-condition', 'parameter'],
+    leads: ['apvts', 'parameter-smoothing'],
+  },
+
+  /* ---------------------------------------------------------- M15 */
+  {
+    id: 'm15', kind: 'lesson', title: 'Fast & Readable: Professional Habits', short: 'Performance, cache, style',
+    concepts: ['performance'], time: '~5 MIN', diff: 2,
+    hook: 'Great sessions run on two invisible disciplines: gain staging and labeling. Great codebases run on their twins — mechanical sympathy for the CPU, and names a stranger can read at 2 a.m.',
+    objective: 'Keep data cache-friendly, measure before optimizing, and write C++ that your future collaborators can trust.',
+    sections: [
+      {
+        h: 'Cache friendliness: why contiguous wins',
+        body: 'CPUs read memory in chunks into a small fast **cache**. Data sitting side by side (a vector of floats) streams beautifully; data scattered across the heap (chains of pointers) makes the CPU wait on every hop. It\'s why your buffers are flat arrays — and why you process one channel fully before the next. And the golden rule: **measure before optimizing**, in a Release build — hunches lie, profilers don\'t.',
+        viz: { t: 'buffer', n: 8, highlight: 0, label: 'CONTIGUOUS FLOATS', caption: 'side-by-side data streams; pointer-chasing stalls' },
+      },
+      {
+        h: 'Readable is professional',
+        body: 'The habits that mark production code: names that say intent (`numActiveVoices`, not `n`), `const` by default, functions that do one thing, early returns over deep nesting. Readable code is debuggable at 2 a.m. — and in audio, 2 a.m. is when the bug reports arrive.',
+        code: '// before                      // after\nfloat p(float x, int n) {      float processSample(\n  if (n != 0) { /*20 lines*/ }     float sample,\n}                                  int numActiveVoices)',
+        codeTitle: 'names carry the meaning',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'Why does DSP code prefer one flat vector of floats over a linked chain of heap nodes?',
+        options: [
+          { t: 'Contiguous data streams through the CPU cache; pointer-chasing stalls it', why: '' },
+          { t: 'Vectors sound warmer', why: 'Tempting, but no — identical math, wildly different memory traffic.' },
+          { t: 'Linked structures can\'t hold floats', why: 'They can — they\'re just scattered across memory, and every hop is a potential cache miss.' },
+          { t: 'It makes no measurable difference', why: 'It\'s often a several-fold difference in tight loops — among the largest wins in DSP performance.' },
+        ],
+        answer: 0,
+        explain: 'The cache prefetches neighbors: walk contiguous floats and the data arrives before you ask. Chase pointers and the CPU idles per hop. Flat buffers aren\'t a style choice — they\'re mechanical sympathy.',
+      },
+      {
+        type: 'mcq', concept: 'performance',
+        prompt: 'Your synth feels heavy on CPU. First move?',
+        options: [
+          { t: 'Profile a Release build and find where the time actually goes', why: '' },
+          { t: 'Rewrite the biggest file from scratch', why: 'Effort ≠ heat. The hot spot is usually three lines you\'d never have guessed — measure first.' },
+          { t: 'Convert all floats to doubles', why: 'That typically makes it *slower* — twice the memory traffic through the cache.' },
+          { t: 'Delete the meters', why: 'Maybe they\'re the cost — maybe 2%. Only the profiler knows.' },
+        ],
+        answer: 0,
+        explain: 'Measure, in Release, then fix the top of the list. Optimizing by intuition mostly polishes code the CPU barely visits.',
+      },
+      {
+        type: 'match', concept: 'performance',
+        prompt: 'Match each professional habit to what it buys you.',
+        left: ['contiguous data', 'descriptive names', 'const by default', 'small functions'],
+        right: ['the cache streams it — speed for free', 'readable (and debuggable) at 2 a.m.', 'the compiler catches accidental changes', 'testable, reusable pieces'],
+        explain: 'Speed and readability aren\'t rivals — the same habits deliver both. This is the style every zone from here on assumes.',
+      },
+    ],
+    recap: [
+      'Contiguous data is fast data; pointer-chasing stalls the cache.',
+      'Measure in Release before optimizing anything.',
+      'Names say intent; const by default; small functions; early returns.',
+      'Readable code is what survives contact with 2 a.m.',
+    ],
+    inside: [
+      { name: 'Every effect', use: 'flat channel buffers exist for the cache\'s sake' },
+      { name: 'Synth', use: 'voice data laid out contiguously for the render loop' },
+      { name: 'Shipping', use: 'profiling in Release is a release-checklist item' },
+    ],
+    analogyPanel: 'Cache friendliness is tape flowing past the head in one smooth pass instead of rewinding for every note. Readable code is the labeled patchbay — anyone can work the room.',
+    beginnerMistake: 'Optimizing by vibe: shortening names, cramming lines, "probably faster." Unreadable and unmeasured is the worst of both worlds. Profile first; keep the labels.',
+    remember: 'Flat data for the CPU, honest names for the humans — measure before touching either.',
+    builds: ['cpu', 'vector', 'release-build'],
+    leads: ['juce', 'audioprocessor'],
+  }
+);
+
+;
+/* ===== src/js/data_zone2_challenges.js ===== */
+/* ============================================================
+   ZONE 2 — standalone challenges, projects, boss.
+   Same shapes as Zone 1 challenges/projects/boss.
+   ============================================================ */
+
+const ZONE2_CHALLENGES = [
+
+  /* ============ ORDERING ============ */
+  {
+    id: 'mo1', kind: 'challenge', ctype: 'ordering', title: 'Assemble: An RAII Resource Class', short: 'Order the code',
+    concepts: ['raii'],
+    intro: 'Build the classic RAII shape: acquire in the constructor, release in the destructor — conventional order, top to bottom.',
+    questions: [
+      {
+        type: 'order', concept: 'raii',
+        prompt: 'Arrange into a valid RAII class (public interface first).',
+        lines: [
+          'class AudioDevice {',
+          'public:',
+          '    AudioDevice()  { open(); }',
+          '    ~AudioDevice() { close(); }',
+          '};',
+        ],
+        explain: 'Name, public panel, the acquire/release pair, closing `};`. Constructor opens, destructor closes — from now on, cleanup that can\'t be forgotten is your default shape.',
+      },
+    ],
+  },
+  {
+    id: 'mo2', kind: 'challenge', ctype: 'ordering', title: 'Assemble: The Parameter Handoff', short: 'Order the flow',
+    concepts: ['threading'],
+    intro: 'A knob value must travel from a UI drag to smooth audio. Arrange the four stages of the professional path.',
+    questions: [
+      {
+        type: 'order', concept: 'threading',
+        prompt: 'Arrange the parameter\'s journey, first step at the top.',
+        lines: [
+          '// UI thread: knob moves',
+          'targetGain.store(newValue);',
+          '// audio thread, each block:',
+          'float target = targetGain.load();',
+          'smoothed.setTarget(target);   // glide, don\'t jump',
+        ],
+        explain: 'UI stores → audio loads → smoother glides. Atomic for safety, smoothing for musicality — the exact pipeline behind every knob in a shipping plugin.',
+      },
+    ],
+  },
+
+  /* ============ COMPLETION ============ */
+  {
+    id: 'mc1', kind: 'challenge', ctype: 'completion', title: 'Complete: Own the Oscillator', short: 'Code completion',
+    concepts: ['smart-pointers'],
+    intro: 'The engine needs a heap-allocated oscillator with one clear owner, created the modern way.',
+    questions: [
+      {
+        type: 'fill', concept: 'smart-pointers',
+        prompt: 'Create the oscillator, owned from birth.',
+        code: 'class SynthEngine {\n    void prepareToPlay(double sr, int maxBlock)\n    {\n        osc = std::___<WavetableOsc>();\n    }\n    std::unique_ptr<WavetableOsc> osc;\n};',
+        accept: ['make_unique<WavetableOsc>', 'make_unique<WavetableOsc>()'],
+        placeholder: 'make_...<...>',
+        hint: 'One factory call: build + own, no naked new.',
+        mistakes: [
+          { match: 'new', msg: 'Legacy path. The one-step modern form: std::make_unique<WavetableOsc>().' },
+        ],
+        explain: 'make_unique in prepareToPlay: allocation backstage, ownership unambiguous, cleanup automatic when the engine dies.',
+      },
+    ],
+  },
+  {
+    id: 'mc2', kind: 'challenge', ctype: 'completion', title: 'Complete: The Read-Only Promise', short: 'Code completion',
+    concepts: ['move-semantics'],
+    intro: 'A metering method only reads state. Write the promise into the signature so the compiler enforces it.',
+    questions: [
+      {
+        type: 'fill', concept: 'move-semantics',
+        prompt: 'Mark the method as read-only.',
+        code: 'class Meter {\npublic:\n    float getPeak() ___ { return peak; }\nprivate:\n    float peak = 0.0f;\n};',
+        accept: ['const'],
+        placeholder: 'keyword',
+        hint: 'The lock from Zone 1, applied to a whole method.',
+        explain: 'A trailing `const` promises the method changes nothing — and lets it be called on const Meters. Read-only paths marked read-only: const correctness in one word.',
+      },
+    ],
+  },
+  {
+    id: 'mc3', kind: 'challenge', ctype: 'completion', title: 'Complete: The Maybe-Note', short: 'Code completion',
+    concepts: ['modern-types'],
+    intro: 'A voice between notes holds honestly nothing. Read its note with a safe fallback.',
+    questions: [
+      {
+        type: 'fill', concept: 'modern-types',
+        prompt: 'Read the note — or fall back to middle C (60) if there is none.',
+        code: 'std::optional<int> currentNote;\n\nint noteToShow = currentNote.___(60);',
+        accept: ['value_or'],
+        placeholder: 'method',
+        hint: 'The value… or something.',
+        explain: 'value_or(60): the note if present, your fallback if not — an if/else compressed into one honest call.',
+      },
+    ],
+  },
+  {
+    id: 'mc4', kind: 'challenge', ctype: 'completion', title: 'Complete: The Voice Pool Type', short: 'Code completion',
+    concepts: ['templates'],
+    intro: 'Declare the canonical synth voice pool: resizable, one clear owner per voice.',
+    questions: [
+      {
+        type: 'fill', concept: 'templates',
+        prompt: 'Fill the element type: each slot solely owns one Voice.',
+        code: 'std::vector<std::___<Voice>> voices;',
+        accept: ['unique_ptr'],
+        placeholder: 'owner',
+        hint: 'Read it inside-out: a row of sole-ownership handles.',
+        mistakes: [
+          { match: '^shared_ptr$', msg: 'The engine is the only owner of its voices — sharing blurs that for no benefit. unique_ptr.' },
+        ],
+        explain: 'vector<unique_ptr<Voice>>: the type you\'ll type in Zone 5 for real. Growable backstage, unambiguous ownership, automatic cleanup.',
+      },
+    ],
+  },
+  {
+    id: 'mc5', kind: 'challenge', ctype: 'completion', title: 'Complete: The Atomic Bridge', short: 'Code completion',
+    concepts: ['threading'],
+    intro: 'The audio thread needs this block\'s target cutoff — safely, without locks.',
+    questions: [
+      {
+        type: 'fill', concept: 'threading',
+        prompt: 'Pick the value up on the audio thread.',
+        code: 'std::atomic<float> targetCutoff { 1000.0f };\n\nvoid processBlock(...)\n{\n    float cutoff = targetCutoff.___();\n    filter.setCutoff(cutoff);\n}',
+        accept: ['load'],
+        placeholder: 'method',
+        hint: 'The reading half of the handoff.',
+        mistakes: [
+          { match: '^store$', msg: 'store publishes (the UI side). The audio thread is receiving: load.' },
+        ],
+        explain: '.load(): indivisible, bounded, and free of waiting — the only kind of cross-thread read the audio thread accepts.',
+      },
+    ],
+  },
+
+  /* ============ BUG HUNTS ============ */
+  {
+    id: 'mb1', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Pillaged Buffer', short: 'Find the bug',
+    concepts: ['move-semantics'],
+    intro: 'A wavetable is moved into the engine — then the code keeps using the leftovers. Tap the line that reads from an empty husk.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'move-semantics',
+        prompt: 'One line uses a moved-from object as if it still had the data. Which?',
+        code: [
+          'std::vector<float> table = renderTable();',
+          'engine.setTable(std::move(table));',
+          'float peak = findPeak(table);',
+          'display.show(peak);',
+        ],
+        buggy: 2,
+        explain: 'Line 2 handed the table\'s contents to the engine — after a move, `table` is valid but empty. findPeak scans zero samples and "peak" is meaningless. Fix: compute the peak *before* moving, or ask the engine for it.',
+        fix: 'float peak = findPeak(table);  // BEFORE the move',
+      },
+    ],
+  },
+  {
+    id: 'mb2', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Gain That Ghosts', short: 'Find the bug',
+    concepts: ['modern-syntax'],
+    intro: 'A range-based loop applies gain… and the output is bone dry. Tap the line processing ghosts.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'modern-syntax',
+        prompt: 'One line makes the loop edit copies instead of the real samples. Which?',
+        code: [
+          'void applyGain(std::vector<float>& buffer, float gain)',
+          '{',
+          '    for (auto sample : buffer)',
+          '        sample *= gain;',
+          '}',
+        ],
+        buggy: 2,
+        explain: '`for (auto sample : …)` copies each element — the gain lands on throwaway copies and the buffer never changes. One character fixes it: `for (auto& sample : buffer)`. The modern face of Zone 1\'s missing-& bug.',
+        fix: 'for (auto& sample : buffer)',
+      },
+    ],
+  },
+  {
+    id: 'mb3', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Callback That Outlived Its World', short: 'Find the bug',
+    concepts: ['lambdas'],
+    intro: 'A stored callback captures a local by reference. The local dies; the callback lives on. Tap the doomed line.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'lambdas',
+        prompt: 'One line captures something that won\'t exist when the lambda finally runs. Which?',
+        code: [
+          'void setupSlider()',
+          '{',
+          '    float scale = computeScale();',
+          '    slider.onValueChange = [&] { apply(scale); };',
+          '}',
+        ],
+        buggy: 3,
+        explain: '`[&]` captures `scale` by reference — but scale dies at the closing brace, and the callback fires much later. A dangling capture: the lambda cousin of the dangling pointer. Fix: capture by value — `[scale]` (or `[=]`).',
+        fix: 'slider.onValueChange = [scale] { apply(scale); };',
+      },
+    ],
+  },
+  {
+    id: 'mb4', kind: 'challenge', ctype: 'bugfix', title: 'Bug Hunt: The Lock on Stage', short: 'Find the bug',
+    concepts: ['threading'],
+    intro: 'This plugin drops out whenever its editor repaints. One line makes the audio thread wait. Tap it.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'threading',
+        prompt: 'Which line can block the audio thread past its deadline?',
+        code: [
+          'void processBlock(AudioBuffer& buffer)',
+          '{',
+          '    std::lock_guard<std::mutex> lock(paramMutex);',
+          '    float gain = sharedGain;',
+          '    applyGain(buffer, gain);',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'A mutex in processBlock: whenever the UI holds that lock, the audio thread *waits* — and the deadline dies. Fix: make sharedGain a `std::atomic<float>` and `.load()` it. Locks never belong where the deadline lives.',
+        fix: 'float gain = sharedGain.load();  // std::atomic<float>',
+      },
+    ],
+  },
+
+  /* ============ SIMULATED COMPILER ============ */
+  {
+    id: 'me1', kind: 'challenge', ctype: 'compiler', title: 'Decode: The Copy That Can\'t', short: 'Read the error',
+    concepts: ['smart-pointers'],
+    intro: 'Someone tried to copy a unique_ptr. The compiler said no — in its own special way. Decode it, pick the fix.',
+    questions: [
+      {
+        type: 'compiler', concept: 'smart-pointers',
+        prompt: 'What fixes this build — while keeping single ownership?',
+        code: 'auto osc = std::make_unique<SineOsc>();\nauto osc2 = osc;   // hand it to the voice',
+        error: "engine.cpp:2:13: error: use of deleted function\n'std::unique_ptr<SineOsc>::unique_ptr(const unique_ptr&)'\nnote: declared here — copying a unique_ptr is deleted",
+        options: [
+          { t: 'Transfer ownership: `auto osc2 = std::move(osc);`', why: '' },
+          { t: 'Switch both to raw pointers', why: 'That "fixes" the error by deleting the safety — back to manual delete and double-free land.' },
+          { t: 'Use memcpy to copy it', why: 'Bypassing the type system doesn\'t bypass the double-delete — it guarantees it, plus undefined behavior.' },
+          { t: 'Declare osc2 first, then assign', why: 'Assignment hits a matching deleted function — the copy assignment — same failure, one line later.' },
+        ],
+        answer: 0,
+        explain: '"use of deleted function" = this operation was banned *on purpose*. unique_ptr deletes its copy constructor so two owners can\'t exist. The sanctioned gesture is the handover: std::move.',
+      },
+    ],
+  },
+  {
+    id: 'me2', kind: 'challenge', ctype: 'compiler', title: 'Decode: The Selector That Won\'t Mix', short: 'Read the error',
+    concepts: ['modern-syntax'],
+    intro: 'An enum class refuses to act like a number — because that\'s its job. Read the message, pick the fix.',
+    questions: [
+      {
+        type: 'compiler', concept: 'modern-syntax',
+        prompt: 'What\'s the right fix?',
+        code: 'enum class Waveform { sine, saw, square };\n\nWaveform wave = Waveform::saw;\nint index = wave;   // for the wavetable lookup',
+        error: "osc.cpp:4:13: error: cannot convert 'Waveform'\nto 'int' in initialization\nnote: no implicit conversion from scoped enum",
+        options: [
+          { t: 'Convert explicitly where you truly need a number: `int index = (int) wave;`', why: '' },
+          { t: 'Change enum class back to plain enum', why: 'That reopens the hole enum class closed — silent conversions and nonsense values. Keep the safety; convert explicitly at the one place you need it.' },
+          { t: 'Store waveforms as raw ints everywhere', why: 'Then nothing stops waveform 47. The labeled ring exists for a reason.' },
+          { t: 'It can\'t be fixed — enum class values are unusable as indexes', why: 'They\'re usable — the language just insists the conversion be *visible*: a deliberate cast.' },
+        ],
+        answer: 0,
+        explain: 'enum class blocks *implicit* conversion by design — that\'s the type safety. Where an index is genuinely needed (wavetable lookup), you cast explicitly and visibly: `(int) wave` (or static_cast<int>(wave)). The safety stays; the intent is on the page.',
+      },
+    ],
+  },
+
+  /* ============ PROJECTS ============ */
+  {
+    id: 'p3', kind: 'project', title: 'Mission: The Voice Rack', short: 'Mini-project',
+    concepts: ['smart-pointers', 'ownership'],
+    brief: 'Build a synth\'s voice allocator: an owned pool of voices, a free-voice search, and a stealing policy — the exact machinery inside every polysynth you own. You\'ll wire this into a real engine in Zone 5.',
+    steps: [
+      {
+        note: 'Step 1 — Choose the pool\'s type. Eight voices, owned by the engine, created backstage.',
+        q: {
+          type: 'mcq', concept: 'smart-pointers',
+          prompt: 'Which storage is right for the voice pool?',
+          options: [
+            { t: '`std::vector<std::unique_ptr<Voice>>` — sized in prepareToPlay', why: '' },
+            { t: '`std::vector<Voice*>` with manual new/delete', why: 'Raw owning pointers: one forgotten delete per code path. unique_ptr makes cleanup automatic.' },
+            { t: '`std::vector<std::shared_ptr<Voice>>`', why: 'Nobody co-owns a voice — the engine is its only owner. Sharing adds counting cost and blurs responsibility.' },
+            { t: 'Eight global Voice variables', why: 'Globals can\'t resize, can\'t loop cleanly, and leak state across plugin instances.' },
+          ],
+          answer: 0,
+          explain: 'The canonical pool: resizable backstage, one owner per voice, automatic teardown. You typed this type in the challenges — now it\'s load-bearing.',
+        },
+      },
+      {
+        note: 'Step 2 — Populate it. Eight voices, built the modern way, in the sanctioned place.',
+        q: {
+          type: 'fill', concept: 'smart-pointers',
+          prompt: 'Create each voice inside the setup loop.',
+          code: 'void prepareToPlay(double sr, int maxBlock)\n{\n    voices.clear();\n    for (int i = 0; i < 8; ++i)\n        voices.push_back(std::___<Voice>());\n}',
+          accept: ['make_unique<Voice>', 'make_unique<Voice>()'],
+          placeholder: 'factory',
+          hint: 'Build + own in one call.',
+          explain: 'Eight make_unique calls, all in prepareToPlay: allocation backstage, push_back safe here (and only here). The audio thread will meet a pool that\'s already complete.',
+        },
+      },
+      {
+        note: 'Step 3 — Note-on arrives: find a free voice.',
+        q: {
+          type: 'fill', concept: 'ownership',
+          prompt: 'A voice is available when it is NOT active. Complete the test.',
+          code: 'Voice* findFreeVoice()\n{\n    for (auto& v : voices)\n        if (___)\n            return v.get();\n    return nullptr;    // all busy\n}',
+          accept: ['!v->isActive()', '! v->isActive()', 'v->isActive() == false'],
+          placeholder: 'condition',
+          hint: 'Reach through the unique_ptr with ->, and negate.',
+          mistakes: [
+            { match: '^v->isActive\\(\\)$', msg: 'That finds a *busy* voice. You want the idle ones: negate it with !.' },
+            { match: 'v\\.isActive', msg: 'v is a unique_ptr — reach the Voice through it with the arrow: v->isActive().' },
+          ],
+          explain: '!v->isActive(): sweep the pool, hand back the first idle voice. Note the return type — a raw Voice* here is a *non-owning* peek, which is exactly what borrowers should get. (Returning nullptr honestly says "none free" — the caller decides what\'s next.)',
+        },
+      },
+      {
+        note: 'Step 4 — All eight busy, and a ninth note arrives. Assemble the noteOn policy.',
+        q: {
+          type: 'order', concept: 'ownership',
+          prompt: 'Arrange the noteOn flow, first decision at the top.',
+          lines: [
+            'Voice* v = findFreeVoice();',
+            'if (v == nullptr)',
+            '    v = stealOldestVoice();   // fast-fade, reassign',
+            'v->startNote(note, velocity);',
+          ],
+          explain: 'Try free first; steal only when forced; then start the note on whichever voice you ended up with. Graceful stealing (fade, then reassign) is what separates smooth polysynths from clicky ones.',
+        },
+      },
+      {
+        note: 'Step 5 — Code review. A teammate "optimized" voice creation. The plugin now glitches on busy passages.',
+        q: {
+          type: 'bugspot', concept: 'smart-pointers',
+          prompt: 'Tap the line that breaks the real-time rules.',
+          code: [
+            'void noteOn(int note, float velocity)',
+            '{',
+            '    if (findFreeVoice() == nullptr)',
+            '        voices.push_back(std::make_unique<Voice>());',
+            '    startOnFreeVoice(note, velocity);',
+            '}',
+          ],
+          buggy: 3,
+          explain: 'Growing the pool during noteOn — which runs on the audio thread — allocates: make_unique allocates the Voice AND push_back may reallocate the vector. Two allocations where zero are allowed. Real synths steal instead: the pool\'s size is a backstage decision.',
+          fix: 'Steal an active voice instead — the pool never grows on stage',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p4', kind: 'project', title: 'Mission: The Preset Vault', short: 'Mini-project',
+    concepts: ['modern-types', 'move-semantics'],
+    brief: 'Build the loading path of a preset manager: honest maybe-values for presets that fail to load, and move semantics so big preset blobs transfer without copying. The same shapes reappear in Zone 3\'s ValueTree state.',
+    steps: [
+      {
+        note: 'Step 1 — Loading can fail (missing file, wrong version). Choose the honest return type.',
+        q: {
+          type: 'mcq', concept: 'modern-types',
+          prompt: 'What should loadPreset(path) return?',
+          options: [
+            { t: '`std::optional<Preset>` — a Preset, or honestly nothing', why: '' },
+            { t: '`Preset` with all-zero values on failure', why: 'A silent zeroed preset *looks* loaded — the failure hides until a user notices their patch is gone.' },
+            { t: '`Preset*` that\'s null on failure', why: 'Workable but raw: who owns that pointer? optional carries the maybe *and* the value, no ownership puzzle.' },
+            { t: '`bool`, with the preset in a global', why: 'Globals plus a flag is the pattern optional was invented to replace.' },
+          ],
+          answer: 0,
+          explain: 'optional<Preset> writes "this can fail" into the signature. Callers are forced to handle the empty case — no zombie presets, no conventions to remember.',
+        },
+      },
+      {
+        note: 'Step 2 — Declare it.',
+        q: {
+          type: 'fill', concept: 'modern-types',
+          prompt: 'Complete the signature.',
+          code: 'std::___<Preset> loadPreset(const std::string& path);',
+          accept: ['optional'],
+          placeholder: 'template',
+          hint: 'Maybe a Preset.',
+          explain: 'std::optional<Preset>: the maybe is now part of the type, checked by the compiler at every call site.',
+        },
+      },
+      {
+        note: 'Step 3 — Show the loaded preset\'s name — or a safe default when nothing loaded.',
+        q: {
+          type: 'predict', concept: 'modern-types',
+          prompt: 'The load failed (empty optional). What does the display show?',
+          code: 'auto preset = loadPreset("missing.pst");   // empty\n\ndisplay.setText(\n    preset.has_value() ? preset->name\n                       : "INIT");',
+          options: [
+            { t: '`INIT` — the empty branch runs', why: '' },
+            { t: 'The missing preset\'s name', why: 'There is no preset — has_value() is false, so the fallback branch runs.' },
+            { t: 'Garbage text', why: 'That\'s what the check prevents: no unchecked access ever happens.' },
+            { t: 'It crashes', why: 'has_value() guards the access — this is exactly the safe pattern.' },
+          ],
+          answer: 0,
+          explain: 'Check, then branch: the UI shows INIT and the session keeps rolling. Failure became a state, not an accident.',
+        },
+      },
+      {
+        note: 'Step 4 — The preset holds big data (wavetables, sample refs). Store it without cloning.',
+        q: {
+          type: 'fill', concept: 'move-semantics',
+          prompt: 'Hand the loaded preset into the member — no copy.',
+          code: 'void applyPreset(Preset loaded)\n{\n    currentPreset = std::___(loaded);\n}',
+          accept: ['move'],
+          placeholder: 'one word',
+          hint: 'Permission to pillage.',
+          explain: 'std::move(loaded): the parameter was this data\'s last stop — the member takes its internals wholesale. Megabytes handed over for the price of a pointer swap.',
+        },
+      },
+      {
+        note: 'Step 5 — Assemble the full loading path.',
+        q: {
+          type: 'order', concept: 'modern-types',
+          prompt: 'Arrange applyIfLoaded, top to bottom.',
+          lines: [
+            'auto loaded = loadPreset(path);',
+            'if (!loaded.has_value())',
+            '    return;             // keep current sound',
+            'currentPreset = std::move(*loaded);',
+            'rebuildVoices();',
+          ],
+          explain: 'Load → check → move → rebuild. Failure exits early (RAII cleans anything partial); success transfers the blob without a single copied sample. This shape is production code.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'p5', kind: 'project', title: 'Mission: The Synth Skeleton', short: 'Zone project',
+    concepts: ['threading', 'smart-pointers', 'ownership'],
+    brief: 'The Zone 2 finale: assemble the architecture of a real synthesizer — owned voice pool, atomic parameter bridge, real-time-clean processBlock. This exact skeleton becomes a sounding instrument in Zones 3–5.',
+    steps: [
+      {
+        note: 'Step 1 — The blueprint. An engine, its voices, and two threads that must never collide.',
+        q: {
+          type: 'mcq', concept: 'ownership',
+          prompt: 'Which architecture is right?',
+          options: [
+            { t: 'Engine owns the voices (vector of unique_ptr); knob values cross via atomics; UI only observes', why: '' },
+            { t: 'The editor owns the voices, since it has the knobs', why: 'The editor comes and goes with the window — sound would die when it closed. Audio state lives with the processor.' },
+            { t: 'Voices own each other in a chain', why: 'A chain of owners means one voice\'s death cascades — and nobody can reason about lifetime.' },
+            { t: 'Everything global, everything shared', why: 'Every lesson in this zone was a case against exactly this.' },
+          ],
+          answer: 0,
+          explain: 'The engine (your AudioProcessor, come Zone 3) owns all sound-making state. The UI is a temporary window that stores atomics and observes. This division IS plugin architecture.',
+        },
+      },
+      {
+        note: 'Step 2 — Declare the parameter bridge.',
+        q: {
+          type: 'fill', concept: 'threading',
+          prompt: 'Cutoff must cross threads safely. Complete the member.',
+          code: 'class SynthEngine {\nprivate:\n    std::vector<std::unique_ptr<Voice>> voices;\n    std::___<float> targetCutoff { 1000.0f };\n};',
+          accept: ['atomic'],
+          placeholder: 'template',
+          hint: 'The indivisible-handoff type.',
+          explain: 'std::atomic<float>: the knob\'s bridge. UI stores, audio loads, nobody waits, nothing tears.',
+        },
+      },
+      {
+        note: 'Step 3 — The audio thread picks up the target each block.',
+        q: {
+          type: 'fill', concept: 'threading',
+          prompt: 'Read the bridge, audio-side.',
+          code: 'void processBlock(AudioBuffer& buffer)\n{\n    float cutoff = targetCutoff.___();\n    for (auto& v : voices)\n        v->render(buffer, cutoff);\n}',
+          accept: ['load'],
+          placeholder: 'method',
+          hint: 'The receiving half.',
+          explain: 'load once per block, hand the value down to every voice. (Zone 4 adds the smoother between load and render.) Note the range-for with & — every habit from this zone, working together.',
+        },
+      },
+      {
+        note: 'Step 4 — Assemble the engine\'s lifecycle.',
+        q: {
+          type: 'order', concept: 'ownership',
+          prompt: 'Arrange the skeleton\'s flow: setup, then per-block work.',
+          lines: [
+            'void prepareToPlay(double sr, int maxBlock) {',
+            '    buildVoicePool();       // allocate everything',
+            '}',
+            'void processBlock(AudioBuffer& buffer) {',
+            '    renderAllVoices(buffer); // allocate NOTHING',
+            '}',
+          ],
+          explain: 'Everything heavy in prepare; only bounded work per block. Two functions, one law — the plugin lifecycle you\'ll fill with real JUCE in Zone 3.',
+        },
+      },
+      {
+        note: 'Step 5 — Final review. One line of debug helpfulness snuck into the render path.',
+        q: {
+          type: 'bugspot', concept: 'threading',
+          prompt: 'Tap the real-time violation.',
+          code: [
+            'void processBlock(AudioBuffer& buffer)',
+            '{',
+            '    float cutoff = targetCutoff.load();',
+            '    std::cout << "cutoff: " << cutoff << "\\n";',
+            '    for (auto& v : voices)',
+            '        v->render(buffer, cutoff);',
+            '}',
+          ],
+          buggy: 3,
+          explain: 'Logging is I/O: std::cout can block on the console, the disk, anything — unbounded time on the deadline thread. Debug prints live on the UI thread or behind debug-build metering. The atomic load above it? Perfectly legal. Now you can tell them apart on sight.',
+          fix: 'Delete it — meter via atomics to the UI instead',
+        },
+      },
+      {
+        note: 'Step 6 — Ship-readiness check.',
+        q: {
+          type: 'mcq', concept: 'threading',
+          prompt: 'Which of these is SAFE in this engine\'s processBlock?',
+          options: [
+            { t: 'targetCutoff.load(), then arithmetic on the voices\' buffers', why: '' },
+            { t: 'voices.push_back to add a voice on demand', why: 'Allocation on stage — the exact bug from the Voice Rack mission. Pool size is a backstage decision.' },
+            { t: 'std::lock_guard around the render loop', why: 'A contested lock turns the deadline into a coin flip — the mb4 bug.' },
+            { t: 'throw std::runtime_error if a table is missing', why: 'Unbounded, and hosts don\'t catch it. Report with optional/return values instead.' },
+          ],
+          answer: 0,
+          explain: 'Atomic loads and pure arithmetic on pre-allocated data: the entire legal vocabulary of the audio thread. Your skeleton is clean — Zone 2 cleared, architecture in hand.',
+        },
+      },
+    ],
+  },
+
+  /* ============ BOSS ============ */
+  {
+    id: 'boss2', kind: 'boss', title: 'BOSS: The Haunted Synth', short: 'Zone 2 boss',
+    concepts: ['smart-pointers', 'move-semantics', 'threading', 'raii'],
+    brief: 'A collaborator\'s half-finished synth: it leaks, it drops out when the editor opens, and sometimes a preset loads as silence. Every ghost in it is a Zone 2 lesson wearing a sheet. Six stages, one retry each, clear 4 to ship it.',
+    stages: [
+      {
+        type: 'compiler', concept: 'smart-pointers',
+        prompt: 'Stage 1 — It won\'t even build. Fix it while keeping single ownership.',
+        code: 'auto voice = std::make_unique<Voice>();\nactiveVoices.push_back(voice);',
+        error: "synth.cpp:2:29: error: use of deleted function\n'std::unique_ptr<Voice>::unique_ptr(const unique_ptr&)'",
+        options: [
+          { t: '`activeVoices.push_back(std::move(voice));`', why: '' },
+          { t: 'Store raw pointers instead', why: 'Trading a build error for manual delete and double-free risk. Keep the safety; use the handover.' },
+          { t: 'Make the vector hold copies of Voice objects', why: 'Possible but changes the design — and copying voices mid-life duplicates state. The intended fix is one word: move.' },
+          { t: 'Remove the unique_ptr entirely', why: '"Delete the safety" is never the fix. The compiler is asking for a transfer, not a surrender.' },
+        ],
+        answer: 0,
+        explain: '"use of deleted function" on a unique_ptr copy = the compiler protecting single ownership. push_back(std::move(voice)) hands the voice into the pool — one owner, before and after.',
+      },
+      {
+        type: 'bugspot', concept: 'threading',
+        prompt: 'Stage 2 — Dropouts whenever the editor repaints. Tap the cause.',
+        code: [
+          'void processBlock(AudioBuffer& buffer)',
+          '{',
+          '    std::lock_guard<std::mutex> lock(uiMutex);',
+          '    renderVoices(buffer);',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'The editor holds uiMutex while repainting; processBlock waits; the deadline dies. Knob values cross by atomic, streams by FIFO — locks never enter the render path.',
+        fix: 'Replace the shared state with std::atomic values',
+      },
+      {
+        type: 'predict', concept: 'move-semantics',
+        prompt: 'Stage 3 — Presets sometimes load as silence. Why?',
+        code: 'auto table = loadWavetable(path);\nengine.setTable(std::move(table));\nvalidateTable(table);   // "verify after applying"',
+        options: [
+          { t: 'validateTable checks an empty husk — the data moved into the engine', why: '' },
+          { t: 'std::move deleted the table', why: 'Nothing is deleted — the contents changed owner. But the old name now holds an empty vector, and validating *that* is meaningless.' },
+          { t: 'loadWavetable always fails', why: 'The load is fine — the post-move read is the ghost.' },
+          { t: 'setTable copies, so everything works', why: 'std::move exists to prevent exactly that copy — and it did. The husk is the price.' },
+        ],
+        answer: 0,
+        explain: 'Validating after moving validates nothing. Check *before* the handover — or ask the engine to validate what it received. Moved-from means empty-handed.',
+      },
+      {
+        type: 'order', concept: 'threading',
+        prompt: 'Stage 4 — Rebuild the knob-to-audio path properly.',
+        lines: [
+          '// UI thread:',
+          'targetGain.store(sliderValue);',
+          '// audio thread:',
+          'float target = targetGain.load();',
+          'applySmoothed(target);',
+        ],
+        explain: 'Store → load → smooth. Safe crossing, musical result — the pipeline every parameter in this synth now uses.',
+      },
+      {
+        type: 'fill', concept: 'raii',
+        prompt: 'Stage 5 — The old code leaked its sample file handle on early returns. Give the wrapper its RAII release.',
+        code: 'class SampleHandle {\npublic:\n    SampleHandle(const char* path) { open(path); }\n    ___()                          { close(); }\n};',
+        accept: ['~SampleHandle'],
+        placeholder: 'name',
+        hint: 'The power-down twin of the constructor.',
+        explain: '~SampleHandle(): with close() wired to the destructor, every path out — normal, early return, error — releases the file. The leak is structurally gone.',
+      },
+      {
+        type: 'mcq', concept: 'threading',
+        prompt: 'Stage 6 — Final ship check. Which belongs in this synth\'s processBlock?',
+        options: [
+          { t: 'Atomic loads, smoothing math, and rendering into pre-allocated buffers', why: '' },
+          { t: 'A quick std::cout to trace gain values', why: 'I/O on the deadline thread — the Synth Skeleton\'s ghost. Meter through atomics instead.' },
+          { t: 'make_unique for voices as notes arrive', why: 'Allocation on stage. The pool was sized in prepareToPlay; busy pools steal.' },
+          { t: 'A try/catch around everything, throwing on bad state', why: 'Throwing is banned where the deadline lives — design the path so it can\'t need to.' },
+        ],
+        answer: 0,
+        explain: 'Load, compute, write — on memory that already exists. That\'s the whole legal vocabulary, and this synth now speaks it fluently. The haunting is over: Zone 2 cleared.',
+      },
+    ],
+  },
+];
+
+;
 /* ===== src/js/data_glossary.js ===== */
 /* ============================================================
    SIGNAL DICTIONARY — part A: Basics, C++, Memory.
@@ -4089,6 +5895,140 @@ DICT.push(
 );
 
 ;
+/* ===== src/js/data_glossary_d.js ===== */
+/* ============================================================
+   SIGNAL DICTIONARY — part D: terms introduced by Zone 2.
+   Only genuinely new concepts; existing entries are reused.
+   ============================================================ */
+
+DICT.push(
+  {
+    id: 'raii', t: 'RAII', full: 'Resource Acquisition Is Initialization', c: 'C++',
+    plain: 'The C++ pattern behind all modern resource handling: acquire a resource in an object\'s constructor, release it in the destructor. Since destructors run automatically on every exit path, cleanup can never be forgotten.',
+    why: 'Plugins are created and destroyed constantly by DAWs. RAII is why a well-written plugin can load and unload ten thousand times without leaking memory, file handles, or audio devices.',
+    studio: 'The venue\'s house rule: gear checked out at load-in is automatically signed back in at close — even when the show ends early.',
+    uses: ['vector freeing itself', 'unique_ptr deleting', 'File handles', 'Device locks'],
+    viz: { t: 'chain', nodes: ['ctor: acquire', 'object alive', 'dtor: release'], accent: 2 },
+    mistake: 'Writing manual init()/cleanup() pairs. One early return, one forgotten call — leaked. Put the pair in the constructor and destructor instead.',
+    remember: 'Tie cleanup to the destructor and it becomes physics, not discipline.',
+    related: ['constructor', 'destructor', 'smart-pointer', 'unique-ptr', 'scope'],
+    appears: [{ z: 2, node: 'm3' }, { z: 2, node: 'mo1' }],
+    aka: ['resource acquisition is initialization'],
+    search: ['cleanup', 'automatic', 'leak', 'release'],
+  },
+  {
+    id: 'unique-ptr', t: 'std::unique_ptr', full: 'unique (sole-ownership) smart pointer', c: 'C++',
+    plain: 'A pointer that owns one heap object and deletes it automatically when the pointer dies. Copying is a compile error — exactly one owner can exist. Created with std::make_unique.',
+    why: 'The default owning type of modern plugin code: your processor owns its DSP modules, editor and voices through unique_ptr, and delete disappears from your vocabulary.',
+    studio: 'A flight case with one name on it: hold the case, own the gear. Hand it over (move) and the responsibility goes with it.',
+    uses: ['Voice pools', 'DSP module ownership', 'Owning wavetables & buffers'],
+    viz: { t: 'owners', mode: 'unique' },
+    mistake: 'Reaching for `new` out of habit "just for now." make_unique costs nothing extra and cannot leak.',
+    remember: 'One owner, automatic delete — make_unique is the new new.',
+    related: ['smart-pointer', 'raii', 'move-semantics', 'pointer'],
+    appears: [{ z: 2, node: 'm4' }, { z: 2, node: 'mc1' }, { z: 2, node: 'p3' }],
+    aka: ['make_unique', 'unique pointer'],
+    search: ['ownership', 'auto delete', 'one owner'],
+  },
+  {
+    id: 'move-semantics', t: 'move semantics', c: 'C++',
+    plain: 'Handing an object\'s contents to a new owner instead of copying them. std::move(x) marks x as "you may pillage this"; afterward x is valid but empty. For big data (audio buffers), a move costs a pointer swap where a copy costs cloning every sample.',
+    why: 'Wavetables, sample data and preset blobs transfer by move — megabytes handed over in nanoseconds. It\'s also how unique_ptr ownership legally changes hands.',
+    studio: 'Handing over the hard drive instead of burning a duplicate: instant — but your hands are empty afterward.',
+    uses: ['Buffer handovers', 'unique_ptr transfers', 'Preset loading'],
+    viz: { t: 'moveviz' },
+    mistake: 'Reading a variable after moving from it and wondering where the data went. Moved-from means valid but empty — check your hands before you read.',
+    remember: 'Move hands over the drive; copy burns a duplicate. Audio-sized data moves.',
+    related: ['unique-ptr', 'vector', 'reference'],
+    appears: [{ z: 2, node: 'm6' }, { z: 2, node: 'mb1' }, { z: 2, node: 'p4' }],
+    aka: ['std::move', 'rvalue'],
+    search: ['transfer', 'hand over', 'cheap copy', 'pillage'],
+  },
+  {
+    id: 'race-condition', t: 'race condition', c: 'AUDIO CODE',
+    plain: 'Two threads touching the same data with no coordination — the result depends on which thread wins the microsecond. Races produce corruption rarely, randomly, and differently on every machine.',
+    why: 'Every plugin knob is UI-thread data the audio thread needs — an un-coordinated share is a race. "Works on my machine" plus a race equals "glitches on stage."',
+    studio: 'Two engineers grabbing the same fader at the same instant, no talkback. Whoever wins the grab decides the mix — differently every take.',
+    uses: ['Knob values', 'Meter data', 'Preset swaps under playback'],
+    viz: { t: 'lanes' },
+    mistake: 'Treating the absence of glitches in testing as thread safety. Races hide at your buffer size and appear at someone else\'s.',
+    remember: 'Uncoordinated shared data + two threads = timing-dependent corruption.',
+    related: ['thread', 'atomic', 'mutex', 'audio-thread'],
+    appears: [{ z: 2, node: 'm13' }, { z: 6, label: 'lock-free communication' }],
+    aka: ['data race'],
+    search: ['random bug', 'sometimes glitches', 'shared variable'],
+  },
+  {
+    id: 'mutex', t: 'mutex', full: 'mutual exclusion lock', c: 'AUDIO CODE',
+    plain: 'A lock that lets only one thread into a section of code at a time. Others wait at the door until it\'s released. Fixes races — by making threads wait.',
+    why: 'The waiting is the problem: if the audio thread ever waits for the UI thread, the block misses its deadline and the audio drops out. Rule: mutexes never appear in processBlock.',
+    studio: '"One person at the desk at a time" — sensible, until the live performer is the one left waiting outside the door.',
+    uses: ['UI/background coordination', 'File access guards', 'Never the audio path'],
+    viz: { t: 'lanes', blocked: true },
+    mistake: 'Locking inside processBlock "just briefly." A contested lock is unbounded — one bad microsecond and the deadline dies audibly.',
+    remember: 'Locks make threads wait — and the audio thread must never wait.',
+    related: ['thread', 'race-condition', 'atomic', 'audio-thread'],
+    appears: [{ z: 2, node: 'm13' }, { z: 2, node: 'mb4' }],
+    aka: ['lock', 'lock_guard'],
+    search: ['blocking', 'wait', 'lock'],
+  },
+  {
+    id: 'atomic', t: 'std::atomic', c: 'AUDIO CODE',
+    plain: 'A variable whose reads and writes are indivisible: no thread can ever see a half-written value. One thread store()s, another load()s — safely, and lock-free on every desktop platform you\'ll ship to (check is_always_lock_free).',
+    why: 'The standard bridge for knob values crossing from UI to audio. Every APVTS parameter reaches your DSP as an atomic — bounded, lock-free, deadline-safe.',
+    studio: 'A relay baton: the handoff is one indivisible gesture — you hold it or you don\'t, never half.',
+    uses: ['Parameter bridges', 'Meter levels out', 'FIFO positions'],
+    viz: { t: 'lanes', atomic: true },
+    mistake: 'Making a value atomic and skipping the smoothing. Atomics move the value safely; the smoother makes it musical. You need both.',
+    remember: 'UI stores, audio loads — the atomic handoff is how knobs reach the sound.',
+    related: ['thread', 'mutex', 'race-condition', 'parameter-smoothing', 'apvts'],
+    appears: [{ z: 2, node: 'm14' }, { z: 2, node: 'mc5' }, { z: 2, node: 'p5' }],
+    aka: ['std::atomic<float>', 'atomics'],
+    search: ['thread safe', 'lock free value', 'store load'],
+  },
+  {
+    id: 'lock-free', t: 'lock-free', c: 'AUDIO CODE',
+    plain: 'Coordinating threads without any locks — using atomics and careful structure so no thread ever waits for another. The producer/consumer FIFO (First In, First Out ring queue) is the classic shape: one thread pushes, one pops, atomic positions keep them safe.',
+    why: 'The audio thread can\'t wait, ever — so everything crossing into it must be lock-free: parameters via atomics, event streams via pre-allocated FIFOs. JUCE ships AbstractFifo for exactly this.',
+    studio: 'A tape loop running between two rooms: one room records onto it, the other plays from it — nobody ever knocks on the other\'s door.',
+    uses: ['MIDI event queues', 'Meter taps', 'Preset handoffs'],
+    viz: { t: 'fifo' },
+    mistake: 'Growing the queue when it fills — growth allocates. Real-time FIFOs are pre-allocated rings: full means drop or handle, never grow.',
+    remember: 'Lock-free = nobody ever waits: atomics for values, ring FIFOs for streams.',
+    related: ['atomic', 'mutex', 'audio-thread', 'allocation'],
+    appears: [{ z: 2, node: 'm14' }, { z: 2, node: 'mo2' }, { z: 6, label: 'building a FIFO' }],
+    aka: ['fifo', 'producer consumer', 'ring buffer'],
+    search: ['queue', 'no locks', 'events between threads'],
+  },
+  {
+    id: 'optional', t: 'std::optional', c: 'C++',
+    plain: 'A container for a value that might honestly not exist: an optional<int> holds an int or nothing at all. Check with has_value(), read safely with value_or(fallback). Replaces magic numbers like -1.',
+    why: 'A voice between notes, a preset that failed to load, a sample slot with nothing assigned — plugins are full of legitimate "nothing" states, and optional makes them impossible to forget to handle.',
+    studio: 'An insert slot that can be genuinely empty — not "occupied by silence."',
+    uses: ['Voice\'s current note', 'loadPreset results', 'Unassigned slots'],
+    mistake: 'Encoding "nothing" as -1 or 0 and forgetting the convention three files later. optional writes the maybe into the type.',
+    remember: 'optional says "maybe a value" in the type, where it can\'t be ignored.',
+    related: ['variant', 'bool', 'nullptr'],
+    appears: [{ z: 2, node: 'm8' }, { z: 2, node: 'mc3' }, { z: 2, node: 'p4' }],
+    aka: ['std::optional', 'maybe'],
+    search: ['nothing', 'maybe', 'might not exist', 'no value'],
+  },
+  {
+    id: 'variant', t: 'std::variant', c: 'C++',
+    plain: 'A slot holding exactly one value whose type can be any one of a fixed list: variant<float, bool, int> is a float OR a bool OR an int at any moment. Ask what\'s inside with std::get_if.',
+    why: 'Parameter values that may be a knob (float), a switch (bool) or a choice (int) store naturally in one variant — the shape you\'ll meet again inside parameter systems.',
+    studio: 'A combo jack: one hole, several plug types, exactly one plugged at a time.',
+    uses: ['Parameter values', 'Mixed-type event queues', 'Config entries'],
+    mistake: 'Confusing it with a struct (which holds ALL its members at once). A variant holds exactly one occupant at a time.',
+    remember: 'variant = one slot, several possible types, exactly one occupant.',
+    related: ['optional', 'type', 'enum'],
+    appears: [{ z: 2, node: 'm8' }, { z: 3, label: 'parameter systems' }],
+    aka: ['std::variant', 'get_if'],
+    search: ['one of several', 'either type', 'combo'],
+  }
+);
+
+;
 /* ===== src/js/engine.js ===== */
 /* ============================================================
    Challenge engine — pure logic, no DOM.
@@ -4105,7 +6045,7 @@ const Engine = (() => {
   const QINDEX = {};
 
   function indexAll() {
-    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES];
+    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES];
     for (const node of all) {
       NODES[node.id] = node;
       const qs = questionsOf(node);
@@ -4420,11 +6360,21 @@ const Store = (() => {
 
   function isDone(id) { return !!(state.nodes[id] && state.nodes[id].done); }
 
-  // Sequential unlock within a zone. Everything before the first
-  // incomplete node is replayable; the first incomplete node is next.
+  // Concatenated node order across all live zones — unlock is
+  // sequential through the whole curriculum.
+  function liveOrder() {
+    return ZONES.filter((z) => z.status === 'live').flatMap((z) => z.nodeOrder);
+  }
+
+  function zoneOfNode(nodeId) {
+    return ZONES.find((z) => z.nodeOrder && z.nodeOrder.includes(nodeId)) || null;
+  }
+
+  // Sequential unlock. Everything before the first incomplete node is
+  // replayable; the first incomplete node is next. (zoneId kept for
+  // call-site compatibility; the walk is global.)
   function isUnlocked(zoneId, nodeId) {
-    const order = (ZONES.find((z) => z.id === zoneId) || {}).nodeOrder || [];
-    for (const id of order) {
+    for (const id of liveOrder()) {
       if (id === nodeId) return true;
       if (!isDone(id)) return false;
     }
@@ -4432,8 +6382,7 @@ const Store = (() => {
   }
 
   function nextNode() {
-    const order = ZONES[0].nodeOrder;
-    for (const id of order) if (!isDone(id)) return id;
+    for (const id of liveOrder()) if (!isDone(id)) return id;
     return null;
   }
 
@@ -4464,6 +6413,8 @@ const Store = (() => {
       if (id === 'p1') grant('gain_staged');
       if (id === 'p2') grant('osc_online');
       if (id === 'boss1') grant('zone1_clear');
+      if (id === 'boss2') grant('zone2_clear');
+      if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }
@@ -4541,8 +6492,14 @@ const Store = (() => {
   function drainAchievements() { const q = achQueue; achQueue = []; return q; }
 
   /* ---- mastery ---- */
-  function zoneMastery() {
-    const lessons = ZONE1_LESSONS.map((l) => l.id);
+  function zoneLessons(zoneId) {
+    const z = ZONES.find((zz) => zz.id === zoneId);
+    if (!z || !z.nodeOrder) return [];
+    return z.nodeOrder.filter((id) => Engine.NODES[id] && Engine.NODES[id].kind === 'lesson');
+  }
+
+  function zoneMastery(zoneId) {
+    const lessons = zoneLessons(zoneId || 'z1');
     const doneLessons = lessons.filter(isDone);
     if (doneLessons.length === 0) return { pct: 0, avgStars: 0, doneLessons: 0, totalLessons: lessons.length };
     const totalStars = doneLessons.reduce((s, id) => s + (state.nodes[id].stars || 0), 0);
@@ -4555,11 +6512,13 @@ const Store = (() => {
     };
   }
 
-  function bossReady() {
-    const m = zoneMastery();
+  function bossReady(bossId) {
+    const zone = zoneOfNode(bossId || 'boss1') || ZONES[0];
+    const m = zoneMastery(zone.id);
     const lessonsDone = m.doneLessons === m.totalLessons;
-    const projectsDone = isDone('p1') && isDone('p2');
-    return { ready: lessonsDone && projectsDone && m.avgStars >= 2, lessonsDone, projectsDone, avgStars: m.avgStars, need: 2 };
+    const projects = zone.nodeOrder.filter((id) => Engine.NODES[id] && Engine.NODES[id].kind === 'project');
+    const projectsDone = projects.every(isDone);
+    return { ready: lessonsDone && projectsDone && m.avgStars >= 2, lessonsDone, projectsDone, avgStars: m.avgStars, need: 2, totalLessons: m.totalLessons, totalProjects: projects.length, zoneNum: zone.num };
   }
 
   /* ---- settings / io ---- */
@@ -4597,7 +6556,7 @@ const Store = (() => {
     get storageOk() { return storageOk; },
     save, todayStr, touchStreak,
     level, levelTitle, levelProgress, addXp,
-    nodeState, isDone, isUnlocked, nextNode, completeNode, setProjectStep, starsFor,
+    nodeState, isDone, isUnlocked, nextNode, liveOrder, zoneOfNode, completeNode, setProjectStep, starsFor,
     markWeak, clearWeak, weakList, weakConcepts,
     dailyToday, completeDaily,
     grant, drainAchievements,
@@ -5101,6 +7060,127 @@ const Viz = (() => {
       return { svg: s.join(''), h: 140 };
     },
 
+    // Object lifetime timeline: born -> alive -> destroyed (scope braces).
+    lifetime() {
+      const s = [];
+      s.push(txt(20, 20, '{', C.dim, 22));
+      s.push(txt(316, 20, '}', C.dim, 22));
+      s.push(`<line x1="60" y1="40" x2="280" y2="40" stroke="${C.phos}" stroke-width="2"/>`);
+      s.push(`<circle cx="60" cy="40" r="5" fill="${C.phos}"/>`);
+      s.push(`<circle cx="280" cy="40" r="5" fill="none" stroke="${C.red}" stroke-width="2"/>`);
+      s.push(txt(60, 62, 'constructor', C.phos, 8.5, 'middle'));
+      s.push(txt(60, 74, 'born', C.faint, 8, 'middle'));
+      s.push(txt(170, 32, 'alive — the object\'s lifetime', C.dim, 9, 'middle'));
+      s.push(txt(280, 62, 'destructor', C.red, 8.5, 'middle'));
+      s.push(txt(280, 74, 'dies at the brace', C.faint, 8, 'middle'));
+      return { svg: s.join(''), h: 84 };
+    },
+
+    // Ownership: unique (one owner) or shared (counted owners) of a resource.
+    owners(o) {
+      const s = [];
+      const shared = o && o.mode === 'shared';
+      if (shared) {
+        [[30, 'sampler A'], [30, ''], [30, '']].forEach(() => {});
+        const ys = [16, 52, 88];
+        ys.forEach((y, i) => {
+          s.push(box(16, y, 96, 28, C.phosDim));
+          s.push(txt(64, y + 18, 'owner ' + (i + 1), C.phos, 9, 'middle'));
+          s.push(arrow(112, y + 14, 196, 62));
+        });
+        s.push(box(200, 44, 122, 40, C.line, false, 'rgba(93,232,148,0.04)'));
+        s.push(txt(261, 62, 'SampleBank', C.ink, 10, 'middle'));
+        s.push(txt(261, 76, 'freed at count 0', C.faint, 8, 'middle'));
+        s.push(`<circle cx="322" cy="44" r="11" fill="#10130f" stroke="${C.amber}" stroke-width="1.4"/>`);
+        s.push(txt(322, 48, '3', C.amber, 10, 'middle'));
+        s.push(txt(170, 132, 'shared_ptr: counted owners — the last one out frees it', C.faint, 9, 'middle'));
+        return { svg: s.join(''), h: 138 };
+      }
+      s.push(box(24, 30, 120, 36, C.phosDim, false, 'rgba(93,232,148,0.05)'));
+      s.push(txt(84, 48, 'unique_ptr', C.phos, 10, 'middle'));
+      s.push(txt(84, 60, 'the ONE owner', C.faint, 8, 'middle'));
+      s.push(arrow(146, 48, 208, 48));
+      s.push(txt(177, 40, 'owns', C.faint, 8.5, 'middle'));
+      s.push(box(212, 30, 104, 36, C.line));
+      s.push(txt(264, 52, 'SineOsc', C.ink, 10, 'middle'));
+      s.push(txt(170, 90, 'owner dies → deleted automatically. no copies allowed.', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 98 };
+    },
+
+    // Copy vs move, side by side.
+    moveviz() {
+      const s = [];
+      s.push(txt(88, 14, 'COPY', C.dim, 9.5, 'middle', 2));
+      s.push(box(24, 22, 56, 30, C.line));
+      s.push(txt(52, 41, '48000', C.dim, 8.5, 'middle'));
+      s.push(arrow(84, 37, 116, 37));
+      s.push(box(120, 22, 56, 30, C.line));
+      s.push(txt(148, 41, '48000', C.dim, 8.5, 'middle'));
+      s.push(txt(100, 66, 'every sample duplicated — slow', C.faint, 8, 'middle'));
+      s.push(`<line x1="185" y1="10" x2="185" y2="76" stroke="${C.line}"/>`);
+      s.push(txt(262, 14, 'MOVE', C.phos, 9.5, 'middle', 2));
+      s.push(box(198, 22, 56, 30, C.line, true));
+      s.push(txt(226, 41, 'empty', C.faint, 8.5, 'middle'));
+      s.push(arrow(258, 37, 282, 37, C.phos));
+      s.push(box(286, 22, 50, 30, C.phosDim, false, 'rgba(93,232,148,0.06)'));
+      s.push(txt(311, 41, '48000', C.phos, 8.5, 'middle'));
+      s.push(txt(262, 66, 'handles swapped — instant', C.faint, 8, 'middle'));
+      return { svg: s.join(''), h: 80 };
+    },
+
+    // Two thread lanes sharing a value; optional blocked (mutex) or atomic bridge.
+    lanes(o) {
+      const s = [];
+      s.push(box(12, 12, 316, 30, C.line));
+      s.push(txt(20, 31, 'UI THREAD', C.dim, 8.5, 'start', 1.5));
+      s.push(box(12, 84, 316, 30, C.line));
+      s.push(txt(20, 103, 'AUDIO THREAD', C.dim, 8.5, 'start', 1.5));
+      if (o && o.atomic) {
+        s.push(box(140, 50, 100, 26, C.phosDim, false, 'rgba(93,232,148,0.07)'));
+        s.push(txt(190, 67, 'atomic<float>', C.phos, 8.5, 'middle'));
+        s.push(arrow(170, 42, 178, 50, C.phos));
+        s.push(txt(148, 47, 'store', C.faint, 7.5, 'end'));
+        s.push(arrow(202, 76, 210, 84, C.phos));
+        s.push(txt(232, 82, 'load', C.faint, 7.5, 'start'));
+        s.push(txt(170, 132, 'indivisible handoff — nobody waits, nothing tears', C.faint, 9, 'middle'));
+      } else if (o && o.blocked) {
+        s.push(box(140, 50, 100, 26, C.amber, false, 'rgba(240,180,80,0.06)'));
+        s.push(txt(190, 67, 'MUTEX  🔒', C.amber, 8.5, 'middle'));
+        s.push(txt(100, 67, 'UI holds it…', C.faint, 8, 'end'));
+        s.push(txt(258, 60, 'audio WAITS', C.red, 8.5, 'start'));
+        s.push(txt(258, 71, 'deadline dies', C.red, 7.5, 'start'));
+        s.push(txt(170, 132, 'a contested lock turns the deadline into a coin flip', C.faint, 9, 'middle'));
+      } else {
+        s.push(box(150, 50, 80, 26, C.red, true));
+        s.push(txt(190, 67, 'float gain', C.red, 8.5, 'middle'));
+        s.push(arrow(175, 42, 182, 50, C.red));
+        s.push(arrow(198, 76, 205, 84, C.red));
+        s.push(txt(170, 132, 'both touch one plain value — a race condition', C.faint, 9, 'middle'));
+      }
+      return { svg: s.join(''), h: 138 };
+    },
+
+    // Producer/consumer FIFO ring between threads.
+    fifo() {
+      const s = [];
+      s.push(box(12, 36, 80, 32, C.line));
+      s.push(txt(52, 50, 'PRODUCER', C.dim, 8, 'middle', 1));
+      s.push(txt(52, 61, 'UI thread', C.faint, 7.5, 'middle'));
+      s.push(arrow(94, 52, 118, 52));
+      for (let i = 0; i < 5; i++) {
+        const filled = i < 3;
+        s.push(box(122 + i * 22, 40, 19, 24, filled ? C.phosDim : C.line, false, filled ? 'rgba(93,232,148,0.07)' : 'none'));
+        if (filled) s.push(txt(131 + i * 22, 56, '♪', C.phos, 9, 'middle'));
+      }
+      s.push(arrow(234, 52, 258, 52));
+      s.push(box(262, 36, 66, 32, C.line));
+      s.push(txt(295, 50, 'CONSUMER', C.dim, 8, 'middle', 1));
+      s.push(txt(295, 61, 'audio', C.faint, 7.5, 'middle'));
+      s.push(txt(170, 20, 'PRE-ALLOCATED RING (FIFO)', C.dim, 8.5, 'middle', 1.5));
+      s.push(txt(170, 88, 'one pushes, one pops — atomic positions, zero locks', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 96 };
+    },
+
     // ADSR envelope shape with labeled stages.
     adsr() {
       const s = [box(8, 8, 324, 84, C.line, false, '#07090B')];
@@ -5216,16 +7296,16 @@ const Dict = (() => {
   const ZONE_TITLES = { 1: 'C++ Signal Path', 2: 'Modern C++ for Audio', 3: 'JUCE Plugin Foundation', 4: 'DSP Workshop', 5: 'Synth Engineering', 6: 'Professional Plugin Engineering', 7: 'Final Product Missions' };
 
   /* ---- mastery: derived from lesson progress + views ---- */
-  function z1Nodes(entry) {
-    return (entry.appears || []).filter((a) => a.z === 1 && a.node && Engine.NODES[a.node]);
+  function liveNodes(entry) {
+    return (entry.appears || []).filter((a) => a.node && Engine.NODES[a.node]);
   }
 
   function masteryLevel(entry) {
     const viewed = (Store.state.dictViewed || []).includes(entry.id);
-    const nodes = z1Nodes(entry);
+    const nodes = liveNodes(entry);
     if (nodes.length === 0) return viewed ? 1 : 0;
     const done = nodes.filter((n) => Store.isDone(n.node));
-    const anyUnlocked = nodes.some((n) => Store.isUnlocked('z1', n.node));
+    const anyUnlocked = nodes.some((n) => Store.isUnlocked(null, n.node));
     if (done.length === 0) return (viewed || anyUnlocked) ? 1 : 0;
     if (done.length < nodes.length) return 2;
     const weak = Store.weakList().some((w) => nodes.some((n) => n.node === w.nodeId));
@@ -5362,9 +7442,9 @@ const Dict = (() => {
         el('div', { class: 'eyebrow' }, 'APPEARS IN THE CURRICULUM'),
         el('div', { class: 'col mt-s', style: 'gap:2px' }, e.appears.map((a) => {
           const node = a.node ? Engine.NODES[a.node] : null;
-          const live = a.z === 1 && node;
+          const live = !!node;
           const label = node ? node.title : (a.label || '');
-          const unlocked = live && Store.isUnlocked('z1', a.node);
+          const unlocked = live && Store.isUnlocked(null, a.node);
           const done = live && Store.isDone(a.node);
           return el('button', { class: 'appears-row', onclick: () => {
             if (!live) { UI.toast('Zone ' + a.z + ' ships in a future update'); return; }
@@ -5925,13 +8005,15 @@ const Views = (() => {
     const st = Store.state;
     const lv = Store.level();
     const lp = Store.levelProgress();
-    const mastery = Store.zoneMastery();
     const nextId = Store.nextNode();
     const nextNodeObj = nextId ? Engine.NODES[nextId] : null;
+    const curZone = nextId ? Store.zoneOfNode(nextId) : ZONES.filter((z) => z.status === 'live').slice(-1)[0];
+    const mastery = Store.zoneMastery(curZone ? curZone.id : 'z1');
     const daily = Store.dailyToday();
     const weak = Store.weakConcepts().slice(0, 4);
-    const order = ZONES[0].nodeOrder;
-    const doneCount = order.filter(Store.isDone).length;
+    const order = Store.liveOrder();
+    const zoneOrder = curZone ? curZone.nodeOrder : order;
+    const doneCount = zoneOrder.filter(Store.isDone).length;
 
     // recently completed (last 3 with stars)
     const recent = order.filter(Store.isDone).slice(-3).reverse()
@@ -5962,15 +8044,15 @@ const Views = (() => {
     // continue learning
     if (nextNodeObj) {
       grid.appendChild(el('button', { class: 'card raised card-tap span2', onclick: () => App.openNode(nextId) },
-        el('div', { class: 'eyebrow phos' }, 'CONTINUE LEARNING — ZONE 1'),
+        el('div', { class: 'eyebrow phos' }, 'CONTINUE LEARNING — ZONE ' + (curZone ? curZone.num : 1)),
         el('div', { class: 'h-display', style: 'margin-top:6px' }, nextNodeObj.title),
         el('div', { class: 'h-sub mt-s' }, nodeKindLabel(nextNodeObj)),
         el('div', { class: 'mt-m' }, el('span', { class: 'btn primary sm', style: 'pointer-events:none' }, '▶ Continue')),
       ));
     } else {
       grid.appendChild(el('div', { class: 'card raised span2' },
-        el('div', { class: 'eyebrow phos' }, 'ZONE 1 COMPLETE'),
-        el('div', { class: 'h-sub mt-s' }, 'You\'ve cleared everything currently built. Sharpen mastery in Practice Mode, or replay any lesson from the map. Zones 2–7 arrive in future updates.')));
+        el('div', { class: 'eyebrow phos' }, 'ALL CURRENT ZONES COMPLETE'),
+        el('div', { class: 'h-sub mt-s' }, 'You\'ve cleared everything currently built. Sharpen mastery in Practice Mode, or replay any node from the map. The next zone arrives in a future update.')));
     }
 
     // daily challenge
@@ -5990,10 +8072,10 @@ const Views = (() => {
 
     // zone progress
     grid.appendChild(el('div', { class: 'card' },
-      el('div', { class: 'eyebrow' }, 'ZONE 1 PROGRESS'),
-      el('div', { class: 'mt-m meter' }, el('i', { style: 'width:' + Math.round((doneCount / order.length) * 100) + '%' })),
+      el('div', { class: 'eyebrow' }, 'ZONE ' + (curZone ? curZone.num : 1) + ' PROGRESS'),
+      el('div', { class: 'mt-m meter' }, el('i', { style: 'width:' + Math.round((doneCount / zoneOrder.length) * 100) + '%' })),
       el('div', { class: 'row between mt-s' },
-        el('span', { class: 'mono small dim tnum' }, doneCount + ' / ' + order.length + ' nodes'),
+        el('span', { class: 'mono small dim tnum' }, doneCount + ' / ' + zoneOrder.length + ' nodes'),
         el('span', { class: 'mono small faint tnum' }, 'MASTERY ' + mastery.pct + '%'))));
 
     // weak concepts
@@ -6155,7 +8237,7 @@ const Views = (() => {
     for (let i = 0; i < totalSteps; i++) { const d = el('i'); dotEls.push(d); dots.appendChild(d); }
 
     main.appendChild(el('div', { class: 'col gap-s' },
-      el('div', { class: 'eyebrow phos' }, 'LESSON — ZONE 1' + (alreadyDone ? ' · REPLAY' : '')),
+      el('div', { class: 'eyebrow phos' }, 'LESSON — ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + (alreadyDone ? ' · REPLAY' : '')),
       el('h1', { class: 'h-display' }, node.title),
       dots));
 
@@ -6171,9 +8253,12 @@ const Views = (() => {
         slot.replaceChildren(
           el('div', { class: 'card raised' },
             node.hook ? el('div', { class: 'hook', style: 'margin-bottom:14px', html: fmt(node.hook, { links: true }) }) : null,
-            el('div', { class: 'eyebrow phos' }, 'OBJECTIVE'),
+            el('div', { class: 'eyebrow phos' }, 'MISSION BRIEF'),
             el('p', { class: 'prose mt-s', html: fmt(node.objective) }),
             el('div', { class: 'mt-m row wrap' },
+              node.diff ? el('span', { class: 'chip', style: 'color:var(--amber); border-color:var(--amber)' },
+                '●'.repeat(node.diff) + '○'.repeat(3 - node.diff) + ' ' + ['INTRO', 'CORE', 'DEEP'][node.diff - 1]) : null,
+              node.time ? el('span', { class: 'chip' }, node.time) : null,
               el('span', { class: 'chip' }, node.sections.length + ' concepts'),
               el('span', { class: 'chip' }, node.checks.length + ' checks'),
               el('span', { class: 'chip' }, '+' + XP_RULES.lesson + ' XP' + (alreadyDone ? ' (already earned)' : '')))),
@@ -6254,6 +8339,15 @@ const Views = (() => {
       if (node.remember) endPanels.push(el('div', { class: 'callout remember' },
         el('div', { class: 'co-head' }, '\uD83D\uDCA1 REMEMBER THIS'),
         el('div', { class: 'co-body', html: fmt(node.remember) })));
+      const conceptChip = (id) => Dict.byId[id]
+        ? el('button', { class: 'chip', style: 'color:var(--phos); border-color:var(--phos-dim)', onclick: () => { Sfx.tap(); Dict.open(id); } }, Dict.byId[id].t)
+        : el('span', { class: 'chip' }, id);
+      if (node.builds && node.builds.length) endPanels.push(el('div', { class: 'card col', style: 'gap:8px' },
+        el('div', { class: 'eyebrow' }, 'BUILDS ON'),
+        el('div', { class: 'chips' }, node.builds.map(conceptChip))));
+      if (node.leads && node.leads.length) endPanels.push(el('div', { class: 'card col', style: 'gap:8px' },
+        el('div', { class: 'eyebrow amber' }, 'LEADS TO'),
+        el('div', { class: 'chips' }, node.leads.map(conceptChip))));
       slot.replaceChildren(
         el('div', { class: 'card raised col', style: 'gap:12px' },
           el('div', { class: 'eyebrow phos' }, 'RECAP'),
@@ -6338,7 +8432,7 @@ const Views = (() => {
      ===================================================================== */
   function boss(params) {
     const node = Engine.NODES[params.id];
-    const ready = Store.bossReady();
+    const ready = Store.bossReady(node.id);
     const main = el('div', { class: 'main' });
     main.appendChild(el('div', { class: 'back-row' },
       el('button', { class: 'back-btn', onclick: () => App.go('map') }, UI.icon('back'), ' RETREAT')));
@@ -6350,8 +8444,8 @@ const Views = (() => {
         el('p', { class: 'small dim' }, node.brief)));
       main.appendChild(el('div', { class: 'card col', style: 'gap:12px' },
         el('div', { class: 'eyebrow' }, 'ENTRY REQUIREMENTS'),
-        reqRow('All 12 lessons complete', ready.lessonsDone),
-        reqRow('Both mini-projects complete', ready.projectsDone),
+        reqRow('All ' + ready.totalLessons + ' Zone ' + ready.zoneNum + ' lessons complete', ready.lessonsDone),
+        reqRow('All ' + ready.totalProjects + ' zone missions complete', ready.projectsDone),
         reqRow('Average lesson mastery ≥ ★★ (yours: ' + ready.avgStars.toFixed(1) + ')', ready.avgStars >= ready.need),
         el('p', { class: 'small faint' }, 'Raise mastery by replaying lessons — stars only ever go up.'),
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Train in Practice Mode')));
@@ -6361,7 +8455,7 @@ const Views = (() => {
     let started = false;
     const intro = el('div', { class: 'col', style: 'gap:14px' },
       el('div', { class: 'boss-banner col', style: 'gap:10px' },
-        el('div', { class: 'eyebrow red' }, '☠ ZONE 1 BOSS' + (Store.isDone(node.id) ? ' · CLEARED — REPLAY' : '')),
+        el('div', { class: 'eyebrow red' }, '☠ ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' BOSS' + (Store.isDone(node.id) ? ' · CLEARED — REPLAY' : '')),
         el('h1', { class: 'h-display' }, node.title),
         el('p', { class: 'small', style: 'color:var(--ink-dim)' }, node.brief),
         el('div', { class: 'row wrap mt-s' },
@@ -6588,7 +8682,7 @@ const Views = (() => {
     const st = Store.state;
     const lv = Store.level();
     const mastery = Store.zoneMastery();
-    const order = ZONES[0].nodeOrder;
+    const order = Store.liveOrder();
     const doneCount = order.filter(Store.isDone).length;
     const main = el('div', { class: 'main' });
 
@@ -6602,8 +8696,8 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'statgrid' },
       el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, st.xp.toLocaleString()), el('div', { class: 'k' }, 'Total XP')),
       el('div', { class: 'stat amber' }, el('div', { class: 'v tnum' }, String(st.streak.count || 0)), el('div', { class: 'k' }, 'Day streak')),
-      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, doneCount + '/' + order.length), el('div', { class: 'k' }, 'Zone 1 nodes')),
-      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, mastery.pct + '%'), el('div', { class: 'k' }, 'Zone mastery'))));
+      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, doneCount + '/' + order.length), el('div', { class: 'k' }, 'Nodes cleared')),
+      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, mastery.pct + '%'), el('div', { class: 'k' }, 'Zone 1 mastery'))));
 
     // achievements
     main.appendChild(el('div', { class: 'card' },
@@ -6616,7 +8710,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, ZONE1_LESSONS.map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),

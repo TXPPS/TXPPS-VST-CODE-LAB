@@ -224,6 +224,127 @@ const Viz = (() => {
       return { svg: s.join(''), h: 140 };
     },
 
+    // Object lifetime timeline: born -> alive -> destroyed (scope braces).
+    lifetime() {
+      const s = [];
+      s.push(txt(20, 20, '{', C.dim, 22));
+      s.push(txt(316, 20, '}', C.dim, 22));
+      s.push(`<line x1="60" y1="40" x2="280" y2="40" stroke="${C.phos}" stroke-width="2"/>`);
+      s.push(`<circle cx="60" cy="40" r="5" fill="${C.phos}"/>`);
+      s.push(`<circle cx="280" cy="40" r="5" fill="none" stroke="${C.red}" stroke-width="2"/>`);
+      s.push(txt(60, 62, 'constructor', C.phos, 8.5, 'middle'));
+      s.push(txt(60, 74, 'born', C.faint, 8, 'middle'));
+      s.push(txt(170, 32, 'alive — the object\'s lifetime', C.dim, 9, 'middle'));
+      s.push(txt(280, 62, 'destructor', C.red, 8.5, 'middle'));
+      s.push(txt(280, 74, 'dies at the brace', C.faint, 8, 'middle'));
+      return { svg: s.join(''), h: 84 };
+    },
+
+    // Ownership: unique (one owner) or shared (counted owners) of a resource.
+    owners(o) {
+      const s = [];
+      const shared = o && o.mode === 'shared';
+      if (shared) {
+        [[30, 'sampler A'], [30, ''], [30, '']].forEach(() => {});
+        const ys = [16, 52, 88];
+        ys.forEach((y, i) => {
+          s.push(box(16, y, 96, 28, C.phosDim));
+          s.push(txt(64, y + 18, 'owner ' + (i + 1), C.phos, 9, 'middle'));
+          s.push(arrow(112, y + 14, 196, 62));
+        });
+        s.push(box(200, 44, 122, 40, C.line, false, 'rgba(93,232,148,0.04)'));
+        s.push(txt(261, 62, 'SampleBank', C.ink, 10, 'middle'));
+        s.push(txt(261, 76, 'freed at count 0', C.faint, 8, 'middle'));
+        s.push(`<circle cx="322" cy="44" r="11" fill="#10130f" stroke="${C.amber}" stroke-width="1.4"/>`);
+        s.push(txt(322, 48, '3', C.amber, 10, 'middle'));
+        s.push(txt(170, 132, 'shared_ptr: counted owners — the last one out frees it', C.faint, 9, 'middle'));
+        return { svg: s.join(''), h: 138 };
+      }
+      s.push(box(24, 30, 120, 36, C.phosDim, false, 'rgba(93,232,148,0.05)'));
+      s.push(txt(84, 48, 'unique_ptr', C.phos, 10, 'middle'));
+      s.push(txt(84, 60, 'the ONE owner', C.faint, 8, 'middle'));
+      s.push(arrow(146, 48, 208, 48));
+      s.push(txt(177, 40, 'owns', C.faint, 8.5, 'middle'));
+      s.push(box(212, 30, 104, 36, C.line));
+      s.push(txt(264, 52, 'SineOsc', C.ink, 10, 'middle'));
+      s.push(txt(170, 90, 'owner dies → deleted automatically. no copies allowed.', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 98 };
+    },
+
+    // Copy vs move, side by side.
+    moveviz() {
+      const s = [];
+      s.push(txt(88, 14, 'COPY', C.dim, 9.5, 'middle', 2));
+      s.push(box(24, 22, 56, 30, C.line));
+      s.push(txt(52, 41, '48000', C.dim, 8.5, 'middle'));
+      s.push(arrow(84, 37, 116, 37));
+      s.push(box(120, 22, 56, 30, C.line));
+      s.push(txt(148, 41, '48000', C.dim, 8.5, 'middle'));
+      s.push(txt(100, 66, 'every sample duplicated — slow', C.faint, 8, 'middle'));
+      s.push(`<line x1="185" y1="10" x2="185" y2="76" stroke="${C.line}"/>`);
+      s.push(txt(262, 14, 'MOVE', C.phos, 9.5, 'middle', 2));
+      s.push(box(198, 22, 56, 30, C.line, true));
+      s.push(txt(226, 41, 'empty', C.faint, 8.5, 'middle'));
+      s.push(arrow(258, 37, 282, 37, C.phos));
+      s.push(box(286, 22, 50, 30, C.phosDim, false, 'rgba(93,232,148,0.06)'));
+      s.push(txt(311, 41, '48000', C.phos, 8.5, 'middle'));
+      s.push(txt(262, 66, 'handles swapped — instant', C.faint, 8, 'middle'));
+      return { svg: s.join(''), h: 80 };
+    },
+
+    // Two thread lanes sharing a value; optional blocked (mutex) or atomic bridge.
+    lanes(o) {
+      const s = [];
+      s.push(box(12, 12, 316, 30, C.line));
+      s.push(txt(20, 31, 'UI THREAD', C.dim, 8.5, 'start', 1.5));
+      s.push(box(12, 84, 316, 30, C.line));
+      s.push(txt(20, 103, 'AUDIO THREAD', C.dim, 8.5, 'start', 1.5));
+      if (o && o.atomic) {
+        s.push(box(140, 50, 100, 26, C.phosDim, false, 'rgba(93,232,148,0.07)'));
+        s.push(txt(190, 67, 'atomic<float>', C.phos, 8.5, 'middle'));
+        s.push(arrow(170, 42, 178, 50, C.phos));
+        s.push(txt(148, 47, 'store', C.faint, 7.5, 'end'));
+        s.push(arrow(202, 76, 210, 84, C.phos));
+        s.push(txt(232, 82, 'load', C.faint, 7.5, 'start'));
+        s.push(txt(170, 132, 'indivisible handoff — nobody waits, nothing tears', C.faint, 9, 'middle'));
+      } else if (o && o.blocked) {
+        s.push(box(140, 50, 100, 26, C.amber, false, 'rgba(240,180,80,0.06)'));
+        s.push(txt(190, 67, 'MUTEX  🔒', C.amber, 8.5, 'middle'));
+        s.push(txt(100, 67, 'UI holds it…', C.faint, 8, 'end'));
+        s.push(txt(258, 60, 'audio WAITS', C.red, 8.5, 'start'));
+        s.push(txt(258, 71, 'deadline dies', C.red, 7.5, 'start'));
+        s.push(txt(170, 132, 'a contested lock turns the deadline into a coin flip', C.faint, 9, 'middle'));
+      } else {
+        s.push(box(150, 50, 80, 26, C.red, true));
+        s.push(txt(190, 67, 'float gain', C.red, 8.5, 'middle'));
+        s.push(arrow(175, 42, 182, 50, C.red));
+        s.push(arrow(198, 76, 205, 84, C.red));
+        s.push(txt(170, 132, 'both touch one plain value — a race condition', C.faint, 9, 'middle'));
+      }
+      return { svg: s.join(''), h: 138 };
+    },
+
+    // Producer/consumer FIFO ring between threads.
+    fifo() {
+      const s = [];
+      s.push(box(12, 36, 80, 32, C.line));
+      s.push(txt(52, 50, 'PRODUCER', C.dim, 8, 'middle', 1));
+      s.push(txt(52, 61, 'UI thread', C.faint, 7.5, 'middle'));
+      s.push(arrow(94, 52, 118, 52));
+      for (let i = 0; i < 5; i++) {
+        const filled = i < 3;
+        s.push(box(122 + i * 22, 40, 19, 24, filled ? C.phosDim : C.line, false, filled ? 'rgba(93,232,148,0.07)' : 'none'));
+        if (filled) s.push(txt(131 + i * 22, 56, '♪', C.phos, 9, 'middle'));
+      }
+      s.push(arrow(234, 52, 258, 52));
+      s.push(box(262, 36, 66, 32, C.line));
+      s.push(txt(295, 50, 'CONSUMER', C.dim, 8, 'middle', 1));
+      s.push(txt(295, 61, 'audio', C.faint, 7.5, 'middle'));
+      s.push(txt(170, 20, 'PRE-ALLOCATED RING (FIFO)', C.dim, 8.5, 'middle', 1.5));
+      s.push(txt(170, 88, 'one pushes, one pops — atomic positions, zero locks', C.faint, 9, 'middle'));
+      return { svg: s.join(''), h: 96 };
+    },
+
     // ADSR envelope shape with labeled stages.
     adsr() {
       const s = [box(8, 8, 324, 84, C.line, false, '#07090B')];

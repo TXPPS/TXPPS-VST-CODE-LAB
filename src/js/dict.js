@@ -19,16 +19,16 @@ const Dict = (() => {
   const ZONE_TITLES = { 1: 'C++ Signal Path', 2: 'Modern C++ for Audio', 3: 'JUCE Plugin Foundation', 4: 'DSP Workshop', 5: 'Synth Engineering', 6: 'Professional Plugin Engineering', 7: 'Final Product Missions' };
 
   /* ---- mastery: derived from lesson progress + views ---- */
-  function z1Nodes(entry) {
-    return (entry.appears || []).filter((a) => a.z === 1 && a.node && Engine.NODES[a.node]);
+  function liveNodes(entry) {
+    return (entry.appears || []).filter((a) => a.node && Engine.NODES[a.node]);
   }
 
   function masteryLevel(entry) {
     const viewed = (Store.state.dictViewed || []).includes(entry.id);
-    const nodes = z1Nodes(entry);
+    const nodes = liveNodes(entry);
     if (nodes.length === 0) return viewed ? 1 : 0;
     const done = nodes.filter((n) => Store.isDone(n.node));
-    const anyUnlocked = nodes.some((n) => Store.isUnlocked('z1', n.node));
+    const anyUnlocked = nodes.some((n) => Store.isUnlocked(null, n.node));
     if (done.length === 0) return (viewed || anyUnlocked) ? 1 : 0;
     if (done.length < nodes.length) return 2;
     const weak = Store.weakList().some((w) => nodes.some((n) => n.node === w.nodeId));
@@ -165,9 +165,9 @@ const Dict = (() => {
         el('div', { class: 'eyebrow' }, 'APPEARS IN THE CURRICULUM'),
         el('div', { class: 'col mt-s', style: 'gap:2px' }, e.appears.map((a) => {
           const node = a.node ? Engine.NODES[a.node] : null;
-          const live = a.z === 1 && node;
+          const live = !!node;
           const label = node ? node.title : (a.label || '');
-          const unlocked = live && Store.isUnlocked('z1', a.node);
+          const unlocked = live && Store.isUnlocked(null, a.node);
           const done = live && Store.isDone(a.node);
           return el('button', { class: 'appears-row', onclick: () => {
             if (!live) { UI.toast('Zone ' + a.z + ' ships in a future update'); return; }
