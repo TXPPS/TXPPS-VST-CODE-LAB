@@ -71,10 +71,14 @@ const ZONES = [
     ],
   },
   {
-    id: 'z7', num: 7, title: 'FINAL PRODUCT MISSIONS', status: 'planned',
-    tagline: 'Ship complete plugins',
-    desc: 'Guided end-to-end builds: from a gain plugin to a commercially presentable VST3 instrument.',
-    topics: ['Gain plugin', 'Tremolo', 'Delay', 'Chorus', 'Distortion', 'Filter effect', 'Mono synth', 'Poly synth', 'Sampler', 'Modulation effect', 'Complete commercial VST3'],
+    id: 'z7', num: 7, title: 'FINAL PRODUCT MISSIONS', status: 'live',
+    tagline: 'You are the engineer now — ship the product line',
+    desc: 'Eleven complete product builds — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, and the TXPPS Signature capstone — with briefs, QA tickets, code reviews and release gates. Guidance fades; the engineer remains.',
+    nodeOrder: [
+      'p20', 'p21', 'f1', 'p22', 'fo1', 'fb1', 'fc1', 'p23', 'fb2',
+      'f2', 'p24', 'f3', 'p25', 'fc2', 'p26', 'fr2', 'p27', 'f4',
+      'p28', 'fb3', 'fe1', 'p29', 'fr1', 'p30', 'boss7',
+    ],
   },
 ];
 
@@ -109,6 +113,9 @@ const ACHIEVEMENTS = [
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
   { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
+  { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Ship the Release Candidate.' },
+  { id: 'product_line', name: 'PRODUCT LINE', desc: 'Ship all eleven Zone 7 products.' },
+  { id: 'graduate', name: '★ GRADUATE ★', desc: 'Complete the entire TXPPS VST CODE LAB curriculum.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -136,4 +143,6 @@ const DAILY_POOL = [
   'n11.q1', 'n12.q2', 'n13.q2', 'n14.q3', 'nb3.q1', 'ne1.q1',
   'r1.q2', 'r2.q2', 'r3.q1', 'r4.q1', 'r5.q2', 'r6.q1', 'r7.q3', 'r9.q3',
   'r10.q1', 'r11.q3', 'r12.q1', 'r13.q3', 'r14.q1', 'r15.q3', 'rb1.q1', 're1.q1',
+  'f1.q1', 'f1.q2', 'f2.q1', 'f2.q2', 'f3.q1', 'f3.q2', 'f4.q1', 'f4.q2',
+  'fb1.q1', 'fe1.q1', 'fo1.q1', 'fc2.q1',
 ];

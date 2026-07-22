@@ -220,11 +220,13 @@ const Store = (() => {
       if (id === 'boss4') grant('zone4_clear');
       if (id === 'boss5') grant('zone5_clear');
       if (id === 'boss6') grant('zone6_clear');
+      if (id === 'boss7') { grant('zone7_clear'); grant('graduate'); }
       if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
       if (['p6', 'p7', 'p8'].every(isDone)) grant('first_signal');
       if (['p9', 'p10', 'p11'].every(isDone)) grant('first_sound');
       if (['p12', 'p13', 'p14', 'p15'].every(isDone)) grant('playable_synth');
       if (['p16', 'p17', 'p18', 'p19'].every(isDone)) grant('release_ready');
+      if (['p20', 'p21', 'p22', 'p23', 'p24', 'p25', 'p26', 'p27', 'p28', 'p29', 'p30'].every(isDone)) grant('product_line');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }

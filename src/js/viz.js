@@ -942,6 +942,73 @@ const Viz = (() => {
       s.push(txt(170, 148, 'every line binary — checked or not. late fixes restart the list', C.faint, 8.5, 'middle'));
       return { svg: s.join(''), h: 154 };
     },
+
+    // Delay line: circular buffer with write/read heads and a feedback path.
+    delayviz() {
+      const s = [];
+      const cx = 110, cy = 62, R = 44;
+      s.push(`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line}" stroke-width="10"/>`);
+      s.push(`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(93,232,148,0.25)" stroke-width="10" stroke-dasharray="80 200"/>`);
+      const wA = -0.6, rA = 1.9;
+      const wx = cx + R * Math.cos(wA), wy = cy + R * Math.sin(wA);
+      const rx = cx + R * Math.cos(rA), ry = cy + R * Math.sin(rA);
+      s.push(`<circle cx="${wx}" cy="${wy}" r="6" fill="${C.phos}" class="viz-pulse"/>`);
+      s.push(txt(wx + 12, wy - 6, 'WRITE — now', C.phos, 8.5, 'start'));
+      s.push(`<circle cx="${rx}" cy="${ry}" r="6" fill="${C.amber}"/>`);
+      s.push(txt(rx - 10, ry + 16, 'READ — then', C.amber, 8.5, 'end'));
+      s.push(txt(cx, cy + 4, 'the line', C.faint, 8.5, 'middle'));
+      s.push(box(216, 26, 110, 24, C.line));
+      s.push(txt(271, 41, 'delay = s × rate', C.dim, 8.5, 'middle'));
+      s.push(box(216, 62, 110, 24, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(271, 77, 'feedback < 1.0', C.amber, 8.5, 'middle'));
+      s.push(`<path d="M 216 74 C 180 90, 150 100, 122 104" fill="none" stroke="${C.amber}" stroke-width="1.2" stroke-dasharray="4 3"/>`);
+      s.push(txt(170, 124, 'write now, read then, feed a little back — echoes are geometry', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 130 };
+    },
+
+    // Waveshaper transfer curves: wire vs tanh vs hard clip.
+    shaperviz() {
+      const s = [box(8, 8, 324, 104, C.line, false, '#07090B')];
+      const x0 = 170, y0 = 60, sc = 44;
+      s.push(`<line x1="${x0 - sc - 8}" y1="${y0}" x2="${x0 + sc + 8}" y2="${y0}" stroke="rgba(93,232,148,0.12)"/>`);
+      s.push(`<line x1="${x0}" y1="${y0 - sc - 4}" x2="${x0}" y2="${y0 + sc + 4}" stroke="rgba(93,232,148,0.12)"/>`);
+      const curve = (fn, col, dash) => {
+        const pts = [];
+        for (let u = -1; u <= 1.001; u += 0.05) pts.push(`${x0 + u * sc},${y0 - fn(u) * sc}`);
+        s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.5"${dash ? ' stroke-dasharray="4 3"' : ''}/>`);
+      };
+      curve((u) => u, C.faint, true);
+      curve((u) => Math.tanh(2.2 * u) / Math.tanh(2.2), C.phos, false);
+      curve((u) => Math.max(-0.62, Math.min(0.62, u * 1.7)) / 0.62 * 0.99, C.red, true);
+      s.push(txt(46, 24, 'out', C.faint, 8.5, 'start'));
+      s.push(txt(296, 74, 'in', C.faint, 8.5, 'start'));
+      s.push(txt(56, 100, 'wire (clean)', C.faint, 8, 'start'));
+      s.push(txt(140, 100, 'tanh (warm)', C.phos, 8, 'start'));
+      s.push(txt(232, 100, 'hard clip (harsh)', C.red, 8, 'start'));
+      s.push(txt(170, 128, 'the curve IS the pedal: straight = clean, bent = warm, cornered = fuzz', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 134 };
+    },
+
+    // First Signal's evolution — the graduation timeline.
+    fstimeline() {
+      const s = [];
+      const steps = [
+        ['Z3', 'silent framework — it loads, it breathes', C.dim],
+        ['Z4', 'first sound: oscillators, envelopes, the voice', C.phos],
+        ['Z5', 'playable: MIDI, 8 voices, wheels, pedal, unison', C.phos],
+        ['Z6', 'professional: lock-free, tested, validated', C.phos],
+        ['Z7', 'a product line — and TXPPS Signature ships', C.amber],
+      ];
+      s.push(`<line x1="34" y1="16" x2="34" y2="${16 + (steps.length - 1) * 26}" stroke="${C.phosDim}" stroke-width="1.4"/>`);
+      steps.forEach(([z, label, col], i) => {
+        const y = 16 + i * 26;
+        s.push(`<circle cx="34" cy="${y}" r="5" fill="${i === steps.length - 1 ? C.amber : C.phos}"/>`);
+        s.push(txt(50, y - 4, z, col, 9, 'start', 1.5));
+        s.push(txt(50, y + 8, label, C.dim, 8.5, 'start'));
+      });
+      s.push(txt(170, 16 + steps.length * 26 + 4, 'from silence to a shipping synthesizer — every stage yours', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 16 + steps.length * 26 + 12 };
+    },
   };
 
   function render(spec) {

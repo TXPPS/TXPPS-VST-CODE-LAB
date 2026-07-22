@@ -6,15 +6,16 @@ syntax. Learning is structured as a progression game: short lessons, code challe
 bug hunts, simulated compiler errors, mini-project missions, and zone boss fights, with
 XP, levels, streaks, mastery stars and a practice queue.
 
-**Zones 1–6 are fully playable**: Zone 1 (C++ Signal Path), Zone 2 (Modern C++
-for Audio), Zone 3 (JUCE Plugin Foundation — building the TXPPS First Signal
-gain plugin), Zone 4 (DSP Workshop — First Signal becomes a sounding synth),
-Zone 5 (Synth Engineering — MIDI, voices, polyphony and performance controls:
-First Signal becomes a playable instrument) and Zone 6 (Professional Plugin
-Engineering — real-time discipline, thread safety, version-safe state,
-profiling, testing, validation, crash forensics and the shipping checklist:
-First Signal becomes a shippable product). Zone 7 is mapped in the curriculum
-and ships in a future update.
+**The curriculum is complete — all seven zones are fully playable**:
+Zone 1 (C++ Signal Path), Zone 2 (Modern C++ for Audio), Zone 3 (JUCE Plugin
+Foundation — building the TXPPS First Signal gain plugin), Zone 4 (DSP
+Workshop — First Signal becomes a sounding synth), Zone 5 (Synth Engineering —
+First Signal becomes a playable instrument), Zone 6 (Professional Plugin
+Engineering — First Signal becomes a shippable product) and Zone 7 (Final
+Product Missions — eleven complete product builds from TXPPS Gain to the
+TXPPS Signature commercial-VST3 capstone, ending at the Release Candidate
+final boss and permanent Graduate status). This is Version 1.0 of the
+TXPPS VST CODE LAB curriculum.
 
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
@@ -54,7 +55,8 @@ src/
     data_zone4_*.js          Zone 4 lessons & challenges (same shapes)
     data_zone5_*.js          Zone 5 lessons & challenges (same shapes)
     data_zone6_*.js          Zone 6 lessons & challenges (same shapes)
-    data_glossary*.js        Signal Dictionary mini-lesson entries (parts a–h)
+    data_zone7_*.js          Zone 7 lessons, tickets & the 11-product line
+    data_glossary*.js        Signal Dictionary mini-lesson entries (parts a–i)
     engine.js                pure challenge evaluation (no DOM): fill/mcq/order/
                              bugspot/match validation, seeded shuffles, daily pick
     store.js                 progress state + safe persistence (localStorage w/ fallback)
@@ -77,9 +79,10 @@ Vite + TypeScript + React PWA without rewriting content.
 
 ## Backlog
 
-- Zone 2/3/4/5/6 challenge and boss nodes are not yet shown in the profile
+- Zone 2–7 challenge and boss nodes are not yet shown in the profile
   mastery table (lessons are).
 - Daily-challenge selection could weight toward the learner's weak concepts.
+- (Both deferred to the post-1.0 refinement phase.)
 
 ## Build & test
 

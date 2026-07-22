@@ -1010,7 +1010,8 @@ const Views = (() => {
             if (result.earned > 0) App.awardXp(result.earned);
             Store.completeNode(node.id, result.firstTry, result.total);
             App.flushAchievements();
-            completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
+            if (node.id === 'boss7') graduationSheet(result);
+            else completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
           } else {
             UI.sheet([
               el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
@@ -1030,6 +1031,30 @@ const Views = (() => {
       return el('div', { class: 'row' },
         el('span', { style: 'color:' + (ok ? 'var(--phos)' : 'var(--red)') + '; font-family:var(--mono)' }, ok ? '✓' : '✗'),
         el('span', { class: 'small' + (ok ? ' dim' : '') }, label));
+    }
+
+    // Curriculum-complete celebration — shown once boss7 falls.
+    function graduationSheet(result) {
+      const st = Store.state;
+      const order = Store.liveOrder();
+      const products = ['Gain', 'Tremolo', 'Delay', 'Chorus', 'Distortion', 'Filter', 'Mono', 'Poly', 'Sampler', 'Motion FX', 'Signature'];
+      UI.sheet([
+        el('div', { class: 'center col', style: 'gap:8px; padding:6px 0' },
+          el('div', { class: 'eyebrow amber', style: 'justify-content:center' }, '★ CURRICULUM COMPLETE ★'),
+          el('div', { class: 'h-display' }, 'RELEASE APPROVED — YOU GRADUATE'),
+          el('p', { class: 'small dim' }, 'Seven zones. ' + order.length + ' stations. ' + result.correct + '/' + result.total + ' final QA defects cleared. From "what is a variable?" to signing a commercial release: every stage of this instrument — and this skill — is yours.')),
+        el('div', { class: 'card raised col', style: 'gap:8px' },
+          el('div', { class: 'eyebrow phos' }, 'FIRST SIGNAL — THE WHOLE JOURNEY'),
+          Viz.render({ t: 'fstimeline' })),
+        el('div', { class: 'card raised' },
+          el('div', { class: 'eyebrow phos' }, 'THE TXPPS PRODUCT LINE — ALL SHIPPED'),
+          el('div', { class: 'chips mt-m' }, products.map((p) => el('span', { class: 'chip' }, 'TXPPS ' + p + ' ✓')))),
+        el('div', { class: 'card raised center', style: 'padding:14px' },
+          el('div', { class: 'a-name', style: 'font-size:14px; color:var(--amber)' }, '★ GRADUATE ★'),
+          el('p', { class: 'small dim mt-s' }, 'The highest achievement is yours, and your profile now carries permanent Graduate status. Total XP: ' + st.xp.toLocaleString() + '.')),
+        el('button', { class: 'btn primary block', onclick: () => App.go('profile') }, 'View your Graduate profile'),
+        el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to the map'),
+      ], { sticky: true });
     }
     return main;
   }
@@ -1217,9 +1242,15 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'row between' },
         el('div', null,
-          el('div', { class: 'eyebrow phos' }, 'OPERATOR PROFILE'),
+          el('div', { class: 'eyebrow phos' }, Store.isDone('boss7') ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
           el('h1', { class: 'h-display' }, 'LV ' + lv + ' — ' + Store.levelTitle())),
         el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear')))));
+
+    if (Store.isDone('boss7')) {
+      main.appendChild(el('div', { class: 'card', style: 'border-color:var(--amber); background:linear-gradient(180deg, rgba(240,180,80,0.07), var(--bg1))' },
+        el('div', { class: 'eyebrow amber' }, '★ TXPPS VST CODE LAB — GRADUATE'),
+        el('p', { class: 'small dim mt-s' }, 'Every zone cleared, every product shipped, the Release Candidate signed. This status is permanent — like the skills.')));
+    }
 
     main.appendChild(el('div', { class: 'statgrid' },
       el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, st.xp.toLocaleString()), el('div', { class: 'k' }, 'Total XP')),
@@ -1238,7 +1269,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS, ...ZONE6_LESSONS].map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS, ...ZONE6_LESSONS, ...ZONE7_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),

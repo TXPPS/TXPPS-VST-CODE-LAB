@@ -832,10 +832,14 @@ const ZONES = [
     ],
   },
   {
-    id: 'z7', num: 7, title: 'FINAL PRODUCT MISSIONS', status: 'planned',
-    tagline: 'Ship complete plugins',
-    desc: 'Guided end-to-end builds: from a gain plugin to a commercially presentable VST3 instrument.',
-    topics: ['Gain plugin', 'Tremolo', 'Delay', 'Chorus', 'Distortion', 'Filter effect', 'Mono synth', 'Poly synth', 'Sampler', 'Modulation effect', 'Complete commercial VST3'],
+    id: 'z7', num: 7, title: 'FINAL PRODUCT MISSIONS', status: 'live',
+    tagline: 'You are the engineer now — ship the product line',
+    desc: 'Eleven complete product builds — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, and the TXPPS Signature capstone — with briefs, QA tickets, code reviews and release gates. Guidance fades; the engineer remains.',
+    nodeOrder: [
+      'p20', 'p21', 'f1', 'p22', 'fo1', 'fb1', 'fc1', 'p23', 'fb2',
+      'f2', 'p24', 'f3', 'p25', 'fc2', 'p26', 'fr2', 'p27', 'f4',
+      'p28', 'fb3', 'fe1', 'p29', 'fr1', 'p30', 'boss7',
+    ],
   },
 ];
 
@@ -870,6 +874,9 @@ const ACHIEVEMENTS = [
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
   { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
+  { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Ship the Release Candidate.' },
+  { id: 'product_line', name: 'PRODUCT LINE', desc: 'Ship all eleven Zone 7 products.' },
+  { id: 'graduate', name: '★ GRADUATE ★', desc: 'Complete the entire TXPPS VST CODE LAB curriculum.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -897,6 +904,8 @@ const DAILY_POOL = [
   'n11.q1', 'n12.q2', 'n13.q2', 'n14.q3', 'nb3.q1', 'ne1.q1',
   'r1.q2', 'r2.q2', 'r3.q1', 'r4.q1', 'r5.q2', 'r6.q1', 'r7.q3', 'r9.q3',
   'r10.q1', 'r11.q3', 'r12.q1', 'r13.q3', 'r14.q1', 'r15.q3', 'rb1.q1', 're1.q1',
+  'f1.q1', 'f1.q2', 'f2.q1', 'f2.q2', 'f3.q1', 'f3.q2', 'f4.q1', 'f4.q2',
+  'fb1.q1', 'fe1.q1', 'fo1.q1', 'fc2.q1',
 ];
 
 ;
@@ -12057,6 +12066,1492 @@ const ZONE6_CHALLENGES = [
 ];
 
 ;
+/* ===== src/js/data_zone7_lessons.js ===== */
+/* ============================================================
+   ZONE 7 — FINAL PRODUCT MISSIONS: lessons f1–f4.
+   Only the DSP the product line genuinely needs and no zone
+   taught: delay lines, waveshaping, filters, sample playback.
+   ============================================================ */
+
+const ZONE7_LESSONS = [
+
+  /* ------------------------------------------------------ F1 */
+  {
+    id: 'f1', kind: 'lesson', title: 'The Delay Line', short: 'Circular buffers & echoes',
+    concepts: ['delay-dsp'], time: '~7 MIN', diff: 2,
+    hook: 'Slapback on a vocal, dub echoes chasing a snare, the eighth-note delay that IS half of your favorite guitar sound. Every one is the same machine: audio written into memory, read back later, maybe fed into itself. You already own every part of it — a buffer, two bookmarks, a wrap, and a plus sign.',
+    objective: 'Build the delay line: a circular buffer with a write head and a read head, feedback, wet/dry — and know why fractional delays need interpolation.',
+    sections: [
+      {
+        h: 'A tape loop made of memory',
+        body: 'A **delay line** is a pre-allocated buffer treated as a circle: a **write head** records the incoming sample and advances; a **read head** trails it by exactly the delay time, in samples (seconds × rate — d2\'s conversion). Both heads wrap at the end like d5\'s phase. Old tape echoes were literally this — a loop of tape, a record head, a playback head further along. Yours is silicon, but the geometry is identical.',
+        viz: { t: 'delayviz' },
+      },
+      {
+        h: 'One sample through the machine',
+        body: 'Per sample, four moves in strict order: read the delayed sample, write input PLUS feedback into the line, mix the output, advance and wrap. **Feedback** routes the delayed signal back into the line — each pass through is one more echo, quieter by the feedback factor. Keep it below 1.0 or every repeat gets LOUDER: the runaway delay, a d10 disaster on a timer.',
+        code: '// prepareToPlay: buy the line once (r5)\nlineLength = (int) (maxDelaySeconds * sampleRate);\nline.setSize (1, lineLength);\n\n// per sample:\nint readPos = writePos - delaySamples;\nif (readPos < 0) readPos += lineLength;            // wrap backwards\nfloat delayed = data[readPos];\ndata[writePos] = input + delayed * feedback;       // the echo feeds itself\nfloat out = input * dry + delayed * wet;           // d11: mixing is addition\nif (++writePos >= lineLength) writePos = 0;        // wrap forwards',
+        codeTitle: 'the whole echo machine',
+        breakdown: [
+          ['writePos - delaySamples', 'the read head trails the write head by the delay — subtraction, then wrap'],
+          ['+= lineLength on negative', 'indices wrap like d5\'s phase — but integer math needs the manual add'],
+          ['input + delayed * feedback', 'the regeneration loop: each echo is the last one, scaled'],
+          ['dry/wet mix', '**wet/dry** = two gains on two signals, summed — d11 wearing an effects costume'],
+          ['advance + wrap', 'the write head circles forever; the buffer never grows (r5)'],
+        ],
+        mistake: { code: 'int readPos = (writePos - delaySamples) % lineLength;   // ✗', text: 'C++\'s % keeps the DIVIDEND\'s sign: a negative left side yields a NEGATIVE result — an out-of-bounds read the moment the read head wraps (Zone 1\'s buffer law, back with interest). Wrap explicitly: subtract, then add lineLength if negative.' },
+      },
+      {
+        h: 'Fractional delays & tempo sync',
+        body: 'Two production realities. First: a delay of 302.7 samples lands BETWEEN two memory slots — reading the nearest one detunes modulated delays audibly. **Interpolation** (start with linear: blend the two neighbors by the fraction) reads between slots; it\'s what chorus (p23) will lean on. Second: musicians think in note values, not milliseconds — **tempo sync** converts through the host\'s BPM: one beat = 60 ÷ BPM seconds, then × rate for samples. And when the delay TIME changes while running, glide it (d13): jumping the read head teleports through the tape — a click; sliding it is the tape-speed pitch swoop dub loves.',
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'delay-dsp',
+        prompt: 'A 500 ms delay at 48 kHz. How many samples does the read head trail the write head?',
+        code: 'delaySamples = (int)(0.5 * sampleRate);',
+        options: [
+          { t: '24,000 — seconds × rate (d2\'s conversion)', why: '' },
+          { t: '500', why: 'Milliseconds aren\'t samples — the grid runs 48,000 per second: 0.5 × 48000.' },
+          { t: '48,000', why: 'That\'s a full second of trailing. Half of it: 24,000.' },
+          { t: 'Depends on the buffer size', why: 'Block size affects delivery, never musical time — the delay is rate math alone.' },
+        ],
+        answer: 0,
+        explain: '0.5 × 48000 = 24,000 samples of memory between the heads. Every time knob in every delay you own is this one conversion.',
+      },
+      {
+        type: 'mcq', concept: 'delay-dsp',
+        prompt: 'What does the feedback control actually route?',
+        options: [
+          { t: 'The delayed output back into the line\'s input — each echo re-records, scaled by the feedback amount', why: '' },
+          { t: 'The dry signal into the wet', why: 'That\'s the wet/dry MIX. Feedback is the echo eating its own tail — regeneration.' },
+          { t: 'The output back to the host', why: 'Everything goes to the host eventually — feedback is an INTERNAL loop inside the line.' },
+          { t: 'MIDI back to the keyboard', why: 'No MIDI here — feedback is pure audio routing, the dub engineer\'s favorite wire.' },
+        ],
+        answer: 0,
+        explain: 'write = input + delayed × feedback: each pass is one more repeat, quieter by the factor. At 1.0+ the repeats GROW — the runaway delay.',
+      },
+      {
+        type: 'bugspot', concept: 'delay-dsp',
+        prompt: 'Customer bug: “crashes at short delay times, only sometimes.” Tap the sign trap.',
+        code: [
+          'int readPos = (writePos - delaySamples) % lineLength;',
+          'float delayed = data[readPos];',
+          'data[writePos] = input + delayed * feedback;',
+        ],
+        buggy: 0,
+        explain: 'When writePos < delaySamples the subtraction goes negative — and C++\'s % keeps that sign, producing a NEGATIVE index straight into data[]. Out-of-bounds read: sometimes garbage, sometimes a crash. Wrap explicitly: subtract, then if (readPos < 0) readPos += lineLength.',
+        fix: 'int readPos = writePos - delaySamples; if (readPos < 0) readPos += lineLength;',
+      },
+    ],
+    recap: [
+      'Delay line = circular buffer + write head + read head trailing by seconds × rate.',
+      'Read → write (input + delayed × feedback) → mix wet/dry → advance & wrap.',
+      'C++ % keeps the dividend\'s sign — wrap indices explicitly.',
+      'Fractional delays interpolate; tempo sync = 60/BPM seconds; glide time changes.',
+    ],
+    inside: [
+      { name: 'TXPPS Delay', use: 'p22 ships this exact machine with knobs on it' },
+      { name: 'Every echo since the 50s', use: 'tape loop, bucket brigade, or RAM — same two heads, same circle' },
+    ],
+    analogyPanel: 'A tape echo is the honest picture: one loop of tape passing a record head and a playback head. The gap between heads is the delay time, the loop splice is the wrap, and turning up the playback-into-record knob is feedback — the whole plugin is that machine, minus the flutter.',
+    beginnerMistake: 'Allocating the line from the CURRENT delay time instead of the maximum. The knob then can\'t go higher without a resize — an r5 allocation mid-render. Buy maxDelaySeconds once in prepare; the knob just moves the read head.',
+    remember: 'Two heads on a circle: write now, read then, feed a little back. Echoes are geometry.',
+    builds: ['audio-buffer', 'interpolation', 'phase'],
+    leads: ['delay-line', 'feedback'],
+  },
+
+  /* ------------------------------------------------------ F2 */
+  {
+    id: 'f2', kind: 'lesson', title: 'Waveshaping: Drawing Distortion', short: 'Transfer curves & drive',
+    concepts: ['shaping-dsp'], time: '~6 MIN', diff: 2,
+    hook: 'Every distortion you\'ve ever loved — tube warmth, fuzz, saturation on a drum bus — is one idea: a rule that answers “when THIS level comes in, THAT level goes out.” Draw the rule as a curve and you\'ve designed the pedal. Straight line: clean. Bent: warm. Cornered: fuzz.',
+    objective: 'Understand transfer curves, why soft clipping sounds warmer than hard, what drive and output compensation really do, and why distortion demands the aliasing conversation.',
+    sections: [
+      {
+        h: 'The transfer curve',
+        body: '**Waveshaping** applies a fixed function to every sample: out = shape(in). Draw it with input on one axis, output on the other. A straight diagonal is a wire (out = in). d10\'s hard clip is a diagonal with the ends snapped flat — corners, harsh harmonics. The classic **soft clip**, tanh, bends gently toward the ceiling instead: the same loudness ambition, rounder corners, warmer harmonic recipe (d7\'s law, applied on purpose).',
+        viz: { t: 'shaperviz' },
+      },
+      {
+        h: 'Drive in, compensation out',
+        body: '**Drive** is just gain INTO the curve: multiply the input up and more of the signal lives in the bent region — more harmonics, more “amount of pedal.” But drive also makes everything LOUDER, and louder always sounds “better” — so honest distortions pair it with **output compensation**: as drive rises, trim the output down so the loudness stays comparable and the ear judges the TONE, not the volume. A **tone** control after the shaper (a d13-style darkening filter) tames the new highs.',
+        code: 'float driven = in * drive;                    // push INTO the bend\nfloat shaped = std::tanh (driven);            // the curve\nfloat out    = shaped * outputComp * wet\n             + in * (1.0f - wet);             // d11: blend with the dry',
+        codeTitle: 'the whole pedal',
+        breakdown: [
+          ['in * drive', 'drive moves the signal deeper into the curve\'s bend — the “more” knob'],
+          ['std::tanh', 'the soft-clip curve: approaches ±1 asymptotically, never corners'],
+          ['outputComp', 'roughly 1/shape-of-drive — loudness held steady so tone can be judged honestly'],
+          ['wet blend', 'parallel distortion (drum-bus saturation) is the same pedal with the dry mixed back'],
+        ],
+        mistake: { code: 'float shaped = std::tanh (in);   // ✗ no drive stage\n// "the distortion knob barely does anything"', text: 'tanh of a signal already inside ±1 barely bends — the curve\'s interesting region starts past where clean audio lives. Without a drive stage pushing INTO the bend, the pedal is a very expensive wire. Drive isn\'t decoration; it\'s the doorway.' },
+      },
+      {
+        h: 'The aliasing bill',
+        body: 'Distortion is a harmonics FACTORY — that\'s its whole job — and new harmonics march straight toward Nyquist (d8). Push hard and the fold-back fizz arrives, especially on bright sources. That\'s why serious distortions ship **oversampling** (d8\'s “raise the ceiling” cure, r11\'s CPU bill): shape at 2–4× the rate, filter, come back down. First Signal\'s honest-naive rule applies to products too: ship the simple version WITH the caveat documented (r15), or pay the oversampling bill knowingly.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'shaping-dsp',
+        prompt: 'On a transfer curve, what does a perfectly straight diagonal line mean?',
+        options: [
+          { t: 'A wire — out equals in, no distortion at all', why: '' },
+          { t: 'Maximum distortion', why: 'Distortion IS the departure from the straight line — bends and corners. Straight = untouched.' },
+          { t: 'Silence', why: 'Silence would be a flat horizontal line at zero — everything maps to nothing.' },
+          { t: 'A volume boost', why: 'A STEEPER straight line boosts; the 45° diagonal is exactly unity — in equals out.' },
+        ],
+        answer: 0,
+        explain: 'The curve IS the effect: straight is clean, bent is warm, cornered is fuzz. Reading transfer curves is reading distortion pedals.',
+      },
+      {
+        type: 'mcq', concept: 'shaping-dsp',
+        prompt: 'Why do honest distortion designs turn the OUTPUT down as drive goes up?',
+        options: [
+          { t: 'Louder always sounds “better” — compensation holds loudness steady so the ear judges the tone, not the volume', why: '' },
+          { t: 'To prevent all clipping', why: 'The shaper itself bounds the signal (tanh never exceeds ±1) — compensation is about honest listening, not safety.' },
+          { t: 'To save CPU', why: 'A multiply costs the same at any value — this is psychoacoustics, not performance.' },
+          { t: 'MIDI requires it', why: 'No MIDI in a pedal — this is the oldest trick in A/B listening: level-match or the louder one wins.' },
+        ],
+        answer: 0,
+        explain: 'Level-matched comparison is the engineering ethic behind every good drive knob — and behind every honest plugin demo you\'ve ever trusted.',
+      },
+      {
+        type: 'predict', concept: 'shaping-dsp',
+        prompt: 'A producer cranks your distortion on a bright synth lead and reports “metallic fizz that moves the WRONG way as I play higher.” Diagnosis?',
+        code: '// heavy waveshaping on a harmonically rich, high-pitched source',
+        options: [
+          { t: 'Aliasing — the shaper\'s new harmonics crossed Nyquist and folded back (d8); oversampling is the cure, documentation the honest interim', why: '' },
+          { t: 'The tanh is broken', why: 'tanh is doing its job — making harmonics. The GRID ran out of room for them (d2\'s ceiling).' },
+          { t: 'Bad MIDI timing', why: 'The fingerprint (inharmonic, wrong-way movement) is spectral, not temporal — d8\'s signature exactly.' },
+          { t: 'The drive knob is mis-scaled', why: 'Scaling changes AMOUNT; it can\'t make partials move the wrong direction — only fold-back does that.' },
+        ],
+        answer: 0,
+        explain: 'Distortion manufactures harmonics; Nyquist folds the overflow. The wrong-way fizz is d8\'s fingerprint, met in the wild — and why pro distortions ship an HQ switch.',
+      },
+    ],
+    recap: [
+      'Waveshaping: out = shape(in). Straight = clean, bent = warm, cornered = fuzz.',
+      'Drive pushes INTO the bend; output compensation holds loudness honest.',
+      'tanh = the classic soft clip: rounded corners, warmer recipe than hard clipping.',
+      'Distortion breeds harmonics → aliasing risk → oversample or document.',
+    ],
+    inside: [
+      { name: 'TXPPS Distortion', use: 'p24 ships this curve with drive, tone and honest compensation' },
+      { name: 'Every saturation plugin', use: 'a drawn transfer curve, drive in, makeup out — the whole genre' },
+    ],
+    analogyPanel: 'A transfer curve is a mixing console\'s input transformer drawn as a graph: feed it gently and it\'s a wire; push it and the iron “rounds off” the peaks — which is why engineers drive tape and desks on purpose. Waveshaping is that behavior, designable in one line.',
+    beginnerMistake: 'Judging distortion settings without level-matching. Drive up = louder = “better” every single time — your ears are honest, but loudness bribes them. Compensate first, then decide.',
+    remember: 'The curve is the pedal: drive pushes in, compensation levels out, and every new harmonic pays the Nyquist toll.',
+    builds: ['clipping', 'harmonics', 'oversampling'],
+    leads: ['waveshaping', 'drive'],
+  },
+
+  /* ------------------------------------------------------ F3 */
+  {
+    id: 'f3', kind: 'lesson', title: 'The Filter: Sculpting Brightness', short: 'One-pole to resonance',
+    concepts: ['filter-dsp'], time: '~7 MIN', diff: 3,
+    hook: 'The most-turned knob in electronic music is a filter cutoff. You\'ve swept a thousand of them. Here\'s the twist that makes filters feel like an old friend instead of new math: you already built one. d13\'s parameter smoother — the thing that glides knob values — IS a low-pass filter. Aim it at audio instead of knobs, and brightness obeys you.',
+    objective: 'Understand filters as frequency-dependent gain, build the one-pole low-pass, meet resonance — and know which parts to take from the library.',
+    sections: [
+      {
+        h: 'A filter is gain that discriminates',
+        body: 'Every gain you\'ve built treated all frequencies equally. A **filter** is gain that plays favorites: a **low-pass** lets lows through and turns highs down past the **cutoff**; a **high-pass** does the reverse. The producer intuition is exact: filters are EQ\'s building blocks, and subtractive synthesis (d7\'s rich shapes, then carving) is a saw into a low-pass.',
+        viz: { t: 'filtercurve' },
+      },
+      {
+        h: 'The one-pole: a smoother aimed at audio',
+        body: 'The simplest low-pass is one line: the output takes a step toward the input each sample. Sound familiar? It\'s d13\'s smoother, verbatim. A sluggish follower can\'t track fast wobbles (highs die) but follows slow ones fine (lows pass) — smoothing IS low-pass filtering; the only question is what you aim it at. The coefficient k sets the cutoff: bigger k = faster following = brighter.',
+        code: '// the one-pole low-pass — d13\'s smoother, aimed at audio:\ny = y + k * (x - y);      // y: output state, x: input sample\n// k from cutoff (the exact map lives in the library):\n// higher cutoff → bigger k → faster following → brighter',
+        codeTitle: 'the eight-word filter',
+        breakdown: [
+          ['y + k * (x − y)', 'step toward the input: a follower with adjustable laziness'],
+          ['y persists', 'filter STATE — memory across samples, per channel, per voice (n5\'s law!)'],
+          ['k ↔ cutoff', 'the coefficient IS the knob; the precise formula ships in the library'],
+          ['smooth the cutoff', 'a stepped cutoff zippers worse than gain — d13 applies to the filter\'s own knob'],
+        ],
+        mistake: { code: '// one filter object, shared by all 8 voices:\nfloat y = lowpass.process (voiceSample);   // ✗ shared state', text: 'Filter state is per-signal memory: eight voices through ONE filter object means eight interleaved histories corrupting each other — a blurry, wrong wobble. Like phase and envelopes (n5), every voice owns its own filter state. Shared DSP state is the poly bug that keeps on giving.' },
+      },
+      {
+        h: 'Resonance, tracking, and the library',
+        body: '**Resonance** feeds a little filter output back near the cutoff — a peak that makes sweeps sing and squelch (the acid sound is a resonant filter doing push-ups). Proper resonant filters (the state-variable filter family) need more careful math than one line — this is where professionals reach for the shipped, tested tool: `juce::dsp::StateVariableTPTFilter` gives you low/high/band-pass with stable resonance. Your architecture skills stay the same: smooth the cutoff (d13), track the keyboard (n13), state per voice (n5). The library does the algebra; YOU do the engineering.',
+      },
+    ],
+    checks: [
+      {
+        type: 'mcq', concept: 'filter-dsp',
+        prompt: 'What is a low-pass filter, in one sentence?',
+        options: [
+          { t: 'Gain that discriminates by frequency: lows pass, highs are turned down past the cutoff', why: '' },
+          { t: 'A volume control for quiet sounds', why: 'Level and frequency are different axes — a low-pass cares about pitch content, not loudness.' },
+          { t: 'A noise gate', why: 'Gates open and close on LEVEL over time (Zone 1\'s gate) — filters shape the spectrum continuously.' },
+          { t: 'A reverb remover', why: 'Filters can darken reverb, but they discriminate by frequency, not by wet/dry.' },
+        ],
+        answer: 0,
+        explain: 'Frequency-dependent gain — the phrase that turns every EQ curve and synth filter into something you can read.',
+      },
+      {
+        type: 'mcq', concept: 'filter-dsp',
+        prompt: 'Why is d13\'s parameter smoother secretly a low-pass filter?',
+        options: [
+          { t: 'A sluggish follower can\'t track fast wobbles (highs die) but follows slow ones (lows pass) — smoothing IS low-pass filtering, aimed at knobs', why: '' },
+          { t: 'It isn\'t — they just look similar', why: 'Same equation, same behavior: y += k(x−y) low-passes whatever you feed it. Knob values or audio — the math can\'t tell.' },
+          { t: 'Both use buffers', why: 'The one-pole needs no buffer — one float of state. The kinship is the EQUATION, not the memory.' },
+          { t: 'JUCE implements them together', why: 'The insight is mathematical, not organizational: a smoother is a filter whose input happens to be a parameter.' },
+        ],
+        answer: 0,
+        explain: 'The deepest connection in the curriculum: you built your first filter in Zone 3 without knowing it. Everything is gain; some gain has memory.',
+      },
+      {
+        type: 'bugspot', concept: 'filter-dsp',
+        prompt: 'The poly synth\'s new filter makes chords sound blurry and wrong. Tap the shared-state bug (n5\'s law).',
+        code: [
+          'juce::dsp::StateVariableTPTFilter<float> filter;   // ONE, on the synth',
+          'float renderVoice (Voice& v)',
+          '{',
+          '    float raw = oscSample (v);',
+          '    return filter.processSample (0, raw);',
+          '}',
+        ],
+        buggy: 0,
+        explain: 'One filter object serves every voice — eight interleaved signal histories corrupting one state. Filter state is per-signal memory: it belongs INSIDE the Voice (n5), one filter per card, like phase and envelope before it.',
+        fix: 'Move the filter into the Voice struct — each voice owns its own state',
+      },
+    ],
+    recap: [
+      'Filter = frequency-dependent gain; low-pass darkens, high-pass thins.',
+      'The one-pole (y += k(x−y)) is d13\'s smoother aimed at audio — k is the cutoff.',
+      'Filter state is per-voice, per-channel memory — n5\'s law extends to DSP state.',
+      'Resonance = the singing peak; use the library\'s SVF for the careful math.',
+    ],
+    inside: [
+      { name: 'TXPPS Filter', use: 'p25 ships cutoff, resonance and a smoothed sweep' },
+      { name: 'Acid, and all its children', use: 'a resonant low-pass swept with feeling — the most famous filter sound on Earth' },
+    ],
+    analogyPanel: 'A filter is a tone control with ambition. The one-pole is the treble knob on a guitar amp; resonance is cupping your hands around the mic of that treble — a peak that makes the sweep TALK. Every synth filter is those two ideas with better math.',
+    beginnerMistake: 'Sweeping an unsmoothed cutoff and shipping the zipper. The filter\'s own knob is the most zipper-prone parameter in audio (d13\'s warning, squared) — cutoff gets a smoother before it gets a UI.',
+    remember: 'Everything is gain; filters are gain with taste; and you built your first one in Zone 3 by accident.',
+    builds: ['filter', 'cutoff', 'resonance'],
+    leads: ['parameter-smoothing', 'keyboard-tracking'],
+  },
+
+  /* ------------------------------------------------------ F4 */
+  {
+    id: 'f4', kind: 'lesson', title: 'Sample Playback', short: 'Playheads, pitch & loops',
+    concepts: ['sampler-dsp'], time: '~6 MIN', diff: 2,
+    hook: 'Load a vocal chop, play it up a fourth, watch it get faster AND higher — the chipmunk effect every producer discovers in week one. That coupling of pitch and speed isn\'t a bug; it\'s the physics of a playhead. A sampler is an oscillator whose waveform is a recording — and you\'ve already built the oscillator.',
+    objective: 'Understand sample playback as a playhead over a recorded buffer: pitch as playback ratio, interpolation between slots, looping, and per-voice playheads.',
+    sections: [
+      {
+        h: 'A playhead over a recording',
+        body: 'A sampler holds a **recorded buffer** and a **playhead** that walks it. Advance by exactly 1.0 per output sample and the recording plays at its original pitch. Advance by a **ratio** other than 1.0 and pitch changes: 2.0 = an octave up (the recording races by — twice as fast AND twice as high). It\'s d5\'s phase accumulator with a recording instead of sin(): position, increment, and — for loops — a wrap.',
+        code: 'float ratio = std::pow (2.0f, (note - rootNote) / 12.0f);  // d3\'s law\nplayhead += ratio;                                          // d5\'s advance\nint   i    = (int) playhead;\nfloat frac = playhead - i;\nfloat out  = sample[i] + frac * (sample[i + 1] - sample[i]); // f1\'s interpolation',
+        codeTitle: 'the sampler\'s heart',
+        breakdown: [
+          ['rootNote', 'the key at which the recording plays untouched — press it, ratio = 1.0'],
+          ['2^(semis/12)', 'the same pitch law as d3: samplers, synths and bends all obey it'],
+          ['playhead += ratio', 'a fractional position — pitch IS the step size, exactly like phase'],
+          ['linear interpolation', 'fractional positions read BETWEEN slots — f1\'s blend, mandatory here'],
+        ],
+        mistake: { code: 'float out = sample[(int) playhead];   // ✗ truncate and hope', text: 'Truncating the playhead snaps every read to the slot boundary — gritty aliasing-like distortion on any ratio that isn\'t exactly 1.0. Fractional playback without interpolation is the classic “why does my sampler sound crunchy” ticket. Blend the neighbors; it\'s three operations.' },
+      },
+      {
+        h: 'Loops, envelopes, and the end of the tape',
+        body: 'A one-shot ends when the playhead passes the last slot — and code MUST check (reading past the buffer is Zone 1\'s cardinal sin). Sustained instruments **loop**: when the playhead crosses the loop end, wrap it back to loop start (d5\'s wrap with different landmarks) and the note holds as long as the key does — with d9\'s envelope shaping it, exactly as if the oscillator were still a sine. Clean loop POINTS are sound-design craft (matched levels at both ends, or a crossfade); the engineering is just the wrap.',
+      },
+      {
+        h: 'Polyphony: playheads are per-voice',
+        body: 'Eight keys means eight playheads at eight positions, possibly eight ratios — n5\'s law, third appearance: per-note state lives in the Voice. The recorded buffer itself is SHARED (read-only data races nothing — r3\'s rules care about writes); the playhead, ratio and envelope are each voice\'s own. A sampler is First Signal\'s architecture with the oscillator swapped for a reader.',
+      },
+    ],
+    checks: [
+      {
+        type: 'predict', concept: 'sampler-dsp',
+        prompt: 'A vocal chop\'s root note is C3. The player presses C4 (an octave up). What happens?',
+        code: 'ratio = pow (2, (72 - 60) / 12.0) = 2.0',
+        options: [
+          { t: 'An octave higher AND twice as fast — the playhead races through the recording at double speed', why: '' },
+          { t: 'Higher at the same speed', why: 'Speed and pitch are COUPLED in playhead samplers — decoupling them is time-stretching, a much fancier machine.' },
+          { t: 'The same pitch, twice as long', why: 'Backwards twice: ratio 2.0 raises pitch and HALVES duration — the chipmunk package deal.' },
+          { t: 'A crash', why: 'Perfectly legal — the playhead just steps by 2.0. The only crash risk is forgetting the end-of-buffer check.' },
+        ],
+        answer: 0,
+        explain: 'Ratio 2.0 = octave up = half the duration. The chipmunk coupling IS playhead physics — every classic sampler works (and sounds) this way.',
+      },
+      {
+        type: 'fill', concept: 'sampler-dsp',
+        prompt: 'Compute the playback ratio from the pressed key and the root note.',
+        code: 'float ratio = std::pow (2.0f, (note - ___) / 12.0f);',
+        accept: ['rootNote'],
+        placeholder: 'anchor',
+        hint: 'The key at which the recording plays untouched.',
+        explain: 'Distance from the root in semitones, through d3\'s law: press the root, get ratio 1.0, hear the recording as recorded. One formula runs synths, bends, detune and samplers.',
+      },
+      {
+        type: 'mcq', concept: 'sampler-dsp',
+        prompt: 'Eight voices play the same sample. What is shared, and what is per-voice?',
+        options: [
+          { t: 'The recorded buffer is shared (read-only); each voice owns its playhead, ratio and envelope', why: '' },
+          { t: 'Everything is per-voice, including eight copies of the sample', why: 'Copying megabytes per voice wastes RAM for nothing — read-only data races nothing (r3 cares about writes).' },
+          { t: 'Everything is shared, including the playhead', why: 'One shared playhead = every key plays the same position — n5\'s blurred-pitch bug, sampler edition.' },
+          { t: 'It depends on the sample rate', why: 'The rate scales the math, not the ownership map. State that differs per note lives per voice — always.' },
+        ],
+        answer: 0,
+        explain: 'The n5 split, third time: shared read-only data, per-voice mutable state. Once you can answer this question cold, you can architect any instrument.',
+      },
+    ],
+    recap: [
+      'A sampler = a playhead over a recorded buffer: position + ratio + wrap.',
+      'Pitch is the step size: ratio = 2^((note−root)/12) — speed and pitch couple.',
+      'Fractional playheads need interpolation; buffer ends need bounds checks.',
+      'Buffer shared read-only; playhead/ratio/envelope per voice (n5\'s law).',
+    ],
+    inside: [
+      { name: 'TXPPS Sampler', use: 'p28 ships playback, looping, pitch and polyphony' },
+      { name: 'Every drum machine & romper', use: 'playheads over recordings — the architecture behind half of modern music' },
+    ],
+    analogyPanel: 'A sampler is a record player with a MIDI-controlled speed knob: press higher keys, spin faster, hear higher-and-quicker. Loops are locked grooves; the envelope is your hand on the fader. First Signal already taught your hands the whole gesture.',
+    beginnerMistake: 'Skipping the end-of-buffer check because “the loop wrap handles it” — then a one-shot at ratio 2.0 sails past the last slot into foreign memory. Loops wrap; one-shots BOUND. Different exits, both mandatory.',
+    remember: 'An oscillator reads a formula; a sampler reads a recording. Same bookmark, same laws, same architecture.',
+    builds: ['sample', 'frequency', 'envelope'],
+    leads: ['sample-playback', 'wet-dry'],
+  },
+];
+
+;
+/* ===== src/js/data_zone7_challenges.js ===== */
+/* ============================================================
+   ZONE 7 — engineering-task challenges and the final boss.
+   (Product missions p20–p30 live in data_zone7_missions.js,
+   which pushes into ZONE7_CHALLENGES after this file runs.)
+   ============================================================ */
+
+const ZONE7_CHALLENGES = [
+
+  /* ============ TICKETS: READING ============ */
+  {
+    id: 'fr1', kind: 'challenge', ctype: 'reading', title: 'Ticket: The Validation Log', short: 'Read the report',
+    concepts: ['product-eng'],
+    intro: 'QA attached a pluginval run for the product line. Four findings. Read it like the engineer on call: each line names a lesson you already own.',
+    questions: [
+      {
+        type: 'match', concept: 'product-eng',
+        prompt: 'Match each validation finding to its fix.',
+        left: ['CRASH: processBlock, buffer of 0 samples', 'FAIL: state restored while rendering caused a data race', 'WARN: prepare(96000, 64) after prepare(44100, 512) — output detuned', 'CRASH: editor opened before prepareToPlay, null deref'],
+        right: ['bound every loop by getNumSamples() (r13)', 'state must cross via replaceState + atomics (r9)', 'prepare must recompute ALL rate math, every call (r7)', 'defend the pointer: jassert + null-check (r14)'],
+        explain: 'A validation log is a map of assumptions. Every finding traces to one contract — and every contract has a zone behind it.',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'The log shows all four findings fixed, strictness 10 green. What does that PROVE — and not prove?',
+        options: [
+          { t: 'The plugin honors the host contract under concentrated legal stress — it does NOT prove the sound is right (that\'s the golden render\'s job)', why: '' },
+          { t: 'The plugin is bug-free', why: 'Validation exercises the CONTRACT, not your DSP\'s musical correctness — different gates, both required (r12/r13).' },
+          { t: 'The plugin is fast enough', why: 'Performance is the profiler\'s verdict (r11) — validators barely glance at CPU.' },
+          { t: 'Nothing — validators are theater', why: 'Every finding above was a real crash a real host would eventually find. Concentrated reality, not theater.' },
+        ],
+        answer: 0,
+        explain: 'Each gate proves one thing: units prove pieces, golds prove the sound, validation proves the contract, profiling proves the budget. Shipping means ALL gates green — no gate substitutes for another.',
+      },
+    ],
+  },
+  {
+    id: 'fr2', kind: 'challenge', ctype: 'reading', title: 'Ticket: The Crash Report', short: 'Read the trace',
+    concepts: ['product-eng'],
+    intro: 'A customer session went down with TXPPS Poly Synth loaded. No repro steps — just the trace. Ten minutes of reading beats ten emails of "what were you doing when…" (r14).',
+    questions: [
+      {
+        type: 'match', concept: 'product-eng',
+        prompt: 'Read the trace top-down. Match each frame to what it tells you.',
+        left: ['#0 Voice::renderFilter (this=0x00000068)', '#1 Engine::renderActiveVoices', '#2 Processor::processBlock', '#3 HostApp::AudioGraph::process'],
+        right: ['the X: null-plus-offset — a voice pointer was null, 0x68 is a member offset', 'your topmost caller — it handed out the null', 'the deadline was mid-flight when it died', 'the host\'s territory — not your suspect'],
+        explain: 'Frame 0 says WHERE, the tiny address says WHAT KIND (null + member offset), and your topmost frame starts the suspect list — r14\'s whole method in four rows.',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'Given null-voice-during-render, which suspect list does the trace justify FIRST?',
+        options: [
+          { t: 'Code that can null or free a voice while audio runs: preset loads, prepare/reset paths, anything crossing the thread boundary (r2/r9)', why: '' },
+          { t: 'The filter math', why: 'The filter never ran — this was null BEFORE the math. The address says lifecycle/threading, not DSP.' },
+          { t: 'The customer\'s RAM', why: 'Hardware paranoia comes after the obvious: something in YOUR code handed render a null voice.' },
+          { t: 'The host', why: 'Frame #3 is the host doing its job. The null was born in frames #0–#2 — your house.' },
+        ],
+        answer: 0,
+        explain: 'The trace narrows a codebase to a shortlist: who can invalidate a voice mid-render? That question — not the stack itself — is what solves the case.',
+      },
+    ],
+  },
+
+  /* ============ TICKETS: FEATURES ============ */
+  {
+    id: 'fc1', kind: 'challenge', ctype: 'completion', title: 'Feature Request: Wet/Dry', short: 'Implement it',
+    concepts: ['product-eng'],
+    intro: 'REQUEST #112: "Love the delay — can I blend it with the dry signal for parallel processing?" Estimated: two lines. You\'ve had both since d11.',
+    questions: [
+      {
+        type: 'fill', concept: 'product-eng',
+        prompt: 'Implement the blend: two gains, two signals, one bus.',
+        code: 'float out = input * (1.0f - mix) ___ delayed * mix;',
+        accept: ['+'],
+        placeholder: 'operator',
+        hint: 'd11: a bus is a plus sign.',
+        explain: 'Dry scaled down as wet scales up, summed. mix = 0 is pure dry, 1 is pure wet, 0.5 is parallel processing. Feature shipped — d11 closed the ticket.',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'QA asks: should the new mix knob be smoothed?',
+        options: [
+          { t: 'Yes — it\'s a continuous scaler on audio; stepped changes zipper (d13). setTargetValue per block, getNextValue per sample', why: '' },
+          { t: 'No — it\'s a new parameter', why: 'Age doesn\'t matter; SHAPE does. Continuous scalers glide, switches snap — the d13 rule covers every future knob too.' },
+          { t: 'Only above 50%', why: 'Zipper physics doesn\'t care where the knob points — every step is a corner at any position.' },
+          { t: 'Smoothing is only for gain', why: 'Gain, pan, cutoff, mix — anything continuously scaling audio. The rule is about the parameter\'s nature, not its name.' },
+        ],
+        answer: 0,
+        explain: 'Every new continuous parameter inherits the whole discipline automatically: atomic crossing (r3), smoothing (d13), state with defaults (r9). That inheritance is what "architecture" means.',
+      },
+    ],
+  },
+  {
+    id: 'fc2', kind: 'challenge', ctype: 'completion', title: 'Feature Request: Tempo Sync', short: 'Implement it',
+    concepts: ['product-eng'],
+    intro: 'REQUEST #118: "Delay times in note values, please — my dub patches live at dotted eighths." The host supplies BPM; you supply the conversion.',
+    questions: [
+      {
+        type: 'fill', concept: 'product-eng',
+        prompt: 'Convert the host\'s tempo to seconds per beat.',
+        code: 'double secondsPerBeat = ___ / hostBpm;   // 120 BPM → 0.5 s',
+        accept: ['60.0', '60', '60.0f', '60.f'],
+        placeholder: 'numerator',
+        hint: 'Beats per minute → seconds per beat.',
+        explain: '60 ÷ BPM: at 120 BPM a beat is half a second. Multiply by the note-value ratio (0.75 for dotted eighth of a beat… of a quarter — define your table!), then × sampleRate for the read-head distance (f1).',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'The producer automates a TEMPO CHANGE mid-song. What must the synced delay do?',
+        options: [
+          { t: 'Recompute delaySamples from the new BPM — and GLIDE the change (d13), or the read head jumps with a click', why: '' },
+          { t: 'Ignore it — sync happens at load', why: 'Tempo automation is routine in the wild; a synced delay that ignores it drifts off the grid immediately.' },
+          { t: 'Re-allocate the delay line', why: 'The line was sized for MAX delay (f1) — tempo changes just move the read head. No purchase needed, ever.' },
+          { t: 'Ask the user to reload', why: 'Plugins are guests that adapt (r13) — a reload dialog for a tempo change would be a one-star review generator.' },
+        ],
+        answer: 0,
+        explain: 'Sync is a live conversion, not a load-time constant: new BPM → new delaySamples → glided move. Every zone\'s discipline shows up in a two-line feature.',
+      },
+    ],
+  },
+
+  /* ============ TICKETS: BUGS ============ */
+  {
+    id: 'fb1', kind: 'challenge', ctype: 'bugfix', title: 'Customer Bug: The Sometimes-Crash', short: 'Fix it',
+    concepts: ['product-eng'],
+    intro: 'TICKET #204: "TXPPS Delay crashes my session — but only at very short delay times, and only sometimes." Sometimes is a clue: think about WHEN the math goes bad.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'Tap the line that sometimes computes an illegal index.',
+        code: [
+          'void processSample (float input)',
+          '{',
+          '    int readPos = (writePos - delaySamples) % lineLength;',
+          '    float delayed = data[readPos];',
+          '    data[writePos] = input + delayed * feedback;',
+          '    if (++writePos >= lineLength) writePos = 0;',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'Early in the buffer\'s life writePos < delaySamples, the subtraction goes negative — and C++\'s % preserves that sign: a negative index into data[]. "Sometimes" = whenever the write head is near the wrap. Explicit wrap: subtract, then add lineLength if negative (f1\'s law).',
+        fix: 'int readPos = writePos - delaySamples; if (readPos < 0) readPos += lineLength;',
+      },
+    ],
+  },
+  {
+    id: 'fb2', kind: 'challenge', ctype: 'bugfix', title: 'Regression: The Detuned Chorus', short: 'Fix it',
+    concepts: ['product-eng'],
+    intro: 'REGRESSION #77: "Chorus sounded perfect in the 44.1k demo session; in my 96k project the movement is wrong — too shallow, too fast-feeling." A number stopped meaning what someone assumed.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'One line treats milliseconds as samples. Tap it.',
+        code: [
+          'void prepareToPlay (double sampleRate, int samplesPerBlock)',
+          '{',
+          '    centerDelay = (int) (12.0 * 44.1);   // "12 ms, in samples"',
+          '    line.setSize (1, (int)(0.05 * sampleRate));',
+          '}',
+        ],
+        buggy: 2,
+        explain: 'The samples-per-millisecond factor is HARD-CODED at 44.1 — exactly right in a 44.1k session, and silently wrong everywhere else: at 96k those 529 samples are only ~5.5 ms, so the chorus center halves and the movement changes character. Convert through the argument the host just handed you: (int)(0.012 * sampleRate) — the rate lives in code, never in a constant (d2, r7, fb2 closed).',
+        fix: 'centerDelay = (int) (0.012 * sampleRate);   // ms → samples, at THIS rate',
+      },
+    ],
+  },
+  {
+    id: 'fb3', kind: 'challenge', ctype: 'bugfix', title: 'Customer Bug: The Wandering Sampler', short: 'Fix it',
+    concepts: ['product-eng'],
+    intro: 'TICKET #231: "High notes on TXPPS Sampler sometimes play a burst of static at the end of the sound." High notes = fast playheads = something running past an edge.',
+    questions: [
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'A one-shot voice reads past the end of the recording. Tap the missing boundary\'s neighbor — the line that trusts the playhead.',
+        code: [
+          'playhead += ratio;',
+          'int   i    = (int) playhead;',
+          'float frac = playhead - i;',
+          'float out  = sample[i] + frac * (sample[i + 1] - sample[i]);',
+        ],
+        buggy: 3,
+        explain: 'At ratio 2.0 the playhead sails past the last slot and sample[i + 1] reads foreign memory — static, then sometimes a crash (Zone 1\'s cardinal sin at product scale). One-shots must BOUND: if (i + 1 >= length) { endVoice(); return 0.0f; } before any read. Loops wrap; one-shots bound — both exits mandatory (f4).',
+        fix: 'if (i + 1 >= sampleLength) { endVoice(); return 0.0f; }',
+      },
+    ],
+  },
+
+  /* ============ COMPILER ============ */
+  {
+    id: 'fe1', kind: 'challenge', ctype: 'compiler', title: 'Decode: The Buffer That Isn\'t an Array', short: 'Read the error',
+    concepts: ['product-eng'],
+    intro: 'The delay refactor won\'t build. juce::AudioBuffer guards its samples behind methods — the compiler is reminding you where the doorway is.',
+    questions: [
+      {
+        type: 'compiler', concept: 'product-eng',
+        prompt: 'What fixes this build?',
+        code: 'juce::AudioBuffer<float> line;\n\nfloat readDelayed (int readPos)\n{\n    return line[readPos];   // read the delay line\n}',
+        error: "error: no match for 'operator[]'\n(operand types are 'juce::AudioBuffer<float>' and 'int')\n    return line[readPos];\n               ^",
+        options: [
+          { t: 'Go through the doorway: line.getReadPointer(0)[readPos] (or getSample) — AudioBuffer is channels × samples, not a flat array', why: '' },
+          { t: 'Cast the buffer to float*', why: 'Casting past an interface abandons every guarantee it encodes (channel layout, bounds discipline). The methods ARE the design.' },
+          { t: 'Use std::vector instead', why: 'It would compile — and orphan you from every JUCE facility (clear, setSize, channel handling) the product line leans on.' },
+          { t: 'Overload operator[] yourself', why: 'Modifying library types you don\'t own is a maintenance trap — the accessor already exists, with a channel argument for a reason.' },
+        ],
+        answer: 0,
+        explain: 'AudioBuffer is a grid (channels × samples, j-era lesson), so access names the channel: getReadPointer(ch) for a lane, getSample for one value. The "missing operator" is the API telling you its shape.',
+      },
+    ],
+  },
+
+  /* ============ ORDERING ============ */
+  {
+    id: 'fo1', kind: 'challenge', ctype: 'ordering', title: 'Order: One Sample Through the Delay', short: 'Arrange it',
+    concepts: ['product-eng'],
+    intro: 'The f1 machine, shuffled. Only one order reads yesterday, records today, and keeps the circle honest.',
+    questions: [
+      {
+        type: 'order', concept: 'product-eng',
+        prompt: 'Arrange the per-sample delay algorithm exactly as f1 teaches it: read → write → mix → advance.',
+        lines: [
+          'float delayed = readLine (writePos - delaySamples);  // read the past',
+          'writeLine (writePos, input + delayed * feedback);    // record + regen',
+          'float out = input * dry + delayed * wet;             // mix the bus',
+          'if (++writePos >= lineLength) writePos = 0;          // advance & wrap',
+        ],
+        explain: 'Read before write (or a zero-length delay eats its own fresh input), mix from what you read, advance last so both heads stay in step. The order IS the machine.',
+      },
+    ],
+  },
+
+  /* ============ FINAL BOSS ============ */
+  {
+    id: 'boss7', kind: 'boss', title: 'BOSS: The Release Candidate', short: 'Final boss', passNeed: 6,
+    concepts: ['product-eng'],
+    brief: 'The last build of TXPPS Signature — the capstone plugin — sits one approval away from launch. QA\'s final pass found eight defects, and they span EVERYTHING: Zone 1 arithmetic, Zone 4 DSP, Zone 5 voices, Zone 6 discipline, Zone 7 products. No single lesson saves you. All of them do. Clear 6 of 8, sign the release — and graduate.',
+    stages: [
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'QA #1 — "The wet/dry knob does nothing until 100%, then snaps to full wet." A Zone 1 ghost. Tap it.',
+        code: [
+          'int mixPercent = (int) mixParam->load();   // 0..100',
+          'float mix = mixPercent / 100;',
+          'out = dry * (1.0f - mix) + wet * mix;',
+        ],
+        buggy: 1,
+        explain: 'int ÷ int truncates: every value below 100 becomes 0, and 100 becomes exactly 1 — the knob is a switch. Zone 1\'s first trap, alive in a shipping product: divide by 100.0f.',
+        fix: 'float mix = mixPercent / 100.0f;',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'QA #2 — "The saturation stage sounds great low, but bright leads get an inharmonic fizz that moves DOWN as I play UP." Diagnose and pick the release-grade response.',
+        code: '// heavy tanh drive on harmonically rich material',
+        options: [
+          { t: 'Aliasing (d8): the shaper\'s new harmonics fold past Nyquist. Release-grade: oversample the saturation stage, or ship with the limitation documented (r15) — chosen deliberately', why: '' },
+          { t: 'Lower the output gain', why: 'Level doesn\'t un-fold harmonics — the fizz is spectral (d8\'s fingerprint), not a loudness issue.' },
+          { t: 'Blame the customer\'s converter', why: 'The wrong-way movement is fold-back, generated inside YOUR shaper — d8 signed this ticket.' },
+          { t: 'Filter the input to remove all highs', why: 'That "fix" removes the material the customer bought the plugin to saturate. Raise the ceiling (oversample) or document — don\'t amputate.' },
+        ],
+        answer: 0,
+        explain: 'd8 taught the fingerprint, f2 taught who breeds the harmonics, r15 taught the honest choice. Release engineering is picking a cure ON PURPOSE — including "documented limitation" when that\'s the truthful trade.',
+      },
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'QA #3 — "After using the sustain pedal ONCE, some later notes never release." Zone 5\'s bookkeeping. Tap the poisoned claim.',
+        code: [
+          'void claimVoice (Voice& v, int note, float vel)',
+          '{',
+          '    v.note      = note;',
+          '    v.velGain   = vel;',
+          '    v.sustained = true;',
+          '    v.adsr.noteOn();',
+          '}',
+        ],
+        buggy: 4,
+        explain: 'Every new note is born PRE-MARKED as pedal-held: its eventual note-off gets deferred forever if the pedal logic ever consults the flag. The claim must CLEAR the mark (v.sustained = false) — stale pedal marks are n10\'s stuck-note factory, and p15\'s field report, shipped.',
+        fix: 'v.sustained = false;   // a new life starts with clean paperwork',
+      },
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'QA #4 — "Debug builds crackle under load; Release is clean. Also: WHY is there console spam?" Tap the r10 violation.',
+        code: [
+          'for (int i = 0; i < buffer.getNumSamples(); ++i)',
+          '{',
+          '    out[i] = renderSample();',
+          '    DBG ("out: " + juce::String (out[i]));',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'DBG builds a heap String and prints — per SAMPLE, on the audio thread: allocation (r5) plus I/O, 44,100 times a second. Debug-only doesn\'t mean harmless: it hides races by shifting timing and makes Debug untestable. Audio-thread visibility = values into atomics/FIFOs; the UI narrates (r10).',
+        fix: 'Delete it — meter via a std::atomic the UI reads',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'QA #5 — "Customers report old sessions sound DISTORTED after the update." The update added a Saturation knob. Diagnose.',
+        code: '// v2.1 added: AudioParameterFloat "saturation", default = 0.5f',
+        options: [
+          { t: 'The new parameter defaults to HALF DRIVE — every old session inherits distortion it never had. New features default NEUTRAL (r9): 0.0, off', why: '' },
+          { t: 'The saturation algorithm is wrong', why: 'The algorithm is fine for those who ASK for it — the crime is volunteering it to two years of finished mixes.' },
+          { t: 'Old sessions are corrupt', why: 'The sessions are pristine — they simply never saved a "saturation" value, so the DEFAULT is what they hear (r9\'s whole lesson).' },
+          { t: 'Ship a preference toggle', why: 'A setting to un-break old sessions is an apology wearing a checkbox. Fix the default; old mixes must load IDENTICAL.' },
+        ],
+        answer: 0,
+        explain: 'r9\'s golden rule met its consequence: the default IS what old sessions hear. Change it to neutral, ship 2.1.1 as a patch, and the archive is sacred again.',
+      },
+      {
+        type: 'bugspot', concept: 'product-eng',
+        prompt: 'QA #6 — "The delay\'s repeats get LOUDER each pass until everything clips." Tap the ceiling that isn\'t one.',
+        code: [
+          'void setFeedback (float fb)',
+          '{',
+          '    feedback = juce::jlimit (0.0f, 1.2f, fb);',
+          '}',
+        ],
+        buggy: 3,
+        explain: 'The clamp exists — with the wrong ceiling: 1.2 permits gain-greater-than-one regeneration, and each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
+        fix: 'feedback = juce::jlimit (0.0f, 0.95f, fb);',
+      },
+      {
+        type: 'fill', concept: 'product-eng',
+        prompt: 'QA #7 — "Synced delays are off-grid at every rate except 44.1k." Complete the conversion with the value that is true in EVERY session.',
+        code: 'double secondsPerBeat = 60.0 / hostBpm;\ndelaySamples = (int) (secondsPerBeat * beatRatio * ___);',
+        accept: ['sampleRate', 'getSampleRate()', 'getSampleRate ()'],
+        placeholder: 'factor',
+        hint: 'The number that turns seconds into samples — prepareToPlay hands it to you (r7).',
+        explain: 'Someone hard-coded 44100 and every other rate drifted off-grid. Seconds × sampleRate — the d2 conversion, read from the argument the host provides, recomputed every prepare (r7). The oldest lesson closes the newest ticket.',
+      },
+      {
+        type: 'mcq', concept: 'product-eng',
+        prompt: 'QA #8 — FINAL GATE. All seven fixes are in. The golden render now FAILS — output differs from the blessed 2.0 reference. Your call, engineer.',
+        code: '// compareBuffers(output, golden_2_0): FAIL — max diff 0.31',
+        options: [
+          { t: 'Expected: the fixes CHANGED the output (bugs removed). Verify each diff traces to a fix, re-bless a new golden in its own commit, restart the checklist, ship', why: '' },
+          { t: 'Loosen the tolerance until it passes', why: 'Negotiating with the ruler (r12) — the test caught real change, which is its job. Blessing is deliberate; fudging is forever.' },
+          { t: 'Revert the fixes to keep the gold green', why: 'Shipping known bugs to satisfy a test inverts the entire point of testing. Golds serve the product, not the other way around.' },
+          { t: 'Delete the golden test', why: 'The test just did EXACTLY what it exists for. Keep it, re-bless it, and it guards version 2.1 the way it guarded 2.0.' },
+        ],
+        answer: 0,
+        explain: 'The last lesson of the curriculum: tests are instruments, not obstacles. Verify, re-bless deliberately, restart the list (r15), ship with your name on it. Release approved — TXPPS Signature 2.1 is GO. And so are you.',
+      },
+    ],
+  },
+];
+
+;
+/* ===== src/js/data_zone7_missions.js ===== */
+/* ============================================================
+   ZONE 7 — the product line: missions p20–p30.
+   Appended to ZONE7_CHALLENGES (declared in data_zone7_challenges.js).
+   Guidance decreases as the line progresses; the capstone
+   treats the learner as a junior professional.
+   ============================================================ */
+
+ZONE7_CHALLENGES.push(
+
+  /* ------------------------------------------------ P20 · GAIN */
+  {
+    id: 'p20', kind: 'project', title: 'Product 1: TXPPS Gain', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Gain 1.0. A gain utility so polished it earns rack space: dB-calibrated knob, click-free automation, true bypass, output meter, full preset/session recall. Nothing here is new — that\'s the point. This build proves your Zones 1–6 foundations ship.',
+    steps: [
+      {
+        note: 'PLANNING — Map the architecture before a line is written. Every block is a zone you own.',
+        q: {
+          type: 'match', concept: 'product-eng',
+          prompt: 'Match each component to its job in TXPPS Gain.',
+          left: ['APVTS + AudioParameterFloat', 'SmoothedValue<float>', 'the cached atomic parameter pointer', 'get/setStateInformation'],
+          right: ['the knob\'s brain: host automation + editor binding (Zone 3)', 'the glide that kills zipper (d13)', 'the race-free bridge into the callback (r3)', 'session recall, defensive and versioned (r9)'],
+          explain: 'Four components, four zones, one product plan. Professional builds start by naming which solved problem each requirement maps to.',
+        },
+      },
+      {
+        note: 'IMPLEMENTATION — The render core. Per-block work stays out of the sample loop (r11).',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Hoist the dB conversion — once per block, not per sample.',
+          code: 'gainSmoothed.setTargetValue (\n    juce::Decibels::___ (gainParam->load()));\n// then per sample: out[i] = in[i] * gainSmoothed.getNextValue();',
+          accept: ['decibelsToGain'],
+          placeholder: 'function',
+          hint: 'Ears speak dB; multiplication speaks linear (d4).',
+          explain: 'decibelsToGain runs a pow — per block it\'s free, per sample it\'s a hotspot (rb3\'s cousin). The knob speaks dB, the math speaks linear, the smoother speaks glide.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — "Bypass SILENCES my track instead of passing audio through." Severity: release blocker.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Tap the line that turned bypass into mute.',
+          code: [
+            'void processBlock (juce::AudioBuffer<float>& buffer,',
+            '                   juce::MidiBuffer&)',
+            '{',
+            '    if (bypassed) { buffer.clear(); return; }',
+            '    applyGain (buffer);',
+            '}',
+          ],
+          buggy: 3,
+          explain: 'Bypass means "pretend I\'m not here" — the input must pass through UNTOUCHED. clear() replaces it with silence: the opposite promise. Correct bypass simply returns without touching the buffer (and pros crossfade the transition so engaging it doesn\'t click — d13\'s law even here).',
+          fix: 'if (bypassed) return;   // the buffer already holds the input — leave it alone',
+        },
+      },
+      {
+        note: 'IMPLEMENTATION — The meter: audio measures, UI narrates (r10). No waiting, no racing.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Publish the block\'s peak for the UI\'s 30 Hz timer to read.',
+          code: 'std::atomic<float> meterLevel { 0.0f };\n// audio thread, end of block:\nmeterLevel.___ (blockPeak);',
+          accept: ['store'],
+          placeholder: 'method',
+          hint: 'The atomic write verb (r3).',
+          explain: 'store() on the deadline, load() in a UI timer — the meter crosses the boundary with zero locks and zero races. The bridge you audited in p16, now shipping in a product.',
+        },
+      },
+      {
+        note: 'RELEASE — Final gate before 1.0. Choose the proof that protects your USERS\' existing work.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Which test specifically proves "sessions saved with the beta reopen identically in 1.0"?',
+          options: [
+            { t: 'The state round-trip suite: load every saved beta state file and verify all parameters match exactly (r9/r12)', why: '' },
+            { t: 'pluginval at strictness 10', why: 'Validation proves the host CONTRACT — it never checks that YOUR old values still mean the same thing.' },
+            { t: 'The CPU profile', why: 'Performance says nothing about recall — a fast plugin can still forget a producer\'s settings.' },
+            { t: 'Listening to it', why: 'Ears check one session, once. The suite checks every saved era, every build, forever (r12).' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS GAIN 1.0 ▮ Features: dB gain, smoothing, true bypass, meter, full recall. Engineering: thread-safe, zipper-free, state-versioned. Tests: units + state suite GREEN. Validation: strictness 10 PASS. QA: bypass blocker fixed. STATUS: RELEASED. One product down — the line is open.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P21 · TREMOLO */
+  {
+    id: 'p21', kind: 'project', title: 'Product 2: TXPPS Tremolo', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Tremolo 1.0. The d14 machine, productized: rate (free or synced), depth, LFO waveform selector, and a stereo mode that turns tremolo into auto-pan. Ship it with the mono button in mind.',
+    steps: [
+      {
+        note: 'IMPLEMENTATION — The core multiply. One line carries the whole effect.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Re-range the bipolar LFO so depth breathes gain between (1−depth) and 1.',
+          code: 'float trem = 1.0f - depth * (___ + 0.5f * lfo);\nout[i] = in[i] * trem;',
+          accept: ['0.5f', '0.5', '.5f', '.5'],
+          placeholder: 'offset',
+          hint: 'Half up, half of the swing — d14\'s unipolar recipe.',
+          explain: '0.5 + 0.5·lfo maps −1..+1 into 0..1; scaled by depth and subtracted from 1, gain breathes without ever flipping polarity. The d14 tremolo, now with a product name on it.',
+        },
+      },
+      {
+        note: 'FEATURE — LFO waveform selector. Square LFO = trance gate. Design question first.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'The LFO waveform selector: smoothed or snapped?',
+          options: [
+            { t: 'Snapped — it\'s a discrete switch (d13); but the square LFO ITSELF gets slew-limited edges, or every gate transition clicks', why: '' },
+            { t: 'Smoothed like any knob', why: 'Gliding between sine and square synthesizes an unchosen in-between LFO — selectors snap (d13, p10\'s exact ruling).' },
+            { t: 'Neither matters for an LFO', why: 'A square LFO switching gain instantly IS a d13 step on the audio — the modulator\'s edges need manners even though the selector snaps.' },
+            { t: 'Remove the square option', why: 'The trance gate is the feature request! Ship it with softened edges, not amputated.' },
+          ],
+          answer: 0,
+          explain: 'Two rules at once: the SELECTOR snaps (discrete choice), the square LFO\'s EDGES glide a few ms (continuous gain can\'t step). Product design is choosing which rule applies where.',
+        },
+      },
+      {
+        note: 'FEATURE — Stereo mode: auto-pan. One LFO, two channels, one phase trick.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Give the right channel the opposite phase — as left ducks, right blooms.',
+          code: 'float lfoL = (float) std::sin (lfoPhase);\nfloat lfoR = (float) std::sin (lfoPhase\n                    + juce::MathConstants<double>::___);',
+          accept: ['pi'],
+          placeholder: 'constant',
+          hint: 'Half a cycle apart — opposite breathing.',
+          explain: 'A π offset inverts the right channel\'s modulation: the sound leans left, then right — tremolo becomes auto-pan with one constant. (d12\'s stereo lesson: difference IS the image.)',
+        },
+      },
+      {
+        note: 'QA TICKET #2 — "In MONO, stereo mode\'s movement disappears completely." Investigate before you "fix."',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'Why does π-offset auto-pan vanish on a mono fold-down — and is it a bug?',
+          code: 'mono = (inL * tremL + inR * tremR) ;  // tremR mirrors tremL',
+          options: [
+            { t: 'The two gains mirror each other, so their sum stays ~constant — the movement cancels (d12). Not a bug: document it, and the mono button explains itself', why: '' },
+            { t: 'A race condition', why: 'Perfectly deterministic — it cancels EVERY time. The math is the "culprit," and the math is correct.' },
+            { t: 'The LFO is broken in mono', why: 'The LFO runs fine — mono SUMS the channels, and mirrored gains sum to a near-constant (d12\'s fold-down lesson).' },
+            { t: 'Ship a warning dialog', why: 'A manual note ("stereo movement folds to steady level in mono") beats interrupting every session — r15\'s honest-docs rule.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS TREMOLO 1.0 ▮ Features: rate/depth/waveform, tempo sync, auto-pan. Engineering: unipolar-safe, slew-limited gates. QA: mono behavior investigated → documented (not a bug). Tests GREEN, validation PASS. STATUS: RELEASED.',
+          },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P22 · DELAY */
+  {
+    id: 'p22', kind: 'project', title: 'Product 3: TXPPS Delay', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Delay 1.0. The f1 machine with knobs: time (20 ms – 2 s, syncable), feedback, wet/dry. Requirements: no allocation after prepare, no crash at any knob position, repeats that always decay.',
+    steps: [
+      {
+        note: 'ARCHITECTURE — prepareToPlay builds the machine. Order the setup (r5, r7).',
+        q: {
+          type: 'order', concept: 'product-eng',
+          prompt: 'Arrange the delay\'s prepare, top to bottom, as the contracts demand.',
+          lines: [
+            'lineLength = (int) (MAX_DELAY_SECONDS * sampleRate);',
+            'line.setSize (1, lineLength);          // buy the worst case (r5)',
+            'line.clear();                          // no stale echoes from the old world (r7)',
+            'writePos = 0;                          // heads reset last, onto clean tape',
+          ],
+          explain: 'Size from the MAX (the knob never triggers a purchase), buy once, wipe the old world\'s audio, park the heads. Every line is a zone-6 clause with a product attached.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — Intermittent crash at short delay times. You read this trace in fb1; now harden the fix into the product.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Wrap the read head the explicit, sign-safe way.',
+          code: 'int readPos = writePos - delaySamples;\nif (readPos < 0)\n    readPos += ___;',
+          accept: ['lineLength'],
+          placeholder: 'value',
+          hint: 'The size of the circle.',
+          explain: 'Subtract, test, add the line length — no % surprises (f1). The read head now wraps for every knob position a customer can reach.',
+        },
+      },
+      {
+        note: 'QA TICKET #2 — "Feedback at max: repeats never die." Predict before you patch.',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'feedback = 1.0 exactly. What do the repeats do?',
+          code: 'data[writePos] = input + delayed * 1.0f;',
+          options: [
+            { t: 'Never decay — each echo re-records at full level: an infinite hold that stacks with every new note until it clips', why: '' },
+            { t: 'Decay slowly', why: 'Decay needs feedback < 1.0 — at exactly 1.0 each pass reproduces the last at FULL level, forever.' },
+            { t: 'Stop after one repeat', why: 'One repeat is feedback = 0 territory. 1.0 is the opposite wall: the tape loop that never fades.' },
+            { t: 'Alias', why: 'No new harmonics are made by a copy — the failure is energy accounting (d10/d11), not spectrum.' },
+          ],
+          answer: 0,
+          explain: 'At 1.0 the loop conserves everything and ADDS each new input on top — runaway by accumulation. The product clamps feedback below 1.0 (0.95 keeps dub tails without the meltdown).',
+        },
+      },
+      {
+        note: 'CODE REVIEW — A teammate\'s "optimization" is waiting for approval. Review it like it\'s your name on the release.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'This change re-sizes the line whenever the time knob moves. Tap the violation.',
+          code: [
+            'void setDelayTime (float seconds)',
+            '{',
+            '    delaySamples = (int) (seconds * sampleRate);',
+            '    line.setSize (1, delaySamples);   // "save memory"',
+            '}',
+          ],
+          buggy: 3,
+          explain: 'setSize is a heap purchase — and setDelayTime runs from the knob while audio renders: allocation on (or racing with) the deadline, r5\'s forbidden verb hiding in a "memory saving." The line stays at MAX size from prepare; the knob only moves the read head. REVIEW: REJECTED.',
+          fix: 'Delete the setSize — the knob moves delaySamples, never the buffer',
+        },
+      },
+      {
+        note: 'RELEASE — Sync lands (fc2\'s conversion), docs written, gates green. Final check on the sync path.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'The correct tempo-sync pipeline, host to read head?',
+          options: [
+            { t: 'BPM → 60/BPM seconds per beat → × note ratio → × sampleRate → glide the change (d13)', why: '' },
+            { t: 'BPM → × sampleRate directly', why: 'BPM is a rate, not a duration — the 60/BPM inversion turns it into seconds first (fc2).' },
+            { t: 'BPM → seconds → snap the delay time', why: 'Snapping the read head teleports through the tape: a click on every tempo nudge. Glide it (f1).' },
+            { t: 'Hard-code common tempos', why: 'The host owns tempo, including automation of it — conversion is live math, not a lookup of your favorites.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS DELAY 1.0 ▮ Features: time/sync, feedback (clamped 0.95), wet/dry. Engineering: max-size line, sign-safe wrap, glided time. QA: crash + runaway fixed, review rejected an allocation. Tests GREEN, validation PASS. STATUS: RELEASED.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P23 · CHORUS */
+  {
+    id: 'p23', kind: 'project', title: 'Product 4: TXPPS Chorus', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Chorus 1.0. A short delay (5–30 ms) whose time is swept by an LFO, blended with the dry: one voice becomes a slightly-imperfect ensemble. Stereo width via LFO phase offset. The delay line you shipped, taught to shimmer.',
+    steps: [
+      {
+        note: 'PLANNING — Know the machine before building. What IS chorus, mechanically?',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Chorus, in one architecture sentence:',
+          options: [
+            { t: 'A short modulated delay (5–30 ms) mixed with the dry signal — the moving delay detunes the copy slightly, like a second imperfect performer (n14\'s physics)', why: '' },
+            { t: 'Several full copies of the track', why: 'That\'s unison/doubling by brute force — chorus fakes the second performer with ONE delayed, wobbling copy.' },
+            { t: 'A reverb with short decay', why: 'Reverb scatters thousands of echoes; chorus is ONE echo, so short it fuses, moving so it detunes.' },
+            { t: 'A pitch shifter', why: 'Close! The moving delay DOES shift pitch slightly (f1\'s tape-speed law) — but only as a byproduct of the sweep.' },
+          ],
+          answer: 0,
+          explain: 'Delay short enough to fuse + LFO motion (the detune) + dry blend (the "two performers") = chorus. Three shipped components, one new patch between them.',
+        },
+      },
+      {
+        note: 'IMPLEMENTATION — The modulated read. The LFO moves the read head around a center.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Sweep the delay time around its center — in samples, at THIS rate.',
+          code: 'float delayMs      = 12.0f + 6.0f * (float) std::sin (lfoPhase);\nfloat delaySamples = delayMs * 0.001f * (float) ___;',
+          accept: ['sampleRate', 'getSampleRate()', 'getSampleRate ()'],
+          placeholder: 'factor',
+          hint: 'ms → seconds → samples: the d2 conversion, never hard-coded (fb2!).',
+          explain: 'The LFO breathes 6–18 ms around a 12 ms center, converted through the REAL rate — fb2\'s regression can never ship here. The moving fractional distance is why the next step exists.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — "Chorus sounds gritty/grainy, worse at faster rates." The read head is landing between slots.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Tap the truncation that grinds the sweep.',
+          code: [
+            'float pos     = writePos - delaySamples;   // fractional!',
+            'if (pos < 0) pos += lineLength;',
+            'float delayed = data[(int) pos];',
+            'out[i] = in[i] * dry + delayed * wet;',
+          ],
+          buggy: 2,
+          explain: 'A modulated delay is fractional almost every sample — truncating snaps the read to slot boundaries, and the sweep zippers into grit (f4\'s crunchy-sampler bug, chorus edition). Linear interpolation between data[i] and data[i+1] by the fraction: three operations, silk restored.',
+          fix: 'int i = (int) pos; float fr = pos - i; delayed = data[i] + fr * (data[i+1 < lineLength ? i+1 : 0] - data[i]);',
+        },
+      },
+      {
+        note: 'FEATURE — Stereo width. Same machine, second read head, offset LFO.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Give the right channel\'s LFO a quarter-cycle head start.',
+          code: 'float lfoR = (float) std::sin (lfoPhase\n            + juce::MathConstants<double>::___);',
+          accept: ['halfPi'],
+          placeholder: 'constant',
+          hint: 'A quarter cycle — the channels sweep out of step, never mirrored.',
+          explain: 'π/2 offset: the two sweeps are decorrelated (not opposite — π would mirror, and mirrored detune can hollow the mono sum). Width from level-and-time DIFFERENCES, d12-style, with the mono button in mind. ▮ PRODUCT SHIPPED — TXPPS CHORUS 1.0 ▮ Features: rate/depth/mix, stereo spread. Engineering: interpolated modulated reads, rate-safe conversions. Tests GREEN, validation PASS. STATUS: RELEASED.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P24 · DISTORTION */
+  {
+    id: 'p24', kind: 'project', title: 'Product 5: TXPPS Distortion', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Distortion 1.0. The f2 curve with a front panel: drive, tone, output, mix. Requirement from the label: "the drive knob must sound like MORE, not just LOUDER." That sentence is an engineering spec.',
+    steps: [
+      {
+        note: 'IMPLEMENTATION — The shaper stage, f2\'s recipe.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Push the signal INTO the curve\'s bend.',
+          code: 'float shaped = std::tanh (in * ___);',
+          accept: ['drive'],
+          placeholder: 'factor',
+          hint: 'The doorway into distortion (f2).',
+          explain: 'Drive is gain into the curve: more drive, more of the signal lives in the bend, more harmonics. Without it, tanh of clean audio is a very expensive wire (f2\'s mistake panel).',
+        },
+      },
+      {
+        note: 'SPEC CHECK — "MORE, not just LOUDER." Verify your drive knob honors the label\'s sentence.',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'Drive doubles; output compensation stays fixed. What does the customer hear?',
+          code: 'out = std::tanh (in * drive) * fixedComp;',
+          options: [
+            { t: 'More harmonics AND more loudness — and the loudness bribes their ears into "better." The spec fails: compensation must track drive', why: '' },
+            { t: 'Only more harmonics', why: 'tanh\'s output grows toward ±1 as drive rises — level climbs too, and level is the ear\'s favorite lie (f2).' },
+            { t: 'No audible change', why: 'Doubling drive audibly thickens the harmonic recipe — the question is whether loudness rides along uninvited. It does.' },
+            { t: 'Less loudness', why: 'Backwards: harder driving pushes the output closer to full scale, not away from it.' },
+          ],
+          answer: 0,
+          explain: 'The label\'s sentence is a gain-staging spec: comp ≈ inverse of drive\'s loudness effect, so the knob changes TONE at constant level. Level-matched honesty, productized.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — A teammate moved the compensation "for efficiency." The tone collapsed. Review it.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Same multiplies, wrong stage. Tap the line that changed the SOUND.',
+          code: [
+            'float driven = in * drive * outputComp;',
+            'float shaped = std::tanh (driven);',
+            'out[i] = shaped * wet + in[i] * (1.0f - wet);',
+          ],
+          buggy: 0,
+          explain: 'Compensation INSIDE the drive path scales the signal BEFORE the curve — it un-drives the distortion instead of trimming its loudness. Multiplication commutes; STAGES don\'t (d15\'s law): comp belongs after the shaper, where it touches level without touching tone.',
+          fix: 'float shaped = std::tanh (in * drive); out = shaped * outputComp * wet + …;',
+        },
+      },
+      {
+        note: 'RELEASE — QA\'s bright-source aliasing report is in (you diagnosed it in f2). Decide the 1.0 posture.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Aliasing fizz on bright sources at high drive. The 1.0 decision?',
+          options: [
+            { t: 'Ship 1.0 with the limitation DOCUMENTED and an oversampled HQ mode on the roadmap — an honest r15 choice, priced and stated', why: '' },
+            { t: 'Silently ship it', why: 'Undocumented limitations become support tickets and distrust (r15) — the fizz WILL be found.' },
+            { t: 'Block release until 4× oversampling is perfect', why: 'A defensible call — but the brief scoped 1.0 without it. Scope discipline plus honest docs beats a slipped launch, PROVIDED the docs are honest.' },
+            { t: 'Filter all input above 5 kHz', why: 'Amputating the customer\'s material to hide your artifact — the cure that\'s worse than the fizz.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS DISTORTION 1.0 ▮ Features: drive/tone/output/mix, level-tracked compensation. Known limitation: naive shaping aliases on bright sources at high drive (documented; HQ mode roadmapped). Tests GREEN, validation PASS. STATUS: RELEASED — honestly.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P25 · FILTER */
+  {
+    id: 'p25', kind: 'project', title: 'Product 6: TXPPS Filter', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Filter 1.0. Low-pass and high-pass modes, resonance, and a cutoff sweep smooth enough to perform with. The f3 machine, stage-ready.',
+    steps: [
+      {
+        note: 'IMPLEMENTATION — The one-pole core, f3\'s eight words.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'The follower steps toward the input. Complete the filter.',
+          code: 'y = y + k * (___ - y);   // y: state, k: cutoff coefficient',
+          accept: ['x', 'input', 'in'],
+          placeholder: 'signal',
+          hint: 'What is the follower chasing?',
+          explain: 'y += k(x − y): the smoother aimed at audio (f3). k near 0 = sluggish = dark; k near 1 = eager = bright. Eight words, one product core.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — "The cutoff knob does NOTHING… until I bounce, then the bounce sounds different." Lifecycle smell (r7).',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Tap why the knob is dead until a re-prepare.',
+          code: [
+            'void prepareToPlay (double sampleRate, int samplesPerBlock)',
+            '{',
+            '    k = coefficientFor (cutoffParam->load(), sampleRate);',
+            '}',
+            'void processBlock (…)',
+            '{',
+            '    // renders with k — never recomputed',
+            '}',
+          ],
+          buggy: 2,
+          explain: 'k is computed ONCE, at prepare — the knob updates the parameter, but nothing ever re-derives k from it. The knob is dead until the next prepare (the bounce!) resurrects it with a different value. Per block: read the atomic, smooth the cutoff, recompute k (r8\'s pull pattern).',
+          fix: 'Per block: k = coefficientFor (cutoffSmoothed.getNextValue()… ) — pull, don\'t fossilize',
+        },
+      },
+      {
+        note: 'QA MATRIX — Four field reports on the beta. Diagnose all four from the symptoms alone.',
+        q: {
+          type: 'match', concept: 'product-eng',
+          prompt: 'Match each beta report to its diagnosis.',
+          left: ['"sweeps crackle like a dirty pot"', '"chords sound blurry and wrong" (synth version)', '"resonance at max SCREAMS forever"', '"filter pops when I flip LP → HP"'],
+          right: ['unsmoothed cutoff — the most zipper-prone knob in audio (f3)', 'shared filter state across voices — n5\'s law violated', 'self-oscillation unclamped — bound the resonance range', 'mode switch needs a snap-with-fade, not a mid-render jump (d13/r9)'],
+          explain: 'Every symptom names its lesson. A QA matrix is the curriculum wearing customer language — and you just read it fluently.',
+        },
+      },
+      {
+        note: 'RELEASE — Performance sign-off. The sweep is the product; prove it ships clean.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Which automated test best guards the filter\'s HEADLINE feature (the performable sweep)?',
+          options: [
+            { t: 'An automation stress render: sweep cutoff hard while rendering, scan the output for discontinuities (r8/r12) — clicks fail the build', why: '' },
+            { t: 'A unit test on coefficientFor()', why: 'Worth having — but it proves the MATH, not the swept EXPERIENCE. The discontinuity scan proves the performance.' },
+            { t: 'pluginval', why: 'Contract, not sound (fr1\'s lesson). The sweep needs a sonic gate.' },
+            { t: 'Manual listening on release day', why: 'Ears once vs a machine every build — r12 already settled this argument.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS FILTER 1.0 ▮ Features: LP/HP, resonance (bounded), performable sweep. Engineering: per-block pull, smoothed cutoff, guarded by an automation-stress gate. Tests GREEN, validation PASS. STATUS: RELEASED.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P26 · MONO SYNTH */
+  {
+    id: 'p26', kind: 'project', title: 'Product 7: TXPPS Mono', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Mono 1.0. A performance mono synth: one massive voice, last-note priority, legato/retrigger switch, portamento, filter + amp envelope. First Signal\'s bloodline, tuned for basslines. Guidance thins from here — you\'ve built all of this.',
+    steps: [
+      {
+        note: 'ARCHITECTURE — Order the voice\'s signal chain. (You\'ve drawn this since d15.)',
+        q: {
+          type: 'order', concept: 'product-eng',
+          prompt: 'Arrange the mono voice, source to output.',
+          lines: [
+            'oscSample (waveform, phase)      // the tone (d6/d7)',
+            'voiceFilter.process (raw)        // sculpt brightness (f3)',
+            '* adsr.getNextSample()           // shape the note (d9)',
+            '* gainSmoothed.getNextValue()    // level, gliding (d13)',
+            'jlimit (-1.0f, 1.0f, s)          // the seatbelt, LAST (d10)',
+          ],
+          explain: 'Tone → filter → envelope → level → clamp. The only new resident since d15 is the filter — it sits before the envelope so the amp shape stays in charge of the note\'s outline.',
+        },
+      },
+      {
+        note: 'FEATURE — The legato/retrigger switch, n4\'s personality knob.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Fresh attack only when retrigger demands it — or when nothing was sounding.',
+          code: 'bool wasSilent = ! adsr.isActive();\nsetPitchTarget (note);\nif (retrigger || ___)\n    adsr.noteOn();',
+          accept: ['wasSilent'],
+          placeholder: 'condition',
+          hint: 'Legato binds OVERLAPPED notes — a phrase\'s first note still needs its attack.',
+          explain: 'Legato skips the attack only mid-phrase; a note from silence always strikes. One boolean carries the whole mono feel (n4).',
+        },
+      },
+      {
+        note: 'FEATURE — Portamento. You own every piece; recognize the assembly.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Portamento (glide between pitches) is, in components you\'ve shipped:',
+          options: [
+            { t: 'A d13 smoother aimed at PITCH: setTargetValue on note change, getNextValue feeding the increment each sample — glide time is the ramp length', why: '' },
+            { t: 'A new oscillator type', why: 'Same oscillator — only its frequency input changes gradually instead of instantly.' },
+            { t: 'Crossfading two voices', why: 'That\'s a different (polyphonic) trick — classic mono glide is ONE voice whose pitch travels.' },
+            { t: 'A pitch-bend automation', why: 'Bend is the player\'s wheel (n11); portamento is the SYNTH gliding between played notes on its own.' },
+          ],
+          answer: 0,
+          explain: 'd13\'s machinery, third deployment: knobs, cutoff, now pitch. Recognizing old tools in new requests is the senior-engineer reflex this zone trains.',
+        },
+      },
+      {
+        note: 'QA TICKET — "With glide on, my bassline CHOPS between overlapped notes instead of sliding." Diagnose from the symptom.',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'Overlapped notes chop instead of binding. Which switch is in the wrong position — and where\'s the fix?',
+          code: '// glide time: 80 ms · retrigger: ??? · phrase: overlapped keys',
+          options: [
+            { t: 'Retrigger is ON — every overlap fires a fresh attack that chops the phrase. Legato mode (or an "auto" that binds overlaps) is the fix (n4)', why: '' },
+            { t: 'The glide time is too short', why: '80 ms glides audibly — and a glide can\'t bind notes whose envelope RESTARTS. The attack is the chop.' },
+            { t: 'The filter is too dark', why: 'Tone can\'t create rhythmic chopping — the symptom is temporal, and temporal points at the envelope.' },
+            { t: 'The oscillator is broken', why: 'Pitch machinery makes wrong NOTES, not wrong PHRASING. Articulation lives in the retrigger switch.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS MONO 1.0 ▮ Features: last-note priority, legato/retrigger, portamento, filter + amp env. QA: articulation ticket closed by a switch, not a rewrite. Tests GREEN, validation PASS. STATUS: RELEASED.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P27 · POLY SYNTH */
+  {
+    id: 'p27', kind: 'project', title: 'Product 8: TXPPS Poly', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Poly 1.0. TXPPS Mono, multiplied: 8 voices, allocation + stealing, per-voice filters, unison mode, full performance controls. The Zone 5 government, running a shipping product.',
+    steps: [
+      {
+        note: 'PLANNING — Voice budget math. The spec says: 8 voices, optional 2× unison.',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'Unison ×2 enabled. The player holds a 5-note chord. What does allocation face?',
+          code: '// 5 keys × 2 copies = 10 demanded, 8 exist',
+          options: [
+            { t: 'Ten voices demanded, eight exist — the n8 ladder steals twice (releasing first, then oldest), and the product spec must SAY so', why: '' },
+            { t: 'All ten play', why: 'The pool is physics (n5): eight cards. Demand beyond it goes through the ladder, not around it.' },
+            { t: 'Unison disables', why: 'Only if you design that policy — and the spec here chose stealing. Policies are decisions, not defaults.' },
+            { t: 'The chord is refused', why: 'Refusing the player is the one policy nobody ships (n8) — the new notes always win.' },
+          ],
+          answer: 0,
+          explain: 'Budget math is product design: 8 voices with 2× unison is a 4-key instrument before stealing begins. The spec documents it; the manual repeats it; support tickets never mention it.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — "Pitch bend works on NEW notes but held notes ignore the wheel." A Zone 5 contract, violated.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Tap where the bend got baked instead of applied live.',
+          code: [
+            'void claimVoice (Voice& v, int note, float vel)',
+            '{',
+            '    v.increment = baseIncrementFor (note) * bendRatio;',
+            '    v.adsr.noteOn();',
+            '}',
+            '// render: v.phase += v.increment;',
+          ],
+          buggy: 2,
+          explain: 'bendRatio is frozen INTO the stored increment at claim time — held notes keep the ratio from their birth, deaf to the wheel forever after. n11\'s law: the base stays pure, the bend multiplies at RENDER (v.increment * bendRatio), so every sounding voice follows the wheel live.',
+          fix: 'v.increment = baseIncrementFor (note); // render: phase += v.increment * bendRatio',
+        },
+      },
+      {
+        note: 'PERFORMANCE — The clinic\'s question (p18), now at product scale.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Eight voices, two sounding. What makes the six idle voices nearly free?',
+          options: [
+            { t: 'The render loop gates on isActive(): idle cards cost one boolean test, zero math (n9/p18) — the pool\'s price is paid only by sound', why: '' },
+            { t: 'Idle voices are deallocated', why: 'Never — the pool is permanent (n5/r5). Idle means CHEAP, not gone.' },
+            { t: 'The compiler removes them', why: 'The compiler can\'t know a voice is silent — the isActive gate is YOUR design doing that job.' },
+            { t: 'They aren\'t free — 8 voices always costs 8', why: 'Only in a build missing the gate — which is exactly the p18 clinic finding this question guards against.' },
+          ],
+          answer: 0,
+          explain: 'One if per idle voice per sample: polyphony\'s cost scales with NOTES, not with the pool. That property is what lets the spec promise "8 voices" without promising "8 voices of CPU."',
+        },
+      },
+      {
+        note: 'RELEASE — The poly-specific gate. Choose the test that catches what mono testing never can.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Which scripted test is the POLY release\'s signature gate?',
+          options: [
+            { t: 'A fists-on-keyboard MIDI script: dense chords + pedal + bend + steal pressure, asserting no stuck notes, no silent claims, no clicks (n-zone laws, automated)', why: '' },
+            { t: 'A single-note golden render', why: 'Keep it — but single notes can\'t catch allocation, stealing, or shared-state bugs. Poly bugs live in COMBINATIONS (n6\'s warning).' },
+            { t: 'A CPU profile at idle', why: 'Idle proves the gate works; the poly disaster class is correctness under density, not idle cost.' },
+            { t: 'Longer manual jamming', why: 'Jamming finds bugs once; the script finds them every build (r12). Automate the fists.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS POLY 1.0 ▮ Features: 8 voices, ladder stealing, per-voice filters, unison, full performance deck. QA: live-bend contract fixed. Gates: fists-script + golds + validation GREEN. STATUS: RELEASED.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P28 · SAMPLER */
+  {
+    id: 'p28', kind: 'project', title: 'Product 9: TXPPS Sampler', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Sampler 1.0. Load a recording, play it across the keyboard: root-note pitching, loop points for sustained notes, per-voice playheads, d9 envelopes. f4\'s machine with a serial number.',
+    steps: [
+      {
+        note: 'IMPLEMENTATION — The pitch map, f4\'s heart.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Semitone distance to playback ratio — the law every pitched machine obeys.',
+          code: 'float ratio = std::pow (2.0f, (note - rootNote) / ___);',
+          accept: ['12.0f', '12', '12.0', '12.f'],
+          placeholder: 'divisor',
+          hint: 'Semitones per octave — d3, n11, n14, f4: same constant every time.',
+          explain: 'The fifth appearance of 2^(x/12) in this curriculum — synth pitch, bends, detune, and now sample playback. One law, every machine.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — "Sustained pads DIE after a few seconds instead of holding." The loop isn\'t looping.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Tap the exit that should be a wrap.',
+          code: [
+            'playhead += ratio;',
+            'if (playhead >= loopEnd)',
+            '    endVoice();',
+            'float out = readInterpolated (playhead);',
+          ],
+          buggy: 2,
+          explain: 'Crossing the loop end must WRAP to loop start (playhead = loopStart + overshoot — d5\'s keep-the-fraction, sampler edition), not end the voice. endVoice() there turns every sustained patch into a one-shot. Loops wrap; one-shots bound (f4) — this code confused the exits.',
+          fix: 'playhead -= (loopEnd - loopStart);   // wrap, keep the fractional overshoot',
+        },
+      },
+      {
+        note: 'DESIGN REVIEW — A teammate asks: "the recording already has a natural decay — why force an envelope on it?"',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Why does every sampler voice still need a d9 envelope?',
+          options: [
+            { t: 'Note-off must FADE the voice — cutting a playhead mid-waveform is a d13 cliff (click) on every release; the envelope is also what makes loops feel like notes', why: '' },
+            { t: 'It doesn\'t — recordings are pre-shaped', why: 'The recording\'s shape ends where the player\'s finger does — lift mid-sample and SOMETHING must fade the cut. That something is d9.' },
+            { t: 'Envelopes fix aliasing', why: 'Different department (d8) — envelopes shape TIME, not spectrum.' },
+            { t: 'Only for looped samples', why: 'One-shots released early need the same mercy — any note the player can end needs an envelope to end it kindly.' },
+          ],
+          answer: 0,
+          explain: 'The envelope isn\'t decoration; it\'s the difference between an instrument and a soundboard. Every voice that can be released mid-sound needs a shaped goodbye.',
+        },
+      },
+      {
+        note: 'RELEASE — Architecture sign-off, the n5 split at product scale.',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'Two keys play the SAME recording at different pitches, overlapping. Works because…',
+          code: '// one loaded buffer · two sounding voices',
+          options: [
+            { t: 'The buffer is shared read-only; each voice owns its playhead, ratio and envelope (f4/n5) — reads race nothing (r3)', why: '' },
+            { t: 'The sample was copied per voice', why: 'No copies needed — read-only data is race-free (r3 cares about writes). RAM thanks the architecture.' },
+            { t: 'The voices take turns', why: 'Turn-taking is chip-era history — both playheads read the same memory simultaneously, freely.' },
+            { t: 'It shouldn\'t work', why: 'It\'s the n5 split doing exactly its job — the answer you could give cold is why this ships.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS SAMPLER 1.0 ▮ Features: root-note pitching, loops, per-voice playback, envelopes. Engineering: shared read-only buffer, bounded one-shots, wrapped loops. Tests GREEN, validation PASS. STATUS: RELEASED.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P29 · MOTION FX */
+  {
+    id: 'p29', kind: 'project', title: 'Product 10: TXPPS Motion FX', short: 'Product build',
+    concepts: ['product-eng'],
+    brief: 'PRODUCT BRIEF — TXPPS Motion FX 1.0. A modulation multi-effect: two LFOs and a mod matrix routed at delay time, filter cutoff and output gain — chorus, wobble, tremolo and combinations, one processor. Spec only; you know the components.',
+    steps: [
+      {
+        note: 'SPEC §2 — The routing table IS the product. Verify you can read your own spec.',
+        q: {
+          type: 'match', concept: 'product-eng',
+          prompt: 'Match each matrix row to the effect the customer hears.',
+          left: ['LFO1 → delay time (small depth)', 'LFO1 → filter cutoff', 'LFO2 → output gain', 'LFO2 → LFO1 depth'],
+          right: ['chorus/flanger territory — the moving read head detunes (f1/p23)', 'the wobble — acid\'s favorite wire (f3/n13)', 'tremolo — d14\'s original patch', 'motion that EVOLVES — a modulator modulating a modulator'],
+          explain: 'Ten weeks ago this table was jargon. Now each row is a machine you\'ve shipped, and the last row — modulating modulation — is where sound design becomes signature.',
+        },
+      },
+      {
+        note: 'SPEC §4 — Matrix application. One loop, summed contributions (n13). No hints beyond the blank.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Apply every row aimed at this destination.',
+          code: 'float modValueFor (Dest d)\n{\n    float total = 0.0f;\n    for (const auto& r : matrix)\n        if (r.dst == d)\n            total += sourceValue (r.src) * ___;\n    return total;\n}',
+          accept: ['r.amount', 'amount'],
+          placeholder: 'factor',
+          hint: '',
+          explain: 'source × amount, summed per destination — n13\'s control-signal bus, verbatim. The matrix pattern transfers to every product that ever needs motion.',
+        },
+      },
+      {
+        note: 'QA TICKET #1 — "At max depth the delay crackles and occasionally SCREAMS." Two ceilings are missing. Pick the engineering-complete fix.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'LFO-modulated delay time at extreme depth: what must the render clamp, and why?',
+          options: [
+            { t: 'Clamp the MODULATED time to [1 sample, maxDelay] — the sweep can otherwise push the read head past the line (crash territory) or through the write head (screaming feedback geometry)', why: '' },
+            { t: 'Clamp only the LFO output', why: 'The LFO is fine at ±1 — it\'s the DERIVED time (center + depth×lfo) that escapes the line\'s physical range.' },
+            { t: 'Shrink the depth knob\'s range', why: 'Amputating the feature to dodge the bounds check — the clamp costs two comparisons and keeps the drama usable.' },
+            { t: 'Allocate a bigger line at max depth', why: 'r5, again, forever: no purchases mid-render. The line was sized for max at prepare; the CLAMP honors that budget.' },
+          ],
+          answer: 0,
+          explain: 'Derived values need their own seatbelts: the knob is bounded, but knob × modulation is not. Clamping the COMPUTED time is the difference between dramatic and broken.',
+        },
+      },
+      {
+        note: 'RELEASE — Motion FX automates EVERYTHING. One gate proves it. (You know which.)',
+        q: {
+          type: 'predict', concept: 'product-eng',
+          prompt: 'The release gate for a plugin whose whole identity is modulation + automation?',
+          code: '// r8: the host is your most demanding performer',
+          options: [
+            { t: 'The automation stress bounce: every parameter swept hard, offline render, discontinuity scan — clicks or NaNs fail the build (r8/r12)', why: '' },
+            { t: 'A long manual jam', why: 'Finds bugs once (r12) — the bounce finds them on every commit, at faster-than-real-time.' },
+            { t: 'pluginval alone', why: 'Contract ≠ sound (fr1). A modulation product needs its MOTION proven clean, not just its lifecycle.' },
+            { t: 'Golden render at default settings', why: 'Defaults barely move — this product\'s risk lives at the extremes the stress bounce visits on purpose.' },
+          ],
+          answer: 0,
+          explain: '▮ PRODUCT SHIPPED — TXPPS MOTION FX 1.0 ▮ Features: 2 LFOs, mod matrix, delay/filter/gain destinations. Engineering: clamped derived values, interpolated reads. Gate: automation stress bounce GREEN. STATUS: RELEASED. The product line stands at ten.',
+        },
+      },
+    ],
+  },
+
+  /* ------------------------------------------------ P30 · CAPSTONE */
+  {
+    id: 'p30', kind: 'project', title: 'CAPSTONE: TXPPS Signature', short: 'Commercial VST3',
+    concepts: ['product-eng'],
+    brief: 'SPECIFICATION — TXPPS SIGNATURE 2.0, commercial VST3. ENGINE: the 8-voice poly core + saturation stage + motion delay + master section. UI MOCKUP: three panels (VOICE / MOTION / MASTER), meter bridge, preset browser. ENGINEERING REQS: lock-free throughout, version-safe state, worst-case CPU ≤ 40% at 64/44.1k. QA REQS: pluginval strictness 10, golden renders, old-session suite, automation stress. You are the engineer of record. Hints are over.',
+    steps: [
+      {
+        note: 'ARCHITECTURE — Order the build. (No guidance. You have shipped ten products.)',
+        q: {
+          type: 'order', concept: 'product-eng',
+          prompt: 'Arrange the build plan as a professional would sequence it.',
+          lines: [
+            'engine skeleton: processor, prepare contract, pool of 8 voices',
+            'parameters + state: APVTS, atomics, version stamp, defaults',
+            'DSP chain: voices → saturation → motion delay → master',
+            'editor: three panels binding through attachments',
+            'gates: units, golds, old-session suite, validation, stress bounce',
+          ],
+          explain: 'Engine before knobs, knobs before panels, panels before proof — each layer tests the one beneath it. Ten products taught you this order; the capstone just asked you to say it out loud.',
+        },
+      },
+      {
+        note: 'QA BLOCKER #1 — "Master volume automation sounds STEPPED, and worse with more voices sounding." Subtle. Read carefully.',
+        q: {
+          type: 'bugspot', concept: 'product-eng',
+          prompt: 'Tap the line that makes the smoother run at the wrong speed — voice-count-dependent.',
+          code: [
+            'for (int i = 0; i < buffer.getNumSamples(); ++i)',
+            '{',
+            '    float mix = 0.0f;',
+            '    for (auto& v : voices)',
+            '        if (v.adsr.isActive())',
+            '            mix += renderVoice (v) * masterSmoothed.getNextValue();',
+            '    out[i] = mix * 0.125f;',
+            '}',
+          ],
+          buggy: 5,
+          explain: 'getNextValue() advances the ramp — calling it INSIDE the voice loop steps the smoother once per ACTIVE VOICE per sample: the glide runs N× too fast, unevenly, and its speed changes with polyphony. One call per sample, hoisted above the voice loop, applied to the sum. A d13 machine misused by one line of placement.',
+          fix: 'float g = masterSmoothed.getNextValue(); …loop… out[i] = mix * 0.125f * g;',
+        },
+      },
+      {
+        note: 'QA BLOCKER #2 — Migration. v1 saved filter cutoff as 0..1 normalized; 2.0 stores Hz. Old sessions must load IDENTICAL.',
+        q: {
+          type: 'fill', concept: 'product-eng',
+          prompt: 'Gate the migration on the state\'s era.',
+          code: 'int v = state.getProperty ("stateVersion", 1);\nif (v < ___)\n    migrateNormalizedCutoffToHz (state);   // 0..1 → Hz, once, on load',
+          accept: ['2'],
+          placeholder: 'version',
+          hint: '',
+          explain: 'Stamped state makes migration surgical: era 1 saves convert once, era 2 saves pass untouched. r9\'s machinery carrying a real meaning-change across a major version — the hardest state problem, handled in two lines.',
+        },
+      },
+      {
+        note: 'QA BLOCKER #3 — pluginval, strictness 10: "data race — setStateInformation during processBlock." The last thread lesson, unassisted.',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'State restore can land mid-render (r9). The engineering-complete response?',
+          options: [
+            { t: 'All audio-read state crosses safely: replaceState + parameter atomics for values; double-buffer + atomic flip for any bundled engine config (r3/r4/r9)', why: '' },
+            { t: 'Lock processBlock during restores', why: 'A mutex on the deadline — r4\'s cardinal sin. The cure that\'s the disease.' },
+            { t: 'Defer restores until playback stops', why: 'Hosts restore whenever they please (r13) — a plugin that argues with its host fails validation forever.' },
+            { t: 'Copy state in the constructor', why: 'The constructor runs once; restores arrive for a lifetime. The safe channels exist precisely for this traffic.' },
+          ],
+          answer: 0,
+          explain: 'The full boundary discipline in one ticket: atomics for values, the flip for bundles, replaceState for the tree. Signature\'s state now loads mid-chorus without a click or a race.',
+        },
+      },
+      {
+        note: 'RELEASE DECISION — Every gate is green: units, golds, old sessions, stress bounce, strictness 10, worst-case CPU 38%. The label wants one more feature "since we\'re shipping anyway."',
+        q: {
+          type: 'mcq', concept: 'product-eng',
+          prompt: 'Your call, engineer of record.',
+          options: [
+            { t: 'Ship 2.0 as gated and green. The feature enters the NEXT cycle at the top of the checklist — late additions restart the list, and the list has no fast lane (r15)', why: '' },
+            { t: 'Add it — it\'s small', why: '"Small" is a guess and the gates haven\'t seen it (r15/p19). The last-minute addition is a documented genre of shipped disaster.' },
+            { t: 'Delay the release a month', why: 'For an UNREQUESTED-by-users feature? Scope discipline: green gates ship; roadmaps absorb ambition.' },
+            { t: 'Ship it untested but flagged "beta"', why: 'A beta flag on an untested path in a 2.0 is a support queue with a bow on it.' },
+          ],
+          answer: 0,
+          explain: '▮▮▮ PRODUCT LINE COMPLETE ▮▮▮ TXPPS Signature 2.0: GATED, GREEN, SHIPPED. Eleven products — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, Signature — every one built on the same laws, every one released with its gates green. One session remains: QA\'s final pass on the Release Candidate. Clear it, and you graduate.',
+        },
+      },
+    ],
+  }
+);
+
+;
 /* ===== src/js/data_glossary.js ===== */
 /* ============================================================
    SIGNAL DICTIONARY — part A: Basics, C++, Memory.
@@ -14352,6 +15847,109 @@ DICT.push(
 );
 
 ;
+/* ===== src/js/data_glossary_i.js ===== */
+/* ============================================================
+   SIGNAL DICTIONARY — part I: terms introduced by Zone 7.
+   Kept deliberately lean: only what the product line needs.
+   ============================================================ */
+
+DICT.push(
+  {
+    id: 'delay-line', t: 'delay line', c: 'EFFECTS',
+    plain: 'A pre-allocated circular buffer with two moving positions: a write head recording the incoming audio, and a read head trailing it by the delay time in samples (seconds × rate). Both wrap at the end — a tape loop made of memory.',
+    why: 'It\'s the engine inside delay, chorus, flanger and reverb — and a bounds-discipline exam: the read head\'s wrap math (C++ % keeps the dividend\'s sign!) is a classic crash site.',
+    studio: 'A tape echo: one loop of tape passing a record head, then a playback head. The gap between heads is the delay time; the splice is the wrap.',
+    uses: ['Delay & echo', 'Chorus/flanger (modulated, short)', 'Reverb networks'],
+    viz: { t: 'delayviz' },
+    mistake: 'Sizing the line from the CURRENT delay time instead of the maximum — the knob then triggers a mid-render reallocation (the forbidden verb). Buy max in prepareToPlay; the knob only moves the read head.',
+    remember: 'Two heads on a circle: write now, read then. Size for the max, wrap by hand.',
+    related: ['audio-buffer', 'feedback', 'wet-dry', 'interpolation'],
+    appears: [{ z: 7, node: 'f1' }, { z: 7, node: 'p22' }, { z: 7, node: 'fb1' }],
+    aka: ['circular buffer', 'tape loop', 'echo buffer'],
+    search: ['echo', 'delay buffer', 'read head', 'write head'],
+  },
+  {
+    id: 'feedback', t: 'feedback', c: 'EFFECTS',
+    plain: 'Routing an effect\'s output back into its own input, scaled by a factor. In a delay: each echo re-records, quieter by the feedback amount — repeats that decay. At 1.0 or above, each pass reproduces or GROWS the last: the runaway.',
+    why: 'Feedback is where echoes, resonance and screaming self-oscillation all come from — the same wire, different amounts. Clamping it below 1.0 is the difference between dub and disaster.',
+    studio: 'The "regen" knob on every echo pedal — and, unclamped, the same physics as a mic pointed at its own monitor.',
+    uses: ['Delay repeats', 'Filter resonance', 'Flanger intensity'],
+    mistake: 'Clamping with the wrong ceiling (jlimit to 1.2 "for drama") — above 1.0 the loop gains energy every pass and the meltdown is exponential. Drama lives at 0.95; disaster starts at 1.0.',
+    remember: 'Below 1.0: repeats decay. At 1.0: forever. Above: runaway. The clamp IS the product decision.',
+    related: ['delay-line', 'resonance', 'gain', 'clipping'],
+    appears: [{ z: 7, node: 'f1' }, { z: 7, node: 'p22' }, { z: 7, node: 'boss7' }],
+    aka: ['regeneration', 'regen', 'repeats'],
+    search: ['repeats', 'echo amount', 'runaway delay', 'self oscillation'],
+  },
+  {
+    id: 'wet-dry', t: 'wet/dry mix', c: 'EFFECTS',
+    plain: 'The blend between the processed signal (wet) and the untouched input (dry): out = dry × (1 − mix) + wet × mix. Mixing\'s plus sign (d11) wearing an effects costume — 0 is bypass-flavored, 1 is full effect, 0.5 is parallel processing.',
+    why: 'Nearly every effect ships one, and it inherits the whole knob discipline automatically: atomic crossing, smoothing (a stepped mix zippers), state with defaults.',
+    studio: 'Parallel compression\'s whole trick, generalized: the untouched take and the processed take on two faders, summed.',
+    uses: ['Delay/reverb blend', 'Parallel saturation', 'Every effect\'s mix knob'],
+    mistake: 'Computing mix with integer division (percent / 100) — the knob becomes a switch that does nothing until 100%. Zone 1\'s truncation trap loves this exact line.',
+    remember: 'Two gains, one sum: dry fades out as wet fades in. Smooth it like any continuous knob.',
+    related: ['mixing', 'gain', 'parameter-smoothing'],
+    appears: [{ z: 7, node: 'fc1' }, { z: 7, node: 'p22' }, { z: 7, node: 'boss7' }],
+    aka: ['mix knob', 'blend', 'parallel processing'],
+    search: ['blend', 'mix', 'parallel', 'dry signal'],
+  },
+  {
+    id: 'waveshaping', t: 'waveshaping', c: 'EFFECTS',
+    plain: 'Distortion as a drawn rule: every sample passes through a fixed transfer curve, out = shape(in). A straight diagonal is a wire; a gentle bend (tanh) is warm saturation; snapped-flat ends are hard clipping\'s harsh corners.',
+    why: 'The curve IS the pedal: reading transfer curves lets you understand every saturator, fuzz and tape emulation — and predict its harmonic recipe (bends = warm, corners = harsh, everything = new harmonics that must pay the Nyquist toll).',
+    studio: 'Driving a console transformer or tape machine on purpose: push gently and it rounds the peaks — the "warmth" everyone chases is a curve\'s bend.',
+    uses: ['Saturation & distortion', 'Drum-bus warmth (parallel)', 'Guitar amp sims'],
+    viz: { t: 'shaperviz' },
+    mistake: 'Shipping a shaper with no drive stage: tanh of clean ±1 audio barely bends. Drive pushes the signal INTO the curve\'s interesting region — it\'s the doorway, not decoration.',
+    remember: 'The curve is the sound: drive in, compensation out, and every new harmonic risks folding (aliasing).',
+    related: ['clipping', 'drive', 'harmonics', 'oversampling'],
+    appears: [{ z: 7, node: 'f2' }, { z: 7, node: 'p24' }],
+    aka: ['transfer curve', 'saturation', 'soft clipping', 'tanh'],
+    search: ['distortion curve', 'saturation', 'warm drive', 'tanh'],
+  },
+  {
+    id: 'drive', t: 'drive', c: 'EFFECTS',
+    plain: 'Gain applied INTO a waveshaping curve: more drive pushes more of the signal into the bend, creating more harmonics. Honest designs pair it with output compensation so the knob changes TONE at constant loudness.',
+    why: '"More, not just louder" is an engineering spec: uncompensated drive bribes the ear with level, and every A/B lies. Compensation is the oldest honesty tool in audio.',
+    studio: 'The input gain on a preamp pushed hot on purpose, with the channel fader pulled down to match: the crunch changes, the loudness doesn\'t.',
+    uses: ['Distortion amount', 'Saturation depth', 'Any shaped input stage'],
+    mistake: 'Applying compensation BEFORE the shaper — it un-drives the distortion instead of trimming its loudness. Multiplication commutes; stages don\'t (d15\'s law).',
+    remember: 'Drive pushes in, compensation trims out — tone changes, loudness holds.',
+    related: ['waveshaping', 'gain', 'headroom'],
+    appears: [{ z: 7, node: 'f2' }, { z: 7, node: 'p24' }],
+    aka: ['input gain', 'saturation amount'],
+    search: ['drive knob', 'more distortion', 'output compensation', 'makeup gain'],
+  },
+  {
+    id: 'tempo-sync', t: 'tempo sync', c: 'DAWS',
+    plain: 'Deriving time values from the host\'s tempo instead of milliseconds: 60 ÷ BPM = seconds per beat, scaled by a note-value ratio, then × sampleRate. Delays land on eighths, LFOs lock to bars — the effect joins the groove.',
+    why: 'Musicians think in note values; hosts supply BPM (and automate it mid-song!) — synced effects must recompute live and GLIDE time changes, or every tempo nudge clicks.',
+    studio: 'The tap-tempo button, automated: instead of tapping the delay into time, the session\'s clock IS the tap.',
+    uses: ['Synced delays', 'Tempo-locked LFO wobbles', 'Gated/trance effects'],
+    mistake: 'Treating sync as a load-time constant. Tempo is automatable — the conversion is live math, recomputed when BPM moves, with the resulting time glided (d13).',
+    remember: '60/BPM, times the note ratio, times the rate — recomputed live, moved gently.',
+    related: ['delay-line', 'lfo', 'daw', 'sample-rate'],
+    appears: [{ z: 7, node: 'fc2' }, { z: 7, node: 'p22' }],
+    aka: ['bpm sync', 'note values', 'tap tempo'],
+    search: ['sync to tempo', 'eighth note delay', 'bpm', 'beat sync'],
+  },
+  {
+    id: 'sample-playback', t: 'sample playback', c: 'SYNTHS',
+    plain: 'An oscillator whose waveform is a recording: a playhead walks a stored buffer, advancing by a ratio each output sample. Ratio 1.0 plays as recorded; 2^(semitones/12) repitches — coupling pitch and speed (the chipmunk law).',
+    why: 'It\'s the architecture behind samplers, drum machines and romplers — and a reuse exam: d5\'s bookmark, d3\'s pitch law, f1\'s interpolation and n5\'s per-voice split all reappear with a recording in the middle.',
+    studio: 'A record player with a MIDI-controlled speed knob: higher keys spin faster — higher AND shorter, always together.',
+    uses: ['Samplers & drum machines', 'Vocal chops', 'Looped sustains'],
+    mistake: 'Reading truncated playhead positions without interpolation — gritty crunch at any ratio besides 1.0. Fractional positions blend their neighbors; it\'s three operations.',
+    remember: 'A playhead over a recording: pitch is the step size, loops wrap, one-shots bound.',
+    related: ['sample', 'interpolation', 'voice', 'envelope'],
+    appears: [{ z: 7, node: 'f4' }, { z: 7, node: 'p28' }],
+    aka: ['sampler', 'playhead', 'root note', 'repitching'],
+    search: ['play samples', 'pitch a recording', 'chipmunk', 'looping'],
+  }
+);
+
+;
 /* ===== src/js/engine.js ===== */
 /* ============================================================
    Challenge engine — pure logic, no DOM.
@@ -14368,7 +15966,7 @@ const Engine = (() => {
   const QINDEX = {};
 
   function indexAll() {
-    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES, ...ZONE4_LESSONS, ...ZONE4_CHALLENGES, ...ZONE5_LESSONS, ...ZONE5_CHALLENGES, ...ZONE6_LESSONS, ...ZONE6_CHALLENGES];
+    const all = [...ZONE1_LESSONS, ...ZONE1_CHALLENGES, ...ZONE2_LESSONS, ...ZONE2_CHALLENGES, ...ZONE3_LESSONS, ...ZONE3_CHALLENGES, ...ZONE4_LESSONS, ...ZONE4_CHALLENGES, ...ZONE5_LESSONS, ...ZONE5_CHALLENGES, ...ZONE6_LESSONS, ...ZONE6_CHALLENGES, ...ZONE7_LESSONS, ...ZONE7_CHALLENGES];
     for (const node of all) {
       NODES[node.id] = node;
       const qs = questionsOf(node);
@@ -14741,11 +16339,13 @@ const Store = (() => {
       if (id === 'boss4') grant('zone4_clear');
       if (id === 'boss5') grant('zone5_clear');
       if (id === 'boss6') grant('zone6_clear');
+      if (id === 'boss7') { grant('zone7_clear'); grant('graduate'); }
       if (['p3', 'p4', 'p5'].every(isDone)) grant('modern_hands');
       if (['p6', 'p7', 'p8'].every(isDone)) grant('first_signal');
       if (['p9', 'p10', 'p11'].every(isDone)) grant('first_sound');
       if (['p12', 'p13', 'p14', 'p15'].every(isDone)) grant('playable_synth');
       if (['p16', 'p17', 'p18', 'p19'].every(isDone)) grant('release_ready');
+      if (['p20', 'p21', 'p22', 'p23', 'p24', 'p25', 'p26', 'p27', 'p28', 'p29', 'p30'].every(isDone)) grant('product_line');
       if (node.ctype === 'bugfix' && ['b1', 'b2', 'b3', 'b4'].every(isDone)) grant('bug_squasher');
       if (node.ctype === 'compiler' && ['e1', 'e2', 'e3'].every(isDone)) grant('error_reader');
     }
@@ -16109,6 +17709,73 @@ const Viz = (() => {
       s.push(txt(170, 148, 'every line binary — checked or not. late fixes restart the list', C.faint, 8.5, 'middle'));
       return { svg: s.join(''), h: 154 };
     },
+
+    // Delay line: circular buffer with write/read heads and a feedback path.
+    delayviz() {
+      const s = [];
+      const cx = 110, cy = 62, R = 44;
+      s.push(`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C.line}" stroke-width="10"/>`);
+      s.push(`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(93,232,148,0.25)" stroke-width="10" stroke-dasharray="80 200"/>`);
+      const wA = -0.6, rA = 1.9;
+      const wx = cx + R * Math.cos(wA), wy = cy + R * Math.sin(wA);
+      const rx = cx + R * Math.cos(rA), ry = cy + R * Math.sin(rA);
+      s.push(`<circle cx="${wx}" cy="${wy}" r="6" fill="${C.phos}" class="viz-pulse"/>`);
+      s.push(txt(wx + 12, wy - 6, 'WRITE — now', C.phos, 8.5, 'start'));
+      s.push(`<circle cx="${rx}" cy="${ry}" r="6" fill="${C.amber}"/>`);
+      s.push(txt(rx - 10, ry + 16, 'READ — then', C.amber, 8.5, 'end'));
+      s.push(txt(cx, cy + 4, 'the line', C.faint, 8.5, 'middle'));
+      s.push(box(216, 26, 110, 24, C.line));
+      s.push(txt(271, 41, 'delay = s × rate', C.dim, 8.5, 'middle'));
+      s.push(box(216, 62, 110, 24, C.amber, false, 'rgba(240,180,80,0.05)'));
+      s.push(txt(271, 77, 'feedback < 1.0', C.amber, 8.5, 'middle'));
+      s.push(`<path d="M 216 74 C 180 90, 150 100, 122 104" fill="none" stroke="${C.amber}" stroke-width="1.2" stroke-dasharray="4 3"/>`);
+      s.push(txt(170, 124, 'write now, read then, feed a little back — echoes are geometry', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 130 };
+    },
+
+    // Waveshaper transfer curves: wire vs tanh vs hard clip.
+    shaperviz() {
+      const s = [box(8, 8, 324, 104, C.line, false, '#07090B')];
+      const x0 = 170, y0 = 60, sc = 44;
+      s.push(`<line x1="${x0 - sc - 8}" y1="${y0}" x2="${x0 + sc + 8}" y2="${y0}" stroke="rgba(93,232,148,0.12)"/>`);
+      s.push(`<line x1="${x0}" y1="${y0 - sc - 4}" x2="${x0}" y2="${y0 + sc + 4}" stroke="rgba(93,232,148,0.12)"/>`);
+      const curve = (fn, col, dash) => {
+        const pts = [];
+        for (let u = -1; u <= 1.001; u += 0.05) pts.push(`${x0 + u * sc},${y0 - fn(u) * sc}`);
+        s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.5"${dash ? ' stroke-dasharray="4 3"' : ''}/>`);
+      };
+      curve((u) => u, C.faint, true);
+      curve((u) => Math.tanh(2.2 * u) / Math.tanh(2.2), C.phos, false);
+      curve((u) => Math.max(-0.62, Math.min(0.62, u * 1.7)) / 0.62 * 0.99, C.red, true);
+      s.push(txt(46, 24, 'out', C.faint, 8.5, 'start'));
+      s.push(txt(296, 74, 'in', C.faint, 8.5, 'start'));
+      s.push(txt(56, 100, 'wire (clean)', C.faint, 8, 'start'));
+      s.push(txt(140, 100, 'tanh (warm)', C.phos, 8, 'start'));
+      s.push(txt(232, 100, 'hard clip (harsh)', C.red, 8, 'start'));
+      s.push(txt(170, 128, 'the curve IS the pedal: straight = clean, bent = warm, cornered = fuzz', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 134 };
+    },
+
+    // First Signal's evolution — the graduation timeline.
+    fstimeline() {
+      const s = [];
+      const steps = [
+        ['Z3', 'silent framework — it loads, it breathes', C.dim],
+        ['Z4', 'first sound: oscillators, envelopes, the voice', C.phos],
+        ['Z5', 'playable: MIDI, 8 voices, wheels, pedal, unison', C.phos],
+        ['Z6', 'professional: lock-free, tested, validated', C.phos],
+        ['Z7', 'a product line — and TXPPS Signature ships', C.amber],
+      ];
+      s.push(`<line x1="34" y1="16" x2="34" y2="${16 + (steps.length - 1) * 26}" stroke="${C.phosDim}" stroke-width="1.4"/>`);
+      steps.forEach(([z, label, col], i) => {
+        const y = 16 + i * 26;
+        s.push(`<circle cx="34" cy="${y}" r="5" fill="${i === steps.length - 1 ? C.amber : C.phos}"/>`);
+        s.push(txt(50, y - 4, z, col, 9, 'start', 1.5));
+        s.push(txt(50, y + 8, label, C.dim, 8.5, 'start'));
+      });
+      s.push(txt(170, 16 + steps.length * 26 + 4, 'from silence to a shipping synthesizer — every stage yours', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 16 + steps.length * 26 + 12 };
+    },
   };
 
   function render(spec) {
@@ -17337,7 +19004,8 @@ const Views = (() => {
             if (result.earned > 0) App.awardXp(result.earned);
             Store.completeNode(node.id, result.firstTry, result.total);
             App.flushAchievements();
-            completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
+            if (node.id === 'boss7') graduationSheet(result);
+            else completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
           } else {
             UI.sheet([
               el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
@@ -17357,6 +19025,30 @@ const Views = (() => {
       return el('div', { class: 'row' },
         el('span', { style: 'color:' + (ok ? 'var(--phos)' : 'var(--red)') + '; font-family:var(--mono)' }, ok ? '✓' : '✗'),
         el('span', { class: 'small' + (ok ? ' dim' : '') }, label));
+    }
+
+    // Curriculum-complete celebration — shown once boss7 falls.
+    function graduationSheet(result) {
+      const st = Store.state;
+      const order = Store.liveOrder();
+      const products = ['Gain', 'Tremolo', 'Delay', 'Chorus', 'Distortion', 'Filter', 'Mono', 'Poly', 'Sampler', 'Motion FX', 'Signature'];
+      UI.sheet([
+        el('div', { class: 'center col', style: 'gap:8px; padding:6px 0' },
+          el('div', { class: 'eyebrow amber', style: 'justify-content:center' }, '★ CURRICULUM COMPLETE ★'),
+          el('div', { class: 'h-display' }, 'RELEASE APPROVED — YOU GRADUATE'),
+          el('p', { class: 'small dim' }, 'Seven zones. ' + order.length + ' stations. ' + result.correct + '/' + result.total + ' final QA defects cleared. From "what is a variable?" to signing a commercial release: every stage of this instrument — and this skill — is yours.')),
+        el('div', { class: 'card raised col', style: 'gap:8px' },
+          el('div', { class: 'eyebrow phos' }, 'FIRST SIGNAL — THE WHOLE JOURNEY'),
+          Viz.render({ t: 'fstimeline' })),
+        el('div', { class: 'card raised' },
+          el('div', { class: 'eyebrow phos' }, 'THE TXPPS PRODUCT LINE — ALL SHIPPED'),
+          el('div', { class: 'chips mt-m' }, products.map((p) => el('span', { class: 'chip' }, 'TXPPS ' + p + ' ✓')))),
+        el('div', { class: 'card raised center', style: 'padding:14px' },
+          el('div', { class: 'a-name', style: 'font-size:14px; color:var(--amber)' }, '★ GRADUATE ★'),
+          el('p', { class: 'small dim mt-s' }, 'The highest achievement is yours, and your profile now carries permanent Graduate status. Total XP: ' + st.xp.toLocaleString() + '.')),
+        el('button', { class: 'btn primary block', onclick: () => App.go('profile') }, 'View your Graduate profile'),
+        el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to the map'),
+      ], { sticky: true });
     }
     return main;
   }
@@ -17544,9 +19236,15 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'row between' },
         el('div', null,
-          el('div', { class: 'eyebrow phos' }, 'OPERATOR PROFILE'),
+          el('div', { class: 'eyebrow phos' }, Store.isDone('boss7') ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
           el('h1', { class: 'h-display' }, 'LV ' + lv + ' — ' + Store.levelTitle())),
         el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear')))));
+
+    if (Store.isDone('boss7')) {
+      main.appendChild(el('div', { class: 'card', style: 'border-color:var(--amber); background:linear-gradient(180deg, rgba(240,180,80,0.07), var(--bg1))' },
+        el('div', { class: 'eyebrow amber' }, '★ TXPPS VST CODE LAB — GRADUATE'),
+        el('p', { class: 'small dim mt-s' }, 'Every zone cleared, every product shipped, the Release Candidate signed. This status is permanent — like the skills.')));
+    }
 
     main.appendChild(el('div', { class: 'statgrid' },
       el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, st.xp.toLocaleString()), el('div', { class: 'k' }, 'Total XP')),
@@ -17565,7 +19263,7 @@ const Views = (() => {
     // lesson mastery table
     main.appendChild(el('div', { class: 'card' },
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
-      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS, ...ZONE6_LESSONS].map((l) => {
+      el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS, ...ZONE6_LESSONS, ...ZONE7_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
         return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),
