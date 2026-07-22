@@ -804,6 +804,144 @@ const Viz = (() => {
       s.push(txt(170, 118, 'the shimmer is their interference — five near-misses, one anchor', C.faint, 8.5, 'middle'));
       return { svg: s.join(''), h: 124 };
     },
+
+    // Audio callback budget: the deadline bar, safe work vs an overrun.
+    callbacktime() {
+      const s = [];
+      s.push(txt(170, 14, 'ONE BLOCK\'S BUDGET — 128 @ 44.1k ≈ 2.9 ms', C.dim, 8.5, 'middle', 1));
+      s.push(box(16, 24, 308, 22, C.line));
+      s.push(`<rect x="17" y="25" width="120" height="20" rx="3" fill="rgba(93,232,148,0.25)"/>`);
+      s.push(txt(77, 38, 'DSP work — bounded', C.phos, 8, 'middle'));
+      s.push(txt(230, 38, 'headroom', C.faint, 8, 'middle'));
+      s.push(`<line x1="324" y1="18" x2="324" y2="52" stroke="${C.red}" stroke-width="1.6"/>`);
+      s.push(txt(322, 62, 'deadline', C.red, 8, 'end'));
+      s.push(box(16, 72, 308, 22, C.line));
+      s.push(`<rect x="17" y="73" width="200" height="20" rx="3" fill="rgba(93,232,148,0.25)"/>`);
+      s.push(`<rect x="217" y="73" width="130" height="20" rx="3" fill="rgba(240,120,98,0.3)" class="viz-pulse"/>`);
+      s.push(txt(115, 86, 'usual work', C.phos, 8, 'middle'));
+      s.push(txt(268, 86, 'lock / malloc…', C.red, 8, 'middle'));
+      s.push(txt(170, 112, 'one overrun = the card runs dry = an audible click. worst case IS the spec', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 118 };
+    },
+
+    // Automation: drawn curve → per-block reads → smoothed per-sample path.
+    autoviz() {
+      const s = [box(8, 8, 324, 64, C.line, false, '#07090B')];
+      const curve = (x) => 40 - 24 * Math.sin((x / 300) * Math.PI * 1.2);
+      const pts = [];
+      for (let x = 0; x <= 300; x += 4) pts.push(`${16 + x},${curve(x)}`);
+      s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${C.amber}" stroke-width="1.3" stroke-dasharray="5 3"/>`);
+      for (let x = 20; x <= 300; x += 40) {
+        s.push(`<circle cx="${16 + x}" cy="${curve(x)}" r="2.6" fill="${C.phos}"/>`);
+        s.push(`<line x1="${16 + x}" y1="${curve(x)}" x2="${16 + x}" y2="66" stroke="rgba(93,232,148,0.15)"/>`);
+      }
+      s.push(txt(300, 20, 'the drawn curve', C.amber, 8, 'end'));
+      s.push(txt(170, 86, 'dots = per-BLOCK atomic reads · the smoother glides between them per sample', C.faint, 8.5, 'middle'));
+      s.push(txt(170, 100, 'draw → set → load() → setTargetValue → getNextValue', C.dim, 8.5, 'middle'));
+      return { svg: s.join(''), h: 108 };
+    },
+
+    // Preset lifecycle: save → bytes → defensive load across versions.
+    presetlife() {
+      const s = [];
+      const steps = [['SAVE v1.0', 'stamp version, write values', C.phosDim], ['BYTES', 'sessions, disks, years pass…', C.line], ['LOAD v1.4', 'null-check · tag-check', C.phosDim], ['DEFAULTS', 'missing props → neutral', C.amber], ['IDENTICAL', 'the old mix survives', C.phos]];
+      steps.forEach(([label, sub, col], i) => {
+        const y = 8 + i * 26;
+        s.push(box(70, y, 110, 20, col, false, col === C.phos ? 'rgba(93,232,148,0.07)' : 'none'));
+        s.push(txt(125, y + 13, label, col === C.line ? C.dim : col, 8.5, 'middle'));
+        s.push(txt(190, y + 13, sub, C.faint, 8, 'start'));
+        if (i < steps.length - 1) s.push(arrow(125, y + 21, 125, y + 26, C.phosDim));
+      });
+      s.push(txt(170, 146, 'state outlives versions — the load side carries the manners', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 152 };
+    },
+
+    // Denormals: a decaying tail crossing into the slow zone, CPU climbing.
+    denormviz() {
+      const s = [box(8, 8, 324, 74, C.line, false, '#07090B')];
+      const pts = [];
+      for (let x = 0; x <= 300; x += 3) {
+        const amp = 26 * Math.exp(-x / 90);
+        pts.push(`${16 + x},${44 - Math.sin(x * 0.5) * amp}`);
+      }
+      s.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${C.phos}" stroke-width="1.3"/>`);
+      s.push(`<rect x="196" y="9" width="135" height="72" fill="rgba(240,120,98,0.06)"/>`);
+      s.push(`<line x1="196" y1="9" x2="196" y2="81" stroke="${C.red}" stroke-width="1" stroke-dasharray="4 3"/>`);
+      s.push(txt(263, 20, 'denormal zone (~10⁻³⁸)', C.red, 8, 'middle'));
+      const cpts = [];
+      for (let x = 0; x <= 300; x += 4) {
+        const cpu = x < 180 ? 70 : 70 - (x - 180) * 0.32;
+        cpts.push(`${16 + x},${cpu}`);
+      }
+      s.push(`<polyline points="${cpts.join(' ')}" fill="none" stroke="${C.amber}" stroke-width="1.4"/>`);
+      s.push(txt(80, 64, 'CPU', C.amber, 8, 'middle'));
+      s.push(txt(170, 98, 'the tail fades below hearing — and the CPU CLIMBS. flush-to-zero ends it', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 104 };
+    },
+
+    // CPU meter: per-cause bars — where the budget actually goes.
+    cpumeter(o) {
+      const rows = (o && o.rows) || [['voices (healthy)', 12, C.phos], ['dB→gain in loop', 31, C.red], ['denormal tails', 22, C.amber], ['everything else', 9, C.dim]];
+      const s = [];
+      s.push(txt(170, 14, 'WHERE THE BUDGET GOES — profiler, not guesses', C.dim, 8.5, 'middle', 1));
+      rows.forEach(([label, pct, col], i) => {
+        const y = 26 + i * 22;
+        s.push(txt(110, y + 11, label, C.dim, 8.5, 'end'));
+        s.push(box(118, y, 170, 14, C.line));
+        s.push(`<rect x="119" y="${y + 1}" width="${Math.round(pct * 1.68)}" height="12" rx="2" fill="${col}" opacity="0.8"/>`);
+        s.push(txt(296, y + 11, pct + '%', col, 8.5, 'start'));
+      });
+      s.push(txt(170, 26 + rows.length * 22 + 10, 'fix the convicted lines; leave the healthy ones alone', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 26 + rows.length * 22 + 18 };
+    },
+
+    // Testing pipeline: units → golds → validation → real DAWs.
+    testpipe(o) {
+      const s = [];
+      const gates = [['UNIT', 'pieces'], ['GOLDEN', 'the sound'], ['SCRIPTED', 'behavior'], ['VALIDATE', 'the contract'], ['DAWs', 'reality']];
+      const w = 58, gap = 8;
+      let x = 8;
+      gates.forEach(([label, sub], i) => {
+        const last = i === gates.length - 1;
+        s.push(box(x, 26, w, 34, last ? C.amber : C.phosDim, false, last ? 'rgba(240,180,80,0.05)' : 'rgba(93,232,148,0.04)'));
+        s.push(txt(x + w / 2, 41, label, last ? C.amber : C.phos, 8, 'middle', 1));
+        s.push(txt(x + w / 2, 53, sub, C.faint, 7.5, 'middle'));
+        if (!last) s.push(arrow(x + w + 1, 43, x + w + gap - 1, 43));
+        x += w + gap;
+      });
+      s.push(txt(170, 80, (o && o.caption) || 'every gate cheaper than the one after it — most of the pyramid is units and golds', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 88 };
+    },
+
+    // Crash stack: frames newest-first, the X at frame 0.
+    stackviz() {
+      const s = [];
+      const frames = [['#0  Voice::render (this=0x0)', C.red, 'died HERE — null object'], ['#1  Engine::renderActiveVoices', C.amber, 'handed out the null'], ['#2  Processor::processBlock', C.dim, 'the deadline, mid-flight'], ['#3  HostApp::AudioGraph::process', C.faint, 'the host\'s territory']];
+      frames.forEach(([label, col, note], i) => {
+        const y = 10 + i * 26;
+        s.push(box(14, y, 196, 20, col, i === 0, i === 0 ? 'rgba(240,120,98,0.06)' : 'none'));
+        s.push(txt(22, y + 13, label, col, 8, 'start'));
+        s.push(txt(218, y + 13, note, C.faint, 8, 'start'));
+      });
+      s.push(txt(170, 124, 'read top-down: frame 0 is WHERE, the walk down is HOW it got there', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 130 };
+    },
+
+    // Shipping checklist: the release ritual as checkable lines.
+    shipcheck() {
+      const s = [];
+      s.push(box(52, 8, 236, 128, C.line, false, '#0A0D11'));
+      s.push(txt(170, 24, 'FIRST SIGNAL 1.0 — SHIP LIST', C.dim, 9, 'middle', 1.5));
+      const items = [['tests green (units · golds · MIDI)', true], ['pluginval strictness 10 + auval', true], ['old-version states load identical', true], ['rate/size matrix + offline bounce', true], ['Release build · changelog · docs', false]];
+      items.forEach(([label, done], i) => {
+        const y = 40 + i * 17;
+        s.push(`<rect x="64" y="${y - 8}" width="10" height="10" rx="2" fill="none" stroke="${done ? C.phos : C.amber}" stroke-width="1.2"/>`);
+        if (done) s.push(`<path d="M 66 ${y - 3} l 2.5 3 l 4 -6" fill="none" stroke="${C.phos}" stroke-width="1.4"/>`);
+        s.push(txt(82, y, label, done ? C.dim : C.amber, 8.5, 'start'));
+      });
+      s.push(txt(170, 148, 'every line binary — checked or not. late fixes restart the list', C.faint, 8.5, 'middle'));
+      return { svg: s.join(''), h: 154 };
+    },
   };
 
   function render(spec) {

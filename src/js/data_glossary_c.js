@@ -118,7 +118,7 @@ DICT.push(
     mistake: 'Testing in a single DAW. Each host exercises your plugin differently — pros validate across several.',
     remember: 'The host runs the show; plugins play the slots they\'re given.',
     related: ['plugin', 'daw', 'automation'],
-    appears: [{ z: 6, label: 'DAW validation' }],
+    appears: [{ z: 6, node: 'r13' }],
     search: ['daw', 'loads plugins'],
   },
   {
@@ -130,7 +130,7 @@ DICT.push(
     mistake: 'Assuming all DAWs behave alike — buffer patterns, automation resolution and plugin scanning all differ.',
     remember: 'To a plugin developer, a DAW is a runtime environment with opinions.',
     related: ['host', 'plugin', 'automation'],
-    appears: [{ z: 6, label: 'DAW validation' }],
+    appears: [{ z: 6, node: 'r13' }],
     aka: ['ableton', 'fl studio', 'logic', 'reaper', 'cubase', 'pro tools'],
     search: ['ableton', 'fl', 'logic', 'music software'],
   },
@@ -143,7 +143,7 @@ DICT.push(
     mistake: 'Renaming or renumbering parameters between versions without a migration path — old sessions load scrambled.',
     remember: 'A preset is the promise that state can always come back.',
     related: ['apvts', 'automation', 'parameter'],
-    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, node: 'n12' }, { z: 6, label: 'version migration' }],
+    appears: [{ z: 3, label: 'ValueTree state' }, { z: 5, node: 'n12' }, { z: 6, node: 'r9' }],
     aka: ['patch'],
     search: ['save', 'recall', 'snapshot', 'patch'],
   },
@@ -156,7 +156,7 @@ DICT.push(
     mistake: 'Reading parameters without smoothing — automation turns every step into a click.',
     remember: 'Automation is the host playing your knobs — be ready for fast hands.',
     related: ['apvts', 'parameter-smoothing', 'parameter', 'host'],
-    appears: [{ z: 3, label: 'parameters & hosts' }, { z: 6, label: 'automation testing' }],
+    appears: [{ z: 3, label: 'parameters & hosts' }, { z: 6, node: 'r8' }],
     search: ['fader rides', 'recorded knobs', 'moving parameters'],
   },
   {
@@ -180,7 +180,7 @@ DICT.push(
     mistake: 'Editing/moving the built .vst3 by hand while a DAW has it loaded — build systems and scanners get confused; rebuild and rescan instead.',
     remember: 'VST3 is the format your CMake build produces at the end of this road.',
     related: ['vst', 'au', 'cmake', 'juce'],
-    appears: [{ z: 3, label: 'VST3 builds' }, { z: 7, label: 'shipping missions' }],
+    appears: [{ z: 3, label: 'VST3 builds' }, { z: 6, node: 'r13' }, { z: 7, label: 'shipping missions' }],
     search: ['.vst3', 'format', 'build target'],
   },
   {
@@ -192,7 +192,7 @@ DICT.push(
     mistake: 'Skipping auval until release week — validate early; its errors are specific and fixable.',
     remember: 'AU is the Logic-and-Mac format — auval is its gatekeeper.',
     related: ['auv3', 'vst3', 'aax', 'juce'],
-    appears: [{ z: 6, label: 'DAW validation' }],
+    appears: [{ z: 6, node: 'r13' }],
     aka: ['audio unit', 'auval'],
     search: ['logic', 'mac format', 'apple'],
   },
@@ -217,7 +217,7 @@ DICT.push(
     mistake: 'Worrying about AAX on day one — ship VST3/AU first; add AAX when Pro Tools users ask.',
     remember: 'AAX = Pro Tools; save it for when you\'re shipping seriously.',
     related: ['vst3', 'au', 'plugin'],
-    appears: [{ z: 7, label: 'commercial release (future)' }],
+    appears: [{ z: 6, node: 'r13' }, { z: 7, label: 'commercial release (future)' }],
     search: ['pro tools', 'avid'],
   },
 
@@ -355,7 +355,7 @@ DICT.push(
     mistake: 'Debugging by println everywhere (and never on the audio thread — logging blocks!). Breakpoints are faster and safer.',
     remember: 'Breakpoints beat guesswork — attach the debugger before the third guess.',
     related: ['undefined-behavior', 'debug-build', 'ide', 'audio-thread'],
-    appears: [{ z: 6, label: 'debugging crashes' }],
+    appears: [{ z: 6, node: 'r14' }],
     search: ['breakpoint', 'step through', 'inspect', 'crash'],
   },
   {
@@ -465,7 +465,7 @@ DICT.push(
     mistake: 'Profiling CPU in Debug — always measure performance in Release.',
     remember: 'Develop in Debug; measure and ship in Release.',
     related: ['release-build', 'debugger', 'build'],
-    appears: [{ z: 6, label: 'profiling & builds' }],
+    appears: [{ z: 6, node: 'r10' }],
     search: ['slow build', 'assertions', 'development mode'],
   },
   {
@@ -477,7 +477,7 @@ DICT.push(
     mistake: 'Never testing Release until launch day — optimizations can surface bugs Debug hid.',
     remember: 'Release is what ships — test it long before shipping day.',
     related: ['debug-build', 'build', 'cpu', 'undefined-behavior'],
-    appears: [{ z: 6, label: 'profiling & packaging' }],
+    appears: [{ z: 6, node: 'r10' }],
     search: ['optimized', 'final build', 'ship'],
   },
 
@@ -491,7 +491,7 @@ DICT.push(
     mistake: 'Optimizing before measuring — profile first (in Release), then fix the actual hot spot.',
     remember: 'Every sample of DSP spends CPU — measure before optimizing.',
     related: ['ram', 'denormals', 'release-build', 'polyphony'],
-    appears: [{ z: 6, label: 'profiling' }],
+    appears: [{ z: 6, node: 'r11' }],
     search: ['processor', 'performance', 'meter', 'usage'],
   },
   {

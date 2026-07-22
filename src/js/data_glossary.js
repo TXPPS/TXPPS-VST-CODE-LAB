@@ -454,7 +454,7 @@ const DICT = [
     mistake: 'Believing "it runs, so it\'s correct." UB often runs — until it doesn\'t, in someone else\'s DAW.',
     remember: 'Undefined behavior isn\'t an error message — it\'s the absence of any promise at all.',
     related: ['nullptr', 'dangling-pointer', 'array', 'debugger'],
-    appears: [{ z: 1, node: 'l6' }, { z: 1, node: 'l9' }, { z: 6, label: 'debugging crashes' }],
+    appears: [{ z: 1, node: 'l6' }, { z: 1, node: 'l9' }, { z: 6, node: 'r14' }],
     aka: ['UB'],
     search: ['crash', 'random', 'sometimes works'],
   },
@@ -558,7 +558,7 @@ const DICT = [
     mistake: 'Hidden allocations: push_back, resize, creating vectors as locals, string building — all allocate, all banned on the audio thread.',
     remember: 'Allocation is unpredictable — keep it out of the audio callback, always.',
     related: ['heap', 'vector', 'real-time-audio', 'audio-thread'],
-    appears: [{ z: 1, node: 'b4' }, { z: 2, label: 'real-time-safe rules' }],
+    appears: [{ z: 1, node: 'b4' }, { z: 2, label: 'real-time-safe rules' }, { z: 6, node: 'r5' }],
     search: ['new', 'malloc', 'resize', 'glitch'],
   },
 ];

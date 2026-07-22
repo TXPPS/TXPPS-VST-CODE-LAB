@@ -60,10 +60,15 @@ const ZONES = [
     ],
   },
   {
-    id: 'z6', num: 6, title: 'PROFESSIONAL PLUGIN ENGINEERING', status: 'planned',
-    tagline: 'Thread safety, testing, shipping',
-    desc: 'Lock-free communication, deterministic DSP tests, crash debugging, profiling, validation and packaging.',
-    topics: ['audio/UI thread safety', 'lock-free FIFOs', 'deterministic DSP tests', 'regression testing', 'debugging crashes', 'profiling', 'automation & preset compatibility', 'version migration', 'DAW validation & scanning', 'installers & accessibility'],
+    id: 'z6', num: 6, title: 'PROFESSIONAL PLUGIN ENGINEERING', status: 'live',
+    tagline: 'From working prototype to shippable product',
+    desc: 'What keeps plugins stable inside real DAWs: the real-time deadline, thread safety and lock-free design, allocation rules, denormals, version-safe state, automation, profiling, testing, validation, crash forensics — and the shipping checklist that makes 1.0 mean something.',
+    nodeOrder: [
+      'r1', 'r2', 'rr1', 'r3', 'rc1', 'r4', 'rb1', 'p16', 'r5', 'rb2',
+      'r6', 'rc2', 'r7', 'rr2', 'r8', 'rb4', 'r9', 'rc3', 'p17',
+      'r10', 'rc4', 'r11', 'rb3', 'p18', 'r12', 'rr3', 'ro1', 'r13',
+      're1', 'r14', 'r15', 'p19', 'boss6',
+    ],
   },
   {
     id: 'z7', num: 7, title: 'FINAL PRODUCT MISSIONS', status: 'planned',
@@ -102,6 +107,8 @@ const ACHIEVEMENTS = [
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
   { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Revive the Forgotten Polysynth.' },
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
+  { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
+  { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
 ];
 
 /* XP rewards by node kind (first completion; retries of questions inside give partial). */
@@ -127,4 +134,6 @@ const DAILY_POOL = [
   'd11.q2', 'd12.q3', 'd13.q3', 'd15.q2', 'dc1.q1', 'db2.q1', 'de1.q1', 'dr1.q2',
   'n1.q1', 'n2.q2', 'n3.q3', 'n5.q2', 'n6.q1', 'n8.q1', 'n9.q1', 'n10.q1',
   'n11.q1', 'n12.q2', 'n13.q2', 'n14.q3', 'nb3.q1', 'ne1.q1',
+  'r1.q2', 'r2.q2', 'r3.q1', 'r4.q1', 'r5.q2', 'r6.q1', 'r7.q3', 'r9.q3',
+  'r10.q1', 'r11.q3', 'r12.q1', 'r13.q3', 'r14.q1', 'r15.q3', 'rb1.q1', 're1.q1',
 ];
