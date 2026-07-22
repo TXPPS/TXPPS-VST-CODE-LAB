@@ -122,7 +122,7 @@ const ZONE7_CHALLENGES = [
   {
     id: 'fb1', kind: 'challenge', ctype: 'bugfix', title: 'Customer Bug: The Sometimes-Crash', short: 'Fix it',
     concepts: ['product-eng'],
-    intro: 'TICKET #204: "TXPPS Delay crashes my session — but only at very short delay times, and only sometimes." Sometimes is a clue: think about WHEN the math goes bad.',
+    intro: 'TICKET #204: "TXPPS Delay crashes my session — only sometimes, and it seems WORSE at long delay times." Sometimes is a clue: think about WHEN the math goes bad.',
     questions: [
       {
         type: 'bugspot', concept: 'product-eng',
@@ -137,7 +137,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 2,
-        explain: 'Early in the buffer\'s life writePos < delaySamples, the subtraction goes negative — and C++\'s % preserves that sign: a negative index into data[]. "Sometimes" = whenever the write head is near the wrap. Explicit wrap: subtract, then add lineLength if negative (f1\'s law).',
+        explain: 'Whenever writePos < delaySamples — the window just after each wrap — the subtraction goes negative, and C++\'s % preserves that sign: a negative index into data[]. Longer delays widen the window, which is why the ticket says "worse at long delay times." Explicit wrap: subtract, then add lineLength if negative (f1\'s law).',
         fix: 'int readPos = writePos - delaySamples; if (readPos < 0) readPos += lineLength;',
       },
     ],
@@ -260,7 +260,7 @@ const ZONE7_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'product-eng',
-        prompt: 'QA #3 — "After using the sustain pedal ONCE, some later notes never release." Zone 5\'s bookkeeping. Tap the poisoned claim.',
+        prompt: 'QA #3 — "Whenever I lift the sustain pedal, notes I\'m still HOLDING get cut off with it." Zone 5\'s bookkeeping. Tap the poisoned claim.',
         code: [
           'void claimVoice (Voice& v, int note, float vel)',
           '{',
@@ -271,7 +271,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 4,
-        explain: 'Every new note is born PRE-MARKED as pedal-held: its eventual note-off gets deferred forever if the pedal logic ever consults the flag. The claim must CLEAR the mark (v.sustained = false) — stale pedal marks are n10\'s stuck-note factory, and p15\'s field report, shipped.',
+        explain: 'Every new note is born PRE-MARKED as pedal-held — so the next pedal-up sweeps it into the deferred-release loop even though its key is still down: held notes die with the pedal. The claim must start with clean paperwork (v.sustained = false) — n10\'s stale-mark trap, p15\'s field report, shipped.',
         fix: 'v.sustained = false;   // a new life starts with clean paperwork',
       },
       {
@@ -310,7 +310,7 @@ const ZONE7_CHALLENGES = [
           '    feedback = juce::jlimit (0.0f, 1.2f, fb);',
           '}',
         ],
-        buggy: 3,
+        buggy: 2,
         explain: 'The clamp exists — with the wrong ceiling: 1.2 permits gain-greater-than-one regeneration, and each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
         fix: 'feedback = juce::jlimit (0.0f, 0.95f, fb);',
       },

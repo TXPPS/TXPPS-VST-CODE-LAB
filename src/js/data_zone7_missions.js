@@ -383,7 +383,7 @@ ZONE7_CHALLENGES.push(
         note: 'QA TICKET #1 — "The cutoff knob does NOTHING… until I bounce, then the bounce sounds different." Lifecycle smell (r7).',
         q: {
           type: 'bugspot', concept: 'product-eng',
-          prompt: 'Tap why the knob is dead until a re-prepare.',
+          prompt: 'Tap the line that renders with a fossilized coefficient.',
           code: [
             'void prepareToPlay (double sampleRate, int samplesPerBlock)',
             '{',
@@ -391,12 +391,13 @@ ZONE7_CHALLENGES.push(
             '}',
             'void processBlock (…)',
             '{',
-            '    // renders with k — never recomputed',
+            '    for (int i = 0; i < buffer.getNumSamples(); ++i)',
+            '        out[i] = onePole (in[i], k);',
             '}',
           ],
-          buggy: 2,
-          explain: 'k is computed ONCE, at prepare — the knob updates the parameter, but nothing ever re-derives k from it. The knob is dead until the next prepare (the bounce!) resurrects it with a different value. Per block: read the atomic, smooth the cutoff, recompute k (r8\'s pull pattern).',
-          fix: 'Per block: k = coefficientFor (cutoffSmoothed.getNextValue()… ) — pull, don\'t fossilize',
+          buggy: 8,
+          explain: 'The render uses k frozen at prepare time — the knob updates the parameter, but nothing re-derives k, so the cutoff is dead until the next prepare (the bounce!) resurrects it. (The prepare-time computation itself is CORRECT — an initial value belongs there.) Per block: read the atomic, smooth the cutoff, recompute k — r8\'s pull pattern.',
+          fix: 'Per block: recompute k from cutoffSmoothed before the loop — pull, don\'t fossilize',
         },
       },
       {
@@ -437,15 +438,14 @@ ZONE7_CHALLENGES.push(
         note: 'ARCHITECTURE — Order the voice\'s signal chain. (You\'ve drawn this since d15.)',
         q: {
           type: 'order', concept: 'product-eng',
-          prompt: 'Arrange the mono voice, source to output.',
+          prompt: 'Arrange the mono voice source-to-output, as the chain is taught: tone → filter → shape/level → clamp.',
           lines: [
             'oscSample (waveform, phase)      // the tone (d6/d7)',
             'voiceFilter.process (raw)        // sculpt brightness (f3)',
-            '* adsr.getNextSample()           // shape the note (d9)',
-            '* gainSmoothed.getNextValue()    // level, gliding (d13)',
+            '* adsr.getNextSample() * gainSmoothed.getNextValue()  // shape × level (d9/d13)',
             'jlimit (-1.0f, 1.0f, s)          // the seatbelt, LAST (d10)',
           ],
-          explain: 'Tone → filter → envelope → level → clamp. The only new resident since d15 is the filter — it sits before the envelope so the amp shape stays in charge of the note\'s outline.',
+          explain: 'Tone → filter → shape × level → clamp. The multiplies commute with each other (d15), so they ride one line; the filter sits before them so the amp envelope stays in charge of the note\'s outline, and the clamp guards everything, last.',
         },
       },
       {

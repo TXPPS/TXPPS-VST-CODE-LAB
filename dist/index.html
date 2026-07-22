@@ -12134,7 +12134,7 @@ const ZONE7_LESSONS = [
       },
       {
         type: 'bugspot', concept: 'delay-dsp',
-        prompt: 'Customer bug: “crashes at short delay times, only sometimes.” Tap the sign trap.',
+        prompt: 'Customer bug: “random crashes — worse at longer delay times.” Tap the sign trap.',
         code: [
           'int readPos = (writePos - delaySamples) % lineLength;',
           'float delayed = data[readPos];',
@@ -12346,13 +12346,14 @@ const ZONE7_LESSONS = [
       {
         h: 'A playhead over a recording',
         body: 'A sampler holds a **recorded buffer** and a **playhead** that walks it. Advance by exactly 1.0 per output sample and the recording plays at its original pitch. Advance by a **ratio** other than 1.0 and pitch changes: 2.0 = an octave up (the recording races by — twice as fast AND twice as high). It\'s d5\'s phase accumulator with a recording instead of sin(): position, increment, and — for loops — a wrap.',
-        code: 'float ratio = std::pow (2.0f, (note - rootNote) / 12.0f);  // d3\'s law\nplayhead += ratio;                                          // d5\'s advance\nint   i    = (int) playhead;\nfloat frac = playhead - i;\nfloat out  = sample[i] + frac * (sample[i + 1] - sample[i]); // f1\'s interpolation',
+        code: 'float ratio = std::pow (2.0f, (note - rootNote) / 12.0f);  // d3\'s law\nplayhead += ratio;                                          // d5\'s advance\nint   i    = (int) playhead;\nif (i + 1 >= sampleLength)          // interpolation reads i+1 —\n    { endVoice(); return 0.0f; }    // one-shots bound ONE SLOT EARLY\nfloat frac = playhead - i;\nfloat out  = sample[i] + frac * (sample[i + 1] - sample[i]); // f1\'s interpolation',
         codeTitle: 'the sampler\'s heart',
         breakdown: [
           ['rootNote', 'the key at which the recording plays untouched — press it, ratio = 1.0'],
           ['2^(semis/12)', 'the same pitch law as d3: samplers, synths and bends all obey it'],
           ['playhead += ratio', 'a fractional position — pitch IS the step size, exactly like phase'],
           ['linear interpolation', 'fractional positions read BETWEEN slots — f1\'s blend, mandatory here'],
+          ['bound one slot early', 'the blend touches i+1, so the one-shot check stops at length−1 (pros also keep a guard sample)'],
         ],
         mistake: { code: 'float out = sample[(int) playhead];   // ✗ truncate and hope', text: 'Truncating the playhead snaps every read to the slot boundary — gritty aliasing-like distortion on any ratio that isn\'t exactly 1.0. Fractional playback without interpolation is the classic “why does my sampler sound crunchy” ticket. Blend the neighbors; it\'s three operations.' },
       },
@@ -12368,7 +12369,7 @@ const ZONE7_LESSONS = [
     checks: [
       {
         type: 'predict', concept: 'sampler-dsp',
-        prompt: 'A vocal chop\'s root note is C3. The player presses C4 (an octave up). What happens?',
+        prompt: 'A vocal chop\'s root note is C4 (note 60). The player presses C5 — an octave up. What happens?',
         code: 'ratio = pow (2, (72 - 60) / 12.0) = 2.0',
         options: [
           { t: 'An octave higher AND twice as fast — the playhead races through the recording at double speed', why: '' },
@@ -12545,7 +12546,7 @@ const ZONE7_CHALLENGES = [
   {
     id: 'fb1', kind: 'challenge', ctype: 'bugfix', title: 'Customer Bug: The Sometimes-Crash', short: 'Fix it',
     concepts: ['product-eng'],
-    intro: 'TICKET #204: "TXPPS Delay crashes my session — but only at very short delay times, and only sometimes." Sometimes is a clue: think about WHEN the math goes bad.',
+    intro: 'TICKET #204: "TXPPS Delay crashes my session — only sometimes, and it seems WORSE at long delay times." Sometimes is a clue: think about WHEN the math goes bad.',
     questions: [
       {
         type: 'bugspot', concept: 'product-eng',
@@ -12560,7 +12561,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 2,
-        explain: 'Early in the buffer\'s life writePos < delaySamples, the subtraction goes negative — and C++\'s % preserves that sign: a negative index into data[]. "Sometimes" = whenever the write head is near the wrap. Explicit wrap: subtract, then add lineLength if negative (f1\'s law).',
+        explain: 'Whenever writePos < delaySamples — the window just after each wrap — the subtraction goes negative, and C++\'s % preserves that sign: a negative index into data[]. Longer delays widen the window, which is why the ticket says "worse at long delay times." Explicit wrap: subtract, then add lineLength if negative (f1\'s law).',
         fix: 'int readPos = writePos - delaySamples; if (readPos < 0) readPos += lineLength;',
       },
     ],
@@ -12683,7 +12684,7 @@ const ZONE7_CHALLENGES = [
       },
       {
         type: 'bugspot', concept: 'product-eng',
-        prompt: 'QA #3 — "After using the sustain pedal ONCE, some later notes never release." Zone 5\'s bookkeeping. Tap the poisoned claim.',
+        prompt: 'QA #3 — "Whenever I lift the sustain pedal, notes I\'m still HOLDING get cut off with it." Zone 5\'s bookkeeping. Tap the poisoned claim.',
         code: [
           'void claimVoice (Voice& v, int note, float vel)',
           '{',
@@ -12694,7 +12695,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 4,
-        explain: 'Every new note is born PRE-MARKED as pedal-held: its eventual note-off gets deferred forever if the pedal logic ever consults the flag. The claim must CLEAR the mark (v.sustained = false) — stale pedal marks are n10\'s stuck-note factory, and p15\'s field report, shipped.',
+        explain: 'Every new note is born PRE-MARKED as pedal-held — so the next pedal-up sweeps it into the deferred-release loop even though its key is still down: held notes die with the pedal. The claim must start with clean paperwork (v.sustained = false) — n10\'s stale-mark trap, p15\'s field report, shipped.',
         fix: 'v.sustained = false;   // a new life starts with clean paperwork',
       },
       {
@@ -12733,7 +12734,7 @@ const ZONE7_CHALLENGES = [
           '    feedback = juce::jlimit (0.0f, 1.2f, fb);',
           '}',
         ],
-        buggy: 3,
+        buggy: 2,
         explain: 'The clamp exists — with the wrong ceiling: 1.2 permits gain-greater-than-one regeneration, and each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
         fix: 'feedback = juce::jlimit (0.0f, 0.95f, fb);',
       },
@@ -13150,7 +13151,7 @@ ZONE7_CHALLENGES.push(
         note: 'QA TICKET #1 — "The cutoff knob does NOTHING… until I bounce, then the bounce sounds different." Lifecycle smell (r7).',
         q: {
           type: 'bugspot', concept: 'product-eng',
-          prompt: 'Tap why the knob is dead until a re-prepare.',
+          prompt: 'Tap the line that renders with a fossilized coefficient.',
           code: [
             'void prepareToPlay (double sampleRate, int samplesPerBlock)',
             '{',
@@ -13158,12 +13159,13 @@ ZONE7_CHALLENGES.push(
             '}',
             'void processBlock (…)',
             '{',
-            '    // renders with k — never recomputed',
+            '    for (int i = 0; i < buffer.getNumSamples(); ++i)',
+            '        out[i] = onePole (in[i], k);',
             '}',
           ],
-          buggy: 2,
-          explain: 'k is computed ONCE, at prepare — the knob updates the parameter, but nothing ever re-derives k from it. The knob is dead until the next prepare (the bounce!) resurrects it with a different value. Per block: read the atomic, smooth the cutoff, recompute k (r8\'s pull pattern).',
-          fix: 'Per block: k = coefficientFor (cutoffSmoothed.getNextValue()… ) — pull, don\'t fossilize',
+          buggy: 8,
+          explain: 'The render uses k frozen at prepare time — the knob updates the parameter, but nothing re-derives k, so the cutoff is dead until the next prepare (the bounce!) resurrects it. (The prepare-time computation itself is CORRECT — an initial value belongs there.) Per block: read the atomic, smooth the cutoff, recompute k — r8\'s pull pattern.',
+          fix: 'Per block: recompute k from cutoffSmoothed before the loop — pull, don\'t fossilize',
         },
       },
       {
@@ -13204,15 +13206,14 @@ ZONE7_CHALLENGES.push(
         note: 'ARCHITECTURE — Order the voice\'s signal chain. (You\'ve drawn this since d15.)',
         q: {
           type: 'order', concept: 'product-eng',
-          prompt: 'Arrange the mono voice, source to output.',
+          prompt: 'Arrange the mono voice source-to-output, as the chain is taught: tone → filter → shape/level → clamp.',
           lines: [
             'oscSample (waveform, phase)      // the tone (d6/d7)',
             'voiceFilter.process (raw)        // sculpt brightness (f3)',
-            '* adsr.getNextSample()           // shape the note (d9)',
-            '* gainSmoothed.getNextValue()    // level, gliding (d13)',
+            '* adsr.getNextSample() * gainSmoothed.getNextValue()  // shape × level (d9/d13)',
             'jlimit (-1.0f, 1.0f, s)          // the seatbelt, LAST (d10)',
           ],
-          explain: 'Tone → filter → envelope → level → clamp. The only new resident since d15 is the filter — it sits before the envelope so the amp shape stays in charge of the note\'s outline.',
+          explain: 'Tone → filter → shape × level → clamp. The multiplies commute with each other (d15), so they ride one line; the filter sits before them so the amp envelope stays in charge of the note\'s outline, and the clamp guards everything, last.',
         },
       },
       {

@@ -65,7 +65,7 @@ const ZONE7_LESSONS = [
       },
       {
         type: 'bugspot', concept: 'delay-dsp',
-        prompt: 'Customer bug: “crashes at short delay times, only sometimes.” Tap the sign trap.',
+        prompt: 'Customer bug: “random crashes — worse at longer delay times.” Tap the sign trap.',
         code: [
           'int readPos = (writePos - delaySamples) % lineLength;',
           'float delayed = data[readPos];',
@@ -277,13 +277,14 @@ const ZONE7_LESSONS = [
       {
         h: 'A playhead over a recording',
         body: 'A sampler holds a **recorded buffer** and a **playhead** that walks it. Advance by exactly 1.0 per output sample and the recording plays at its original pitch. Advance by a **ratio** other than 1.0 and pitch changes: 2.0 = an octave up (the recording races by — twice as fast AND twice as high). It\'s d5\'s phase accumulator with a recording instead of sin(): position, increment, and — for loops — a wrap.',
-        code: 'float ratio = std::pow (2.0f, (note - rootNote) / 12.0f);  // d3\'s law\nplayhead += ratio;                                          // d5\'s advance\nint   i    = (int) playhead;\nfloat frac = playhead - i;\nfloat out  = sample[i] + frac * (sample[i + 1] - sample[i]); // f1\'s interpolation',
+        code: 'float ratio = std::pow (2.0f, (note - rootNote) / 12.0f);  // d3\'s law\nplayhead += ratio;                                          // d5\'s advance\nint   i    = (int) playhead;\nif (i + 1 >= sampleLength)          // interpolation reads i+1 —\n    { endVoice(); return 0.0f; }    // one-shots bound ONE SLOT EARLY\nfloat frac = playhead - i;\nfloat out  = sample[i] + frac * (sample[i + 1] - sample[i]); // f1\'s interpolation',
         codeTitle: 'the sampler\'s heart',
         breakdown: [
           ['rootNote', 'the key at which the recording plays untouched — press it, ratio = 1.0'],
           ['2^(semis/12)', 'the same pitch law as d3: samplers, synths and bends all obey it'],
           ['playhead += ratio', 'a fractional position — pitch IS the step size, exactly like phase'],
           ['linear interpolation', 'fractional positions read BETWEEN slots — f1\'s blend, mandatory here'],
+          ['bound one slot early', 'the blend touches i+1, so the one-shot check stops at length−1 (pros also keep a guard sample)'],
         ],
         mistake: { code: 'float out = sample[(int) playhead];   // ✗ truncate and hope', text: 'Truncating the playhead snaps every read to the slot boundary — gritty aliasing-like distortion on any ratio that isn\'t exactly 1.0. Fractional playback without interpolation is the classic “why does my sampler sound crunchy” ticket. Blend the neighbors; it\'s three operations.' },
       },
@@ -299,7 +300,7 @@ const ZONE7_LESSONS = [
     checks: [
       {
         type: 'predict', concept: 'sampler-dsp',
-        prompt: 'A vocal chop\'s root note is C3. The player presses C4 (an octave up). What happens?',
+        prompt: 'A vocal chop\'s root note is C4 (note 60). The player presses C5 — an octave up. What happens?',
         code: 'ratio = pow (2, (72 - 60) / 12.0) = 2.0',
         options: [
           { t: 'An octave higher AND twice as fast — the playhead races through the recording at double speed', why: '' },
