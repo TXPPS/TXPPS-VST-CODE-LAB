@@ -230,8 +230,12 @@ const Game = (() => {
 
     // ONE centralized pattern table — raw vibration arrays live nowhere else.
     // critical:true events may supersede the global minor-event cooldown.
+    // tick:true events (the sub-perceptual UI press tick) never advance the
+    // global clock, so the meaningful haptic produced by the same click —
+    // e.g. the capture-phase UI_LIGHT immediately before an ANSWER_CORRECT —
+    // is never starved by its own accompanying tick.
     const CATEGORIES = {
-      UI_LIGHT:            { pat: [8],               cd: 60 },
+      UI_LIGHT:            { pat: [8],               cd: 60, tick: true },
       UI_CONFIRM:          { pat: [12],              cd: 80 },
       ANSWER_CORRECT:      { pat: [14],              cd: 120 },
       ANSWER_RECOVERED:    { pat: [10, 30, 16],      cd: 120 },
@@ -271,6 +275,11 @@ const Game = (() => {
         status: status(),
       };
     }
+    // Raw delivery — adapter first, else browser vibration. No cooldown logic.
+    function deliver(c, cat) {
+      if (adapter && adapter.play) { adapter.play(cat); return true; }
+      return navigator.vibrate(c.pat) !== false;
+    }
     function trigger(name) {
       try {
         const cat = CATEGORIES[name] ? name : ALIAS[name];
@@ -280,19 +289,24 @@ const Game = (() => {
         const nowMs = Date.now();
         if (lastAt[cat] && nowMs - lastAt[cat] < c.cd) return false;         // per-category cooldown
         if (!c.critical && nowMs - lastAnyAt < GLOBAL_CD) return false;      // global floor for minor events
-        lastAt[cat] = nowMs; lastAnyAt = nowMs;
-        if (adapter && adapter.play) { adapter.play(cat); return true; }
-        return navigator.vibrate(c.pat) !== false;
+        lastAt[cat] = nowMs;
+        if (!c.tick) lastAnyAt = nowMs;   // UI ticks don't advance the global clock
+        return deliver(c, cat);
       } catch (e) { return false; }   // silent, never breaks anything
     }
-    // Honest test: reports what actually happened, never fakes success.
+    // Honest test: a deliberate user action, so it bypasses incidental
+    // cooldowns and delivers straight to the device — but never fakes success
+    // when the device genuinely can't (unsupported, off, or hidden page).
     function test() {
-      const d = diagnostics();
-      if (!d.supported) return { ok: false, message: 'Haptic feedback is unavailable in this browser. Audio and visual feedback remain active.' };
-      if (!d.enabled) return { ok: false, message: 'Haptic feedback is switched off.' };
-      const fired = trigger('UI_CONFIRM');
-      return fired ? { ok: true, message: 'Test pulse sent via ' + d.adapter + '.' }
-                   : { ok: false, message: 'Pulse suppressed (cooldown or hidden page) — try again in a moment.' };
+      try {
+        const d = diagnostics();
+        if (!d.supported) return { ok: false, message: 'Haptic feedback is unavailable in this browser. Audio and visual feedback remain active.' };
+        if (!d.enabled) return { ok: false, message: 'Haptic feedback is switched off.' };
+        if (document.hidden) return { ok: false, message: 'The page is in the background — bring it forward and try again.' };
+        const fired = deliver(CATEGORIES.UI_CONFIRM, 'UI_CONFIRM');
+        return fired ? { ok: true, message: 'Test pulse sent via ' + d.adapter + '.' }
+                     : { ok: false, message: 'The browser declined the test pulse.' };
+      } catch (e) { return { ok: false, message: 'The browser declined the test pulse.' }; }
     }
     return { trigger, supported, status, diagnostics, test, CATEGORIES, setAdapter(a) { adapter = a; } };
   })();
@@ -462,7 +476,10 @@ const Game = (() => {
       try {
         const now = Date.now();
         if (r.dedupeKey) { if (lastKey[r.dedupeKey] && now - lastKey[r.dedupeKey] < (r.dedupeMs || 350)) return; lastKey[r.dedupeKey] = now; }
-        if (busy() && r.priority <= current.priority && r.priority < 3) return;   // don't stack low-priority over an active one
+        if (busy()) {
+          if (r.priority < current.priority) return;                 // never interrupt a higher-priority reaction (protects BOSS_DEFEATED)
+          if (r.priority === current.priority && r.priority < 3) return;   // don't restack equal low-priority reactions
+        }
         current = { priority: r.priority, endsAt: now + (r.holdMs || 600) };
         r.run();
       } catch (e) { /* a decorative reaction can never break anything */ }
@@ -571,7 +588,7 @@ const Game = (() => {
       Audio.play('RANK_UP'); Haptic.trigger('RANK_UP');
       Reactions.dispatch({ priority: 4, holdMs: 2000, run: () => Patch.setState('RANK_UP', atLeastBalanced() ? { text: 'ID plate updated.', dur: 2200 } : { dur: 1400 }) });
     });
-    on(E.ZONE_UNLOCKED, () => { Audio.play('ZONE_UNLOCKED'); if (atLeastBalanced()) Patch.setState('ATTENTIVE', { text: 'New workspace online.', dur: 1600 }); });
+    on(E.ZONE_UNLOCKED, () => { Audio.play('ZONE_UNLOCKED'); if (atLeastBalanced()) Reactions.dispatch({ priority: 3, holdMs: 1600, run: () => Patch.setState('ATTENTIVE', { text: 'New workspace online.', dur: 1600 }) }); });
 
     on(E.LOCAL_SAVE_COMPLETE, () => { if (Patch.state === 'SAVING' || Patch.state === 'STORING') Patch.toIdle(); });
     on(E.LOCAL_SAVE_FAILED, () => { Audio.play('SAVE_FAILED'); Haptic.trigger('WARNING_SAVE'); Patch.setState('CONCERNED', { text: 'Save failed — export a backup.', dur: 2600 }); });
@@ -583,7 +600,7 @@ const Game = (() => {
 
     /* ---- boss encounter (v1.2.0) ---- */
     on(E.BOSS_INTRO, () => { Audio.play('BOSS_INTRO'); Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => Patch.setState('BOSS_INTRO', atLeastBalanced() ? { text: 'Diagnostics ready. I am with you.', dur: 2200 } : { dur: 1400 }) }); });
-    on(E.BOSS_STARTED, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { dur: 1400 }); });
+    on(E.BOSS_STARTED, () => { if (atLeastBalanced()) Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('BOSS_ASSIST', { dur: 1400 }) }); });
     on(E.BOSS_HP_CHANGED, (ev) => {
       if (ev.delta < 0) { Audio.play(ev.heavy ? 'PLAYER_ATTACK_HEAVY' : 'PLAYER_ATTACK'); Haptic.trigger(ev.heavy ? 'PLAYER_ATTACK_HEAVY' : 'PLAYER_ATTACK_LIGHT'); if (atLeastBalanced()) Reactions.dispatch({ priority: 2, holdMs: 700, run: () => Patch.setState('BOSS_ASSIST', { dur: 1000 }) }); }
     });

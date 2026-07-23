@@ -441,6 +441,7 @@ const Views = (() => {
     let firstTryCount = 0;
     let correctCount = 0;
     let earned = 0;
+    let finished = false;   // one-shot: a held/repeated Finish can never award twice
     const stageResults = [];
 
     const track = el('div', { class: 'stage-track', 'aria-hidden': 'true' });
@@ -485,16 +486,20 @@ const Views = (() => {
           }
           trackCells[idx].className = res.correct ? 'done' : 'fail';
           const isLast = idx === n - 1;
-          stepBits.appendChild(el('div', { class: 'action-bar' },
-            el('button', { class: 'btn primary block', onclick: () => {
-              idx += 1;
-              if (cfg.onStep) cfg.onStep(idx);
-              if (idx >= n) {
-                cfg.onFinish({ correct: correctCount, firstTry: firstTryCount, earned: Math.round(earned), total: n });
-              } else {
-                renderStep();
-              }
-            } }, isLast ? 'Finish' : 'Continue')));
+          const advanceBtn = el('button', { class: 'btn primary block', onclick: () => {
+            if (advanceBtn.disabled) return;              // ignore repeat/held activation
+            if (isLast) advanceBtn.disabled = true;       // lock the terminal step against re-entry
+            idx += 1;
+            if (cfg.onStep) cfg.onStep(idx);
+            if (idx >= n) {
+              if (finished) return;                       // guard: award exactly once
+              finished = true;
+              cfg.onFinish({ correct: correctCount, firstTry: firstTryCount, earned: Math.round(earned), total: n });
+            } else {
+              renderStep();
+            }
+          } }, isLast ? 'Finish' : 'Continue');
+          stepBits.appendChild(el('div', { class: 'action-bar' }, advanceBtn));
         },
       });
       stepBits.appendChild(qv);
@@ -999,9 +1004,11 @@ const Views = (() => {
     const hpSegs = [], integrityPips = [];
     const phaseTitle = el('div', { class: 'eyebrow red' }, d.phases[0].title);
     const phaseNote = el('div', { class: 'small faint' }, d.phases[0].behavior);
-    const hpRow = el('div', { class: 'hp-bar', role: 'img', 'aria-label': 'Boss corruption remaining' });
+    const hpLabel = (snap) => d.presentation.hpLabel.toLowerCase() + ': ' + snap.bossHp + ' of ' + snap.maxHp + ' blocks remaining, repair threshold ' + snap.defeatLine;
+    const intLabel = (snap) => d.presentation.integrityLabel.toLowerCase() + ': ' + snap.playerIntegrity + ' of ' + snap.maxIntegrity + ' cells';
+    const hpRow = el('div', { class: 'hp-bar', role: 'img', 'aria-label': hpLabel(session.snapshot) });
     for (let i = 0; i < session.snapshot.maxHp; i++) {
-      const seg = el('i', { class: 'hp-seg on' });
+      const seg = el('i', { class: 'hp-seg on', 'aria-hidden': 'true' });
       hpSegs.push(seg); hpRow.appendChild(seg);
       // Segments 0..hp-1 light up, so "boss falls at hp <= defeatLine" is the
       // boundary AFTER segment index defeatLine-1: the bar must drain to the
@@ -1010,8 +1017,8 @@ const Views = (() => {
         hpRow.appendChild(el('span', { class: 'defeat-marker', title: d.presentation.defeatLineLabel }));
       }
     }
-    const intRow = el('div', { class: 'integrity-row', role: 'img', 'aria-label': 'Your signal integrity' });
-    for (let i = 0; i < session.snapshot.maxIntegrity; i++) { const p = el('i', { class: 'int-pip on' }); integrityPips.push(p); intRow.appendChild(p); }
+    const intRow = el('div', { class: 'integrity-row', role: 'img', 'aria-label': intLabel(session.snapshot) });
+    for (let i = 0; i < session.snapshot.maxIntegrity; i++) { const p = el('i', { class: 'int-pip on', 'aria-hidden': 'true' }); integrityPips.push(p); intRow.appendChild(p); }
 
     const hud = el('div', { class: 'boss-hud card col', style: 'gap:8px' },
       el('div', { class: 'row between', style: 'align-items:flex-start' },
@@ -1031,6 +1038,8 @@ const Views = (() => {
     function refreshHud(snap) {
       hpSegs.forEach((s, i) => s.classList.toggle('on', i < snap.bossHp));
       integrityPips.forEach((p, i) => p.classList.toggle('on', i < snap.playerIntegrity));
+      hpRow.setAttribute('aria-label', hpLabel(snap));       // keep the label truthful as the bar drains
+      intRow.setAttribute('aria-label', intLabel(snap));
       phaseTitle.textContent = snap.phase.title;
       phaseNote.textContent = snap.phase.behavior;
       hud.classList.toggle('critical', snap.bossHp <= snap.defeatLine);
@@ -1047,7 +1056,7 @@ const Views = (() => {
             ? 'Three failed stages — the corruption held this time. No damage done: your progress is untouched, and the plugin remembers nothing. Sharpen the weak concepts and run the session again.'
             : 'You need ' + passNeed + '. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
-        el('button', { class: 'btn block', onclick: () => { session.restartEvent(); App.go('boss', { id: node.id }); } }, 'Run the session again'),
+        el('button', { class: 'btn block', onclick: () => { App.go('boss', { id: node.id }); session.restartEvent(); } }, 'Run the session again'),
         el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
       ], { sticky: true });
     }
