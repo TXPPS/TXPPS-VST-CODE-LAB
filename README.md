@@ -114,6 +114,24 @@ intro. It runs on the same shared encounter shell (HUD, phases, victory/defeat,
 retry, resume) and the same Owner QA campaign console; Zones 3–7 remain
 development encounters.
 
+**Version 1.3.2 — Zone 3 Boss: Signal Integrity** promotes Zone 3 to a
+production BossKit encounter that feels like diagnosing a professional audio
+engine rather than fantasy combat. A failing signal path is losing integrity, and
+its six technically-accurate stages teach core audio-DSP concepts through gameplay
+across three phases: **Signal Diagnosis** (recognise hard clipping past ±1.0 /
+0 dBFS from a flat-topped scope, and out-of-band aliasing folding back under
+Nyquist — `|44100 − 30000| = 14100 Hz`), **Repair Chain** (gain staging and
+headroom — a linear ×8 is +18 dB, so −3 dBFS clips — and inserting a high-pass to
+reject a 0 Hz DC offset), and **Signal Stabilisation** (correcting per-channel
+buffer flow, `getWritePointer(ch)` not `(0)`, and ordering an oversampling
+pipeline — upsample → process → downsample — so distortion harmonics cannot
+alias). Correct answers name the fix in DSP terms, wrong answers name the audible
+consequence; PATCH acts as an engineering mentor with authored briefing / victory
+/ defeat dialogue, and a clipped-waveform scope lightly illustrates the intro. It
+reuses the same shared encounter shell (HUD, phases, victory/defeat, retry,
+resume) and the same Owner QA campaign console. Zones 1–3 are now production
+encounters; Zones 4–7 remain development encounters (QA-only).
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -237,9 +255,10 @@ src/
                              definitions reference curriculum nodes; a pure
                              deterministic session mirrors runner results as
                              HP / integrity / phases (v1.2.0 Zone 1 slice; v1.3.0
-                             adds auto-phases + QA-only dev_boss2–7 definitions)
+                             adds auto-phases + QA-only dev_boss definitions; v1.3.1
+                             authors production boss2; v1.3.2 authors production boss3)
     boss_campaign.js         one registry of all seven zone bosses — production
-                             (Zone 1) vs development (Zones 2–7), fields, order (v1.3.0)
+                             (Zones 1–3) vs development (Zones 4–7), fields, order (v1.3.0)
     boss_campaign_service.js campaign authority: lookup, sequencing, availability,
                              progress, idempotent victory, safe session persistence;
                              defers to Access/Progression/Reward policies (v1.3.0)

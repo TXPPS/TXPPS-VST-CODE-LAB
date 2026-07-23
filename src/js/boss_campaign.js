@@ -3,9 +3,9 @@
    zone bosses. Data only: no policy, no state, no side effects.
 
    IMPORTANT distinction this registry encodes:
-   - Zone 1 is a PRODUCTION BossKit encounter (definitionId 'boss1') that
+   - Zones 1–3 are PRODUCTION BossKit encounters (definitionId 'bossN') that
      real learners fight via the boss route.
-   - Zones 2–7 register a DEVELOPMENT BossKit encounter (definitionId
+   - Zones 4–7 register a DEVELOPMENT BossKit encounter (definitionId
      'dev_bossN') that is QA-only. Real learners still fight those zone
      bosses through the untouched LEGACY encounter (legacyLearnerEncounter),
      which remains finished content. The development encounters are the
@@ -17,7 +17,7 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
-  const PRODUCTION = { 1: true, 2: true };                    // Zones 1–2 are production encounters
+  const PRODUCTION = { 1: true, 2: true, 3: true };           // Zones 1–3 are production encounters
   function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
 
   const REGISTRY = {};

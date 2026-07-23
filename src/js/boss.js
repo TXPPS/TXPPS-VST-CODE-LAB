@@ -68,6 +68,28 @@ const BossKit = (() => {
       },
       viz: { t: 'owners', mode: 'shared' },   // the generator draws its own caption
     },
+    // ---- Zone 3 (v1.3.2) — production encounter. Theme: audio DSP signal integrity.
+    //      Questions live in the boss3 curriculum node (nodeRef); phases/dialogue/viz
+    //      are authored here. Diagnose a failing signal path, then repair it. ----
+    boss3: {
+      id: 'boss3', zoneId: 'z3', nodeRef: 'boss3',
+      name: 'SIGNAL INTEGRITY',
+      subtitle: 'A failing signal path — clipping, aliasing, broken gain staging',
+      description: 'A professional audio engine is losing signal integrity: a stage is clipping past full scale, an out-of-band tone is aliasing back into the audible band, the gain structure has no headroom, and the buffer flow has a routing fault. Diagnose the path, then repair it stage by stage.',
+      phases: [
+        { id: 'diagnose', until: 4, title: 'PHASE 1 — SIGNAL DIAGNOSIS', behavior: 'Read the meters and the scope. Identify what is clipping, what is aliasing, and where the level goes wrong before you touch anything.' },
+        { id: 'repair', until: 2, title: 'PHASE 2 — REPAIR CHAIN', behavior: 'The faults are located. Fix the gain staging and insert the right filter so the signal stays inside its headroom.' },
+        { id: 'stabilise', until: -1, title: 'PHASE 3 — SIGNAL STABILISATION', behavior: 'Tie the DSP concepts together. Correct the buffer flow and the oversampling order to deliver a clean, production-quality path.' },
+      ],
+      presentation: { integrityLabel: 'SIGNAL INTEGRITY', hpLabel: 'DISTORTION', defeatLineLabel: 'STABILISE THRESHOLD' },
+      accessibility: { textOnly: 'Diagnose and repair a failing audio signal path. Each correct stage removes one block of distortion; each miss costs one signal-integrity cell. Stabilise enough stages to deliver a clean signal.' },
+      dialogue: {
+        briefing: 'Signal integrity is dropping across the path. We diagnose before we repair: read the meter, read the scope, name the fault in DSP terms — then fix it. I will walk the chain with you.',
+        victory: 'Signal path stable. Nothing is clipping, nothing is aliasing, and every stage sits inside its headroom — that is a production-quality signal chain.',
+        defeat: 'A couple of faults are still corrupting the path, so the signal is not clean yet — but nothing shipped and nothing broke. Review the meters and the gain structure, then run it again.',
+      },
+      viz: { t: 'clipwave' },   // clipped-waveform scope: the signal driven past full scale
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -88,7 +110,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 3; z <= 7; z++) {   // Zone 2 is now a production encounter (DEFS.boss2); Zones 3–7 remain development
+    for (let z = 4; z <= 7; z++) {   // Zones 1–3 are production encounters (DEFS.boss1/2/3); Zones 4–7 remain development
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {

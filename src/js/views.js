@@ -715,6 +715,11 @@ const Views = (() => {
     'object-lifetime': 'object lifetime', 'raii': 'RAII', 'smart-pointers': 'smart pointers',
     'ownership-transfer': 'ownership transfer', 'double-ownership': 'double ownership',
     'move-semantics': 'move semantics',
+    // Zone 3 — audio DSP / signal integrity (v1.3.2)
+    'clipping': 'clipping', 'aliasing': 'aliasing', 'gain-staging': 'gain staging',
+    'filters': 'filters', 'buffer-flow': 'buffer flow', 'oversampling': 'oversampling',
+    'sampling': 'sampling', 'nyquist': 'Nyquist', 'headroom': 'headroom',
+    'dbfs': 'dBFS', 'signal-flow': 'signal flow', 'metering': 'metering',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -1929,12 +1934,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.1'));
+      el('span', { class: 'mono small phos' }, 'v1.3.2'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.1 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–2 (Zone 2: Ownership Crisis, modern C++ memory ownership), a seven-zone boss-campaign framework (Zones 3–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.2 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–3 (Zone 3: Signal Integrity, audio DSP — clipping, aliasing, gain staging, filters and oversampling), a seven-zone boss-campaign framework (Zones 4–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.
