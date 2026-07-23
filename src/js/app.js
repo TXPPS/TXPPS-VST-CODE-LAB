@@ -169,8 +169,19 @@ const App = (() => {
   function reboot() {
     applyCodeSize();
     applyMotion();
+    notifyIfRecovered();
     go('dashboard');
     flushAchievements();
+  }
+
+  // Recovery from a corrupted save can happen on boot OR mid-session (switching
+  // to / deleting into a profile whose current save was corrupt) — announce it
+  // everywhere, not just at boot, per the "notify the learner" requirement.
+  function notifyIfRecovered() {
+    if (Store.recovered) {
+      UI.toast('⚠ A save looked corrupted — we restored your previous backup. No progress lost.', 5200);
+      Store.clearRecovered();
+    }
   }
 
   function boot() {
@@ -188,12 +199,17 @@ const App = (() => {
       // capture progress the moment the tab is hidden or closed
       window.addEventListener('pagehide', () => { try { Store.save(); } catch (e) { /* ignore */ } });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { try { Store.save(); } catch (e) { /* ignore */ } } });
+      // cross-tab convergence: adopt a newer save written by another tab of the
+      // same profile, so our autosave heartbeat can't overwrite it with stale state
+      window.addEventListener('storage', (e) => {
+        try { if (e.key && Store.adoptExternal(e.key)) renderTopbar(); } catch (err) { /* ignore */ }
+      });
 
       applyCodeSize();
       applyMotion();
       if (Store.needsWelcome) { showWelcome('first'); return; }
       startAutosave();
-      if (Store.recovered) { UI.toast('⚠ Your latest save looked corrupted — we restored your previous backup. No progress lost.', 5200); Store.clearRecovered(); }
+      notifyIfRecovered();
       go('dashboard');
     } catch (err) {
       root.innerHTML = '';

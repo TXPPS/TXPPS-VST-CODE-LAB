@@ -38,10 +38,16 @@ const Store = (() => {
     return { displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '', createdAt: nowIso(), lastPlayed: nowIso() };
   }
 
-  /* ---- low-level storage, with an in-memory fallback when blocked ---- */
-  function lsGet(key) { try { return window.localStorage.getItem(key); } catch (e) { storageOk = false; return (key in memory) ? memory[key] : null; } }
-  function lsSet(key, val) { try { window.localStorage.setItem(key, val); storageOk = true; return true; } catch (e) { storageOk = false; memory[key] = val; return false; } }
+  /* ---- low-level storage, with an in-memory fallback when blocked ----
+     `memory` holds only keys whose latest write could NOT reach localStorage
+     (quota/private mode). Reads prefer it so a value written this session is
+     always visible; a later successful write clears it so localStorage becomes
+     authoritative again. rawLocalGet() bypasses memory to probe what actually
+     persisted to disk (used by the atomic migration confirm). */
+  function lsGet(key) { if (key in memory) return memory[key]; try { return window.localStorage.getItem(key); } catch (e) { storageOk = false; return null; } }
+  function lsSet(key, val) { try { window.localStorage.setItem(key, val); storageOk = true; delete memory[key]; return true; } catch (e) { storageOk = false; memory[key] = val; return false; } }
   function lsDel(key) { try { window.localStorage.removeItem(key); } catch (e) { /* ignore */ } delete memory[key]; }
+  function rawLocalGet(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } }
 
   /* ---- versioned save envelope + checksum ---- */
   function pack(data) { const body = JSON.stringify(data); return JSON.stringify({ schema: 'txpps.profile', v: SAVE_V, sum: hash(body), data: data }); }
@@ -119,12 +125,18 @@ const Store = (() => {
         lastPlayed: nowIso(), v: SAVE_V,
       });
       writeProfile(id, data);
-      // Retire the old single-save key ONLY once the new profile is confirmed
-      // readable — so a failed write can never lose the legacy progress, and a
-      // lingering legacy save can't "zombie-migrate" after every profile is deleted.
-      if (readProfile(id).data) lsDel(LEGACY_KEY);
       idx = { schema: 'txpps.index', v: 1, activeId: id, ids: [id], migratedFromLegacy: true };
-      writeIndex(idx);
+      // ATOMIC migration. Commit the index and retire the legacy key ONLY once the
+      // new profile is confirmed on DISK (not merely the in-memory fallback). If the
+      // profile write hit quota, keep the index in memory for this session and leave
+      // the legacy save authoritative, so the next launch re-migrates it instead of
+      // being permanently shadowed by a half-committed index.
+      if (unpack(rawLocalGet(pKey(id)))) {
+        writeIndex(idx);
+        if (rawLocalGet(INDEX_KEY)) lsDel(LEGACY_KEY);   // drop legacy only after the index is on disk too
+      } else {
+        memory[INDEX_KEY] = JSON.stringify(idx);          // session-only; reload re-migrates from the intact legacy save
+      }
       return idx;
     }
     return null;
@@ -600,11 +612,27 @@ const Store = (() => {
     lsDel(pKey(id)); lsDel(bKey(id));
     let switchedTo = null;
     if (id === activeId) {
-      if (idx.ids.length) { activeId = idx.ids[0]; const r = readProfile(activeId); state = r.data ? sanitizeFull(r.data) : freshState(); idx.activeId = activeId; switchedTo = activeId; }
-      else { activeId = null; idx.activeId = null; state = freshState(); needsWelcome = true; }
+      const alt = idx.ids.find((pid) => readProfile(pid).data);   // first READABLE profile, not blindly ids[0]
+      if (alt) {
+        const r = readProfile(alt);
+        activeId = alt; state = sanitizeFull(r.data); recoveredFlag = recoveredFlag || r.recovered;
+        idx.activeId = alt; switchedTo = alt;
+      } else {
+        activeId = null; idx.activeId = null; state = freshState(); needsWelcome = true;
+      }
     }
     writeIndex(idx);
     return { ok: true, switchedTo, needsWelcome };
+  }
+
+  // Cross-tab convergence: when another tab writes THIS tab's active profile,
+  // adopt the newer save so our next autosave can't clobber it with stale state.
+  function adoptExternal(key) {
+    if (!activeId || key !== pKey(activeId)) return false;
+    const d = unpack(rawLocalGet(pKey(activeId)));
+    if (!d) return false;
+    state = sanitizeFull(d);
+    return true;
   }
 
   return {
@@ -624,6 +652,6 @@ const Store = (() => {
     zoneMastery, bossReady,
     setSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, reset,
-    listProfiles, profileMeta, createProfile, switchProfile, editProfile, deleteProfile,
+    listProfiles, profileMeta, createProfile, switchProfile, editProfile, deleteProfile, adoptExternal,
   };
 })();
