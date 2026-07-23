@@ -247,10 +247,14 @@ const Game = (() => {
       SLEEPING: { mouth: 'flat', eyes: 'shut', led: 'dim', cls: 'p-sleep' },
       HIDDEN: { mouth: 'wave', eyes: 'dot', led: 'dim', cls: '' },
     };
+    // Every mouth shares ONE stable coordinate system so no state can drift:
+    //   horizontal centre x = 24 (directly under the eyes at cx 18 / 30),
+    //   baseline y = 26, span x 17..31, and nothing rises above y ≈ 24 — the eyes
+    //   occupy y ≈ 18.3..21.7, so the mouth never enters the eye region.
     const MOUTH = {
-      wave: 'M11 25 q2.5 -2.5 5 0 t5 0 t5 0', flat: 'M12 25 h13', dots: 'M13 25 h2 M18 25 h2 M23 25 h2',
-      smile: 'M13 23 q5.5 5 12 0', wavy: 'M11 25 q2.5 3 5 0 t5 0 t5 -2', spike: 'M11 25 h4 l2 -6 l2 12 l2 -6 h5',
-      boot: 'M12 25 h13',
+      wave: 'M17 26 q3.5 -3 7 0 t7 0', flat: 'M17 26 h14', dots: 'M18 26 h2 M23 26 h2 M28 26 h2',
+      smile: 'M18 25 q6 4.5 12 0', wavy: 'M17 26 q3.5 1.8 7 0 t7 -1.5', spike: 'M17 26 h4 l2 -2 l2 4 l2 -2 h4',
+      boot: 'M17 26 h14',
     };
 
     function svgBase() {

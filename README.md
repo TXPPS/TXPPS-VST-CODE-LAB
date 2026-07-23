@@ -45,7 +45,9 @@ intensity, reduced motion, particles, per-category audio volumes, haptics) and
 degrades safely: a failure in any decorative subsystem can never reach grading,
 navigation, or saving, and every result stays clear in text with PATCH hidden
 and audio off. Boss/graduation events are reserved as hooks only — not
-implemented in this pass.
+implemented in this pass. **Version 1.1.1** is a focused visual correction that
+re-centres PATCH's waveform mouth beneath its eyes across every face state,
+using one shared mouth coordinate system so no state can drift.
 
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
