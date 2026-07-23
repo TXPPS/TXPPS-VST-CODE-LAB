@@ -916,6 +916,33 @@ input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-ra
 /* lift PATCH clear of a lesson/challenge sticky action bar so it never sits over the Check/Continue button */
 .has-actionbar .patch-dock { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
 @media (max-height: 480px) { .has-actionbar .patch-dock { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
+
+/* ============================================================
+   Boss encounter HUD (v1.2.0) — corruption bar with a repair-threshold
+   marker, signal-integrity pips, phase titles. Matches the workshop theme.
+   ============================================================ */
+.boss-hud { border-color: var(--red); background: linear-gradient(180deg, rgba(240,120,98,0.06), var(--bg1)); }
+.boss-hud.critical { border-color: var(--phos-dim); background: linear-gradient(180deg, rgba(93,232,148,0.06), var(--bg1)); }
+.boss-name { font-family: var(--mono); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; color: var(--red); }
+.boss-hud.critical .boss-name { color: var(--phos); }
+.hp-bar { display: flex; gap: 4px; align-items: center; }
+.hp-seg {
+  flex: 1; height: 12px; border-radius: 3px;
+  background: var(--bg3); border: 1px solid var(--line);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.hp-seg.on { background: linear-gradient(180deg, var(--red), #a34a3c); border-color: var(--red); }
+.boss-hud.critical .hp-seg.on { background: linear-gradient(180deg, var(--amber), #a3742c); border-color: var(--amber); }
+.defeat-marker { width: 2px; height: 18px; background: var(--phos); flex: none; border-radius: 1px; box-shadow: 0 0 6px var(--phos-glow); }
+.integrity-row { display: flex; gap: 5px; }
+.int-pip {
+  width: 22px; height: 10px; border-radius: 3px;
+  background: var(--bg3); border: 1px solid var(--line);
+  transition: background 0.3s ease;
+}
+.int-pip.on { background: linear-gradient(180deg, var(--phos), var(--phos-dim)); border-color: var(--phos-dim); }
+.boss-hud.danger .int-pip.on { background: linear-gradient(180deg, var(--amber), #a3742c); border-color: var(--amber); }
+.reduce-motion .hp-seg, .reduce-motion .int-pip { transition: none; }
 </style>
 <div id="app" class="app">
   <noscript><div style="padding:2rem;font-family:monospace;color:#EAE4D4;background:#0A0C0F">TXPPS VST CODE LAB requires JavaScript.</div></noscript>
@@ -16172,12 +16199,9 @@ const GameBus = (() => {
     STORAGE_RECOVERED: 'STORAGE_RECOVERED',
     STORAGE_WARNING: 'STORAGE_WARNING',
     SETTINGS_UPDATED: 'SETTINGS_UPDATED',
-  };
-
-  // Reserved for the future boss / zone-completion / graduation pass.
-  // Declared now so course code can be wired against stable names, but
-  // NOTHING emits or handles these in v1.1.0.
-  const FUTURE = {
+    // ---- boss encounter catalog (activated in v1.2.0) ----
+    BOSS_UNLOCKED: 'BOSS_UNLOCKED',
+    BOSS_ENTERED: 'BOSS_ENTERED',
     BOSS_INTRO: 'BOSS_INTRO',
     BOSS_STARTED: 'BOSS_STARTED',
     BOSS_QUESTION_RESOLVED: 'BOSS_QUESTION_RESOLVED',
@@ -16189,6 +16213,11 @@ const GameBus = (() => {
     BOSS_GAME_OVER: 'BOSS_GAME_OVER',
     BOSS_RESTARTED: 'BOSS_RESTARTED',
     BOSS_DEFEATED: 'BOSS_DEFEATED',
+  };
+
+  // Reserved for the future zone-completion / graduation pass. Declared so
+  // code can be wired against stable names, but NOTHING emits these yet.
+  const FUTURE = {
     ZONE_COMPLETE: 'ZONE_COMPLETE',
     COURSE_COMPLETE: 'COURSE_COMPLETE',
     GRADUATION_STARTED: 'GRADUATION_STARTED',
@@ -18668,8 +18697,10 @@ const Game = (() => {
       ACHIEVEMENT_UNLOCK: 'celebration', RANK_UP: 'celebration', ZONE_UNLOCKED: 'celebration',
       PROFILE_CREATED: 'patch', PROFILE_SAVED: 'ui', SAVE_FAILED: 'feedback', BACKUP_COMPLETE: 'ui',
       PATCH_BOOT: 'patch', PATCH_ENTER: 'patch', PATCH_EXIT: 'patch',
+      BOSS_INTRO: 'celebration', PLAYER_ATTACK: 'feedback', PLAYER_ATTACK_HEAVY: 'feedback', PLAYER_DAMAGE: 'feedback',
+      BOSS_PHASE: 'celebration', BOSS_WARNING: 'feedback', BOSS_DEFEATED: 'celebration', PLAYER_DEFEATED: 'feedback',
     };
-    const COOLDOWN = { UI_PRESS: 45, NAVIGATION: 90, INCORRECT: 120, CORRECT: 120, PROFILE_SAVED: 400 };
+    const COOLDOWN = { UI_PRESS: 45, NAVIGATION: 90, INCORRECT: 120, CORRECT: 120, PROFILE_SAVED: 400, PLAYER_ATTACK: 150, PLAYER_DAMAGE: 150 };
 
     function tryCtx() {
       if (ctx) return ctx;
@@ -18735,6 +18766,15 @@ const Game = (() => {
       PATCH_BOOT: (t, v) => { slide(t, 200, 660, 0.22, 'triangle', 0.05 * v); },
       PATCH_ENTER: (t, v) => tone(t, 880, 0.04, 'sine', 0.03 * v),
       PATCH_EXIT: (t, v) => tone(t, 520, 0.04, 'sine', 0.025 * v),
+      // boss encounter — restrained, still the workshop sound language
+      BOSS_INTRO: (t, v) => { slide(t, 220, 110, 0.3, 'sawtooth', 0.045 * v); tone(t + 0.32, 98, 0.24, 'triangle', 0.05 * v); },
+      PLAYER_ATTACK: (t, v) => { slide(t, 500, 900, 0.07, 'square', 0.045 * v); tone(t + 0.06, 1100, 0.06, 'sine', 0.05 * v); },
+      PLAYER_ATTACK_HEAVY: (t, v) => { slide(t, 400, 1000, 0.09, 'square', 0.05 * v); tone(t + 0.08, 1244.5, 0.12, 'triangle', 0.06 * v); },
+      PLAYER_DAMAGE: (t, v) => { slide(t, 260, 140, 0.14, 'sawtooth', 0.045 * v); },
+      BOSS_PHASE: (t, v) => { tone(t, 174.61, 0.14, 'sawtooth', 0.05 * v); tone(t + 0.13, 233.08, 0.18, 'sawtooth', 0.05 * v); },
+      BOSS_WARNING: (t, v) => { tone(t, 196, 0.1, 'square', 0.045 * v); tone(t + 0.14, 196, 0.1, 'square', 0.045 * v); },
+      BOSS_DEFEATED: (t, v) => { [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(t + i * 0.08, f, 0.18, 'triangle', 0.07 * v)); },
+      PLAYER_DEFEATED: (t, v) => { slide(t, 330, 165, 0.3, 'triangle', 0.05 * v); tone(t + 0.32, 130.81, 0.28, 'sine', 0.05 * v); },
     };
     function play(cat) {
       try {
@@ -18756,35 +18796,105 @@ const Game = (() => {
   })();
 
   /* =====================================================================
-     HAPTIC DIRECTOR — capability-honest. navigator.vibrate only where it
-     really exists; iOS Safari has none, so we NEVER claim otherwise. A
-     future native iOS Core Haptics bridge plugs in via setAdapter().
+     HAPTIC DIRECTOR — capability-honest, semantic-category based.
+
+     Course/boss logic NEVER touches navigator.vibrate; it emits GameBus
+     events, and only this director maps them to physical feedback through
+     the active adapter. iOS Safari exposes no vibration API, so on iPhone
+     browsers the status reports "unsupported" — we never simulate or
+     falsely claim haptics there.
+
+     NATIVE ADAPTER CONTRACT (for a future iOS/Android shell — e.g. a
+     Core Haptics bridge). Inject via Game.setHapticAdapter(adapter):
+       adapter = {
+         supported(): boolean       // real capability on this device
+         play(category: string)     // one of Haptic.CATEGORIES below;
+                                    // map to impact styles as suits the
+                                    // platform, e.g.:
+                                    //   UI_LIGHT            -> selection/light impact
+                                    //   UI_CONFIRM          -> light impact
+                                    //   ANSWER_CORRECT      -> success notification
+                                    //   ANSWER_INCORRECT    -> warning notification
+                                    //   PLAYER_ATTACK_HEAVY -> heavy impact
+                                    //   PLAYER_DAMAGE_HEAVY -> error notification
+                                    //   BOSS_DEFEATED       -> custom success pattern
+         // optional: name(): string  — shown in diagnostics ("native")
+       }
+     The director handles enable/disable, cooldowns, and page-visibility
+     suppression — adapters only render a category when asked.
      ===================================================================== */
   const Haptic = (() => {
-    let adapter = null;   // future native bridge: { supported(), play(name) }
-    const lastAt = {};
-    const PAT = {
-      'ui.light': [8], 'feedback.correct': [14], 'feedback.incorrect': [22],
-      'milestone.lesson': [12, 40, 12], 'milestone.perfect': [16, 40, 16, 40, 24],
-      'milestone.rank': [20, 60, 20], 'warning.save': [30, 40, 30],
+    let adapter = null;
+    const lastAt = {};              // per-category cooldown clocks
+    let lastAnyAt = 0;              // global cooldown clock (minor events only)
+
+    // ONE centralized pattern table — raw vibration arrays live nowhere else.
+    // critical:true events may supersede the global minor-event cooldown.
+    const CATEGORIES = {
+      UI_LIGHT:            { pat: [8],               cd: 60 },
+      UI_CONFIRM:          { pat: [12],              cd: 80 },
+      ANSWER_CORRECT:      { pat: [14],              cd: 120 },
+      ANSWER_RECOVERED:    { pat: [10, 30, 16],      cd: 120 },
+      ANSWER_INCORRECT:    { pat: [22],              cd: 120 },
+      HINT_AVAILABLE:      { pat: [8, 40, 8],        cd: 300 },
+      PLAYER_ATTACK_LIGHT: { pat: [12],              cd: 100 },
+      PLAYER_ATTACK_HEAVY: { pat: [10, 30, 22],      cd: 150, critical: true },
+      PLAYER_DAMAGE_LIGHT: { pat: [18],              cd: 100 },
+      PLAYER_DAMAGE_HEAVY: { pat: [26, 40, 18],      cd: 150, critical: true },
+      BOSS_PHASE_CHANGE:   { pat: [14, 50, 14, 50, 22], cd: 800, critical: true },
+      BOSS_WARNING:        { pat: [24, 60, 24],      cd: 800, critical: true },
+      BOSS_DEFEATED:       { pat: [16, 40, 16, 40, 30], cd: 1500, critical: true },
+      PLAYER_DEFEATED:     { pat: [30, 60, 30],      cd: 1500, critical: true },
+      ACHIEVEMENT:         { pat: [12, 40, 12],      cd: 400, critical: true },
+      RANK_UP:             { pat: [20, 60, 20],      cd: 400, critical: true },
+      MISSION_COMPLETE:    { pat: [12, 40, 12, 40, 18], cd: 400, critical: true },
+      WARNING_SAVE:        { pat: [30, 40, 30],      cd: 800, critical: true },
     };
-    const COOLDOWN = 60;
+    // Back-compat aliases: pre-1.2.0 dotted names -> semantic categories.
+    const ALIAS = {
+      'ui.light': 'UI_LIGHT', 'feedback.correct': 'ANSWER_CORRECT', 'feedback.incorrect': 'ANSWER_INCORRECT',
+      'milestone.lesson': 'UI_CONFIRM', 'milestone.perfect': 'MISSION_COMPLETE', 'milestone.rank': 'RANK_UP',
+      'warning.save': 'WARNING_SAVE',
+    };
+    const GLOBAL_CD = 90;           // minor events share this floor; critical events bypass it
+
     function browserSupported() { try { return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'; } catch (e) { return false; } }
-    function supported() { return !!(adapter ? adapter.supported && adapter.supported() : browserSupported()); }
+    function supported() { return !!(adapter ? (adapter.supported && adapter.supported()) : browserSupported()); }
     function enabled() { return gs().haptics !== false; }
+    function adapterName() { return adapter ? ((adapter.name && adapter.name()) || 'native') : (browserSupported() ? 'browser vibration' : 'none'); }
     function status() { return !supported() ? 'unsupported' : (enabled() ? 'on' : 'off'); }
+    // Rich diagnostics for the settings screen — always honest.
+    function diagnostics() {
+      return {
+        enabled: enabled(), supported: supported(), adapter: adapterName(),
+        deliverable: enabled() && supported() && !document.hidden,
+        status: status(),
+      };
+    }
     function trigger(name) {
       try {
+        const cat = CATEGORIES[name] ? name : ALIAS[name];
+        const c = CATEGORIES[cat];
+        if (!c) return false;
         if (!enabled() || !supported() || document.hidden) return false;
         const nowMs = Date.now();
-        if (lastAt[name] && nowMs - lastAt[name] < COOLDOWN) return false;
-        lastAt[name] = nowMs;
-        if (adapter && adapter.play) { adapter.play(name); return true; }
-        const p = PAT[name]; if (!p) return false;
-        return navigator.vibrate(p) !== false;
+        if (lastAt[cat] && nowMs - lastAt[cat] < c.cd) return false;         // per-category cooldown
+        if (!c.critical && nowMs - lastAnyAt < GLOBAL_CD) return false;      // global floor for minor events
+        lastAt[cat] = nowMs; lastAnyAt = nowMs;
+        if (adapter && adapter.play) { adapter.play(cat); return true; }
+        return navigator.vibrate(c.pat) !== false;
       } catch (e) { return false; }   // silent, never breaks anything
     }
-    return { trigger, supported, status, setAdapter(a) { adapter = a; } };
+    // Honest test: reports what actually happened, never fakes success.
+    function test() {
+      const d = diagnostics();
+      if (!d.supported) return { ok: false, message: 'Haptic feedback is unavailable in this browser. Audio and visual feedback remain active.' };
+      if (!d.enabled) return { ok: false, message: 'Haptic feedback is switched off.' };
+      const fired = trigger('UI_CONFIRM');
+      return fired ? { ok: true, message: 'Test pulse sent via ' + d.adapter + '.' }
+                   : { ok: false, message: 'Pulse suppressed (cooldown or hidden page) — try again in a moment.' };
+    }
+    return { trigger, supported, status, diagnostics, test, CATEGORIES, setAdapter(a) { adapter = a; } };
   })();
 
   /* =====================================================================
@@ -18817,6 +18927,12 @@ const Game = (() => {
       RECOVERING: { mouth: 'wavy', eyes: 'dot', led: 'amber', cls: 'p-save' },
       SLEEPING: { mouth: 'flat', eyes: 'shut', led: 'dim', cls: 'p-sleep' },
       HIDDEN: { mouth: 'wave', eyes: 'dot', led: 'dim', cls: '' },
+      // boss encounter states (v1.2.0) — reuse the accepted shared mouth
+      // geometry; no new paths, so the v1.1.1 alignment guarantees hold.
+      BOSS_INTRO: { mouth: 'flat', eyes: 'dot', led: 'amber', cls: 'p-attn' },
+      BOSS_ASSIST: { mouth: 'wave', eyes: 'dot', led: 'phos', cls: 'p-attn' },
+      BOSS_CONCERNED: { mouth: 'wavy', eyes: 'flat', led: 'amber', cls: 'p-concern' },
+      BOSS_VICTORY: { mouth: 'smile', eyes: 'happy', led: 'phos', cls: 'p-celebrate' },
     };
     // Every mouth shares ONE stable coordinate system so no state can drift:
     //   horizontal centre x = 24 (directly under the eyes at cx 18 / 30),
@@ -18989,10 +19105,15 @@ const Game = (() => {
       // Home (a route change cancels in-flight reactions). Defer the intro so it lands
       // on the freshly-rendered dashboard instead of being torn down in the same tick.
       setTimeout(() => {
+        // If the learner already navigated into a work screen (lesson/boss —
+        // marked by has-actionbar), skip the greeting rather than letting it
+        // land as stale dialogue on an unrelated screen. introSeen is already
+        // recorded, so it simply never replays.
+        if (document.body.classList.contains('has-actionbar')) return;
         Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
           Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
           Audio.play('PROFILE_CREATED');
-          Haptic.trigger('milestone.lesson');
+          Haptic.trigger('UI_CONFIRM');
           Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
         } });
       }, 550);
@@ -19011,15 +19132,15 @@ const Game = (() => {
     on(E.QUESTION_PRESENTED, () => { if (atLeastBalanced()) Reactions.dispatch({ priority: 1, dedupeKey: 'q', dedupeMs: 400, holdMs: 400, run: () => Patch.setState('LISTENING', { dur: 1200 }) }); });
 
     on(E.ANSWER_CORRECT, (ev) => {
-      Audio.play('CORRECT'); Haptic.trigger('feedback.correct');
+      Audio.play('CORRECT'); Haptic.trigger('ANSWER_CORRECT');
       Reactions.dispatch({ priority: 2, holdMs: 800, run: () => Patch.setState('APPROVING', (full() || (atLeastBalanced() && ((ev.id % 3) === 0))) ? { text: pick(CORRECT_LINES, ev.id), dur: 1400 } : { dur: 1200 }) });
     });
     on(E.ANSWER_CORRECT_AFTER_RETRY, (ev) => {
-      Audio.play('CORRECT_AFTER_RETRY'); Haptic.trigger('feedback.correct');
+      Audio.play('CORRECT_AFTER_RETRY'); Haptic.trigger('ANSWER_RECOVERED');
       Reactions.dispatch({ priority: 2, holdMs: 900, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: pick(RETRY_LINES, ev.id), dur: 1600 } : { dur: 1200 }) });
     });
     on(E.ANSWER_INCORRECT, (ev) => {
-      Audio.play('INCORRECT'); Haptic.trigger('feedback.incorrect');
+      Audio.play('INCORRECT'); Haptic.trigger('ANSWER_INCORRECT');
       Reactions.dispatch({ priority: 2, holdMs: 800, run: () => Patch.setState('CONCERNED', full() ? { text: pick(INCORRECT_LINES, ev.id), dur: 1400 } : { dur: 1100 }) });
     });
     on(E.ANSWER_REPEATED_INCORRECT, () => {
@@ -19029,36 +19150,52 @@ const Game = (() => {
       Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
     });
 
-    on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Lesson complete — filed.', 3));
-    on(E.CHALLENGE_COMPLETE, () => milestone('CHALLENGE_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Diagnostic resolved.', 3));
-    on(E.QUIZ_PERFECT, () => milestone('QUIZ_PERFECT', 'CELEBRATING', 'milestone.perfect', 'Clean 100% signal.', 3, 2200));
-    on(E.QUIZ_PASSED, () => { Audio.play('QUIZ_PASS'); Haptic.trigger('milestone.lesson'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: 'Passed. Signal is stable.', dur: 1600 } : { dur: 1200 }) }); });
+    on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'UI_CONFIRM', 'Lesson complete — filed.', 3));
+    on(E.CHALLENGE_COMPLETE, () => milestone('CHALLENGE_COMPLETE', 'CELEBRATING', 'UI_CONFIRM', 'Diagnostic resolved.', 3));
+    on(E.QUIZ_PERFECT, () => milestone('QUIZ_PERFECT', 'CELEBRATING', 'MISSION_COMPLETE', 'Clean 100% signal.', 3, 2200));
+    on(E.QUIZ_PASSED, () => { Audio.play('QUIZ_PASS'); Haptic.trigger('UI_CONFIRM'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: 'Passed. Signal is stable.', dur: 1600 } : { dur: 1200 }) }); });
     on(E.QUIZ_FAILED, () => { Audio.play('QUIZ_FAIL'); Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Review the diagnostic, then retry.', dur: 2000 } : { dur: 1200 }) }); });
-    on(E.MISSION_COMPLETE, () => milestone('MISSION_COMPLETE', 'MISSION_COMPLETE', 'milestone.rank', 'Module connected. Mission complete.', 4, 2600));
+    on(E.MISSION_COMPLETE, () => milestone('MISSION_COMPLETE', 'MISSION_COMPLETE', 'MISSION_COMPLETE', 'Module connected. Mission complete.', 4, 2600));
 
     on(E.ACHIEVEMENT_UNLOCKED, (ev) => {
       const key = 'ach:' + (ev.achievementId || '');
       if (wasSeen(key)) { return; }        // never replay a badge celebration
       markSeen(key);
-      Audio.play('ACHIEVEMENT_UNLOCK'); Haptic.trigger('milestone.lesson');
+      Audio.play('ACHIEVEMENT_UNLOCK'); Haptic.trigger('ACHIEVEMENT');
       Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => Patch.setState('ACHIEVEMENT', atLeastBalanced() ? { text: 'Badge installed.', dur: 2000 } : { dur: 1400 }) });
     });
     on(E.RANK_UP, (ev) => {
       const key = 'rank:' + (ev.to || ev.level || '');
       if (wasSeen(key)) return;
       markSeen(key);
-      Audio.play('RANK_UP'); Haptic.trigger('milestone.rank');
+      Audio.play('RANK_UP'); Haptic.trigger('RANK_UP');
       Reactions.dispatch({ priority: 4, holdMs: 2000, run: () => Patch.setState('RANK_UP', atLeastBalanced() ? { text: 'ID plate updated.', dur: 2200 } : { dur: 1400 }) });
     });
     on(E.ZONE_UNLOCKED, () => { Audio.play('ZONE_UNLOCKED'); if (atLeastBalanced()) Patch.setState('ATTENTIVE', { text: 'New workspace online.', dur: 1600 }); });
 
     on(E.LOCAL_SAVE_COMPLETE, () => { if (Patch.state === 'SAVING' || Patch.state === 'STORING') Patch.toIdle(); });
-    on(E.LOCAL_SAVE_FAILED, () => { Audio.play('SAVE_FAILED'); Haptic.trigger('warning.save'); Patch.setState('CONCERNED', { text: 'Save failed — export a backup.', dur: 2600 }); });
+    on(E.LOCAL_SAVE_FAILED, () => { Audio.play('SAVE_FAILED'); Haptic.trigger('WARNING_SAVE'); Patch.setState('CONCERNED', { text: 'Save failed — export a backup.', dur: 2600 }); });
     on(E.STORAGE_RECOVERED, () => { Patch.setState('RECOVERING', { text: 'Backup restored. No progress lost.', dur: 2400 }); });
     on(E.BACKUP_EXPORTED, () => { Audio.play('BACKUP_COMPLETE'); if (atLeastBalanced()) Patch.setState('STORING', { text: 'Backup archived.', dur: 1400 }); });
     on(E.BACKUP_IMPORTED, () => { Audio.play('BACKUP_COMPLETE'); Patch.setState('STORING', { text: 'Profile restored.', dur: 1600 }); });
 
     on(E.SETTINGS_UPDATED, () => { Patch.applyPresence(); });
+
+    /* ---- boss encounter (v1.2.0) ---- */
+    on(E.BOSS_INTRO, () => { Audio.play('BOSS_INTRO'); Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => Patch.setState('BOSS_INTRO', atLeastBalanced() ? { text: 'Diagnostics ready. I am with you.', dur: 2200 } : { dur: 1400 }) }); });
+    on(E.BOSS_STARTED, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { dur: 1400 }); });
+    on(E.BOSS_HP_CHANGED, (ev) => {
+      if (ev.delta < 0) { Audio.play(ev.heavy ? 'PLAYER_ATTACK_HEAVY' : 'PLAYER_ATTACK'); Haptic.trigger(ev.heavy ? 'PLAYER_ATTACK_HEAVY' : 'PLAYER_ATTACK_LIGHT'); if (atLeastBalanced()) Reactions.dispatch({ priority: 2, holdMs: 700, run: () => Patch.setState('BOSS_ASSIST', { dur: 1000 }) }); }
+    });
+    on(E.PLAYER_HP_CHANGED, (ev) => {
+      if (ev.delta < 0) { Audio.play('PLAYER_DAMAGE'); Haptic.trigger(ev.integrity <= 1 ? 'PLAYER_DAMAGE_HEAVY' : 'PLAYER_DAMAGE_LIGHT'); if (atLeastBalanced()) Reactions.dispatch({ priority: 2, holdMs: 700, run: () => Patch.setState('BOSS_CONCERNED', { dur: 1100 }) }); }
+    });
+    on(E.PLAYER_LOW_HP, () => { Audio.play('BOSS_WARNING'); Haptic.trigger('BOSS_WARNING'); Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('BOSS_CONCERNED', atLeastBalanced() ? { text: 'Integrity low. Steady — read each signal.', dur: 2000 } : { dur: 1200 }) }); });
+    on(E.BOSS_LOW_HP, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { text: 'It is failing. Keep the pressure on.', dur: 1800 }); });
+    on(E.BOSS_PHASE_CHANGED, () => { Audio.play('BOSS_PHASE'); Haptic.trigger('BOSS_PHASE_CHANGE'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('BOSS_ASSIST', { dur: 1400 }) }); });
+    on(E.BOSS_DEFEATED, () => { Audio.play('BOSS_DEFEATED'); Haptic.trigger('BOSS_DEFEATED'); Reactions.dispatch({ priority: 5, holdMs: 2400, run: () => Patch.setState('BOSS_VICTORY', atLeastBalanced() ? { text: 'System repaired. Clean work.', dur: 2600 } : { dur: 1600 }) }); });
+    on(E.BOSS_GAME_OVER, () => { Audio.play('PLAYER_DEFEATED'); Haptic.trigger('PLAYER_DEFEATED'); Reactions.dispatch({ priority: 5, holdMs: 2400, run: () => Patch.setState('BOSS_CONCERNED', atLeastBalanced() ? { text: 'No damage done. Regroup and retry.', dur: 2600 } : { dur: 1600 }) }); });
+    on(E.BOSS_RESTARTED, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { text: 'Fresh diagnostics. Go again.', dur: 1600 }); });
   }
 
   function milestone(sound, state, haptic, text, prio, holdMs) {
@@ -19086,7 +19223,7 @@ const Game = (() => {
         const t = e.target && e.target.closest && e.target.closest('.btn, .opt, .card-tap, .avatar-opt, .gloss-term, .chip, .icon-btn');
         if (!t || t.classList.contains('tab')) return;   // tabs get NAVIGATION instead
         Audio.play('UI_PRESS');
-        Haptic.trigger('ui.light');
+        Haptic.trigger('UI_LIGHT');
       } catch (err) { /* ignore */ }
     }, true);
   }
@@ -19122,6 +19259,200 @@ const Game = (() => {
     // future native haptic bridge hook (Core Haptics adapter injected here)
     setHapticAdapter: (a) => Haptic.setAdapter(a),
   };
+})();
+
+;
+/* ===== src/js/boss.js ===== */
+/* ============================================================
+   BossKit (v1.2.0) — reusable, data-driven boss encounter framework.
+
+   Design rules:
+   - GRADING STAYS WHERE IT WAS. The curriculum's sequence runner still
+     evaluates every answer, counts retries, awards XP and calls
+     Store.completeNode exactly as before. BossKit only OBSERVES those
+     resolutions and turns them into HP / integrity / phase state.
+   - Question pools REFERENCE the validated curriculum node (nodeRef);
+     no question is duplicated into a boss definition.
+   - The session is a pure, deterministic state machine: no timers, no
+     animation dependence. It stays correct with reduced motion, muted
+     audio, no haptics, PATCH hidden, the GameBus disabled, or the page
+     hidden. All emissions are guarded.
+   - HP model (honest mapping onto the existing rules):
+       maxHp            = number of stages
+       damage per stage = 1 (a correct answer, first try or retry)
+       defeat line      = maxHp - passNeed  (hp at/below it at the end
+                          of the run means the boss falls — identical to
+                          "clear passNeed+ of N stages")
+       player integrity = stages - passNeed + 1 (each failed stage costs
+                          1; reaching 0 means passing is mathematically
+                          impossible, so the run ends early — the same
+                          failed outcome the legacy full run would record)
+   ============================================================ */
+
+const BossKit = (() => {
+  function bus(t, p) { try { if (typeof GameBus !== 'undefined') GameBus.emit(t, p); } catch (e) { /* decorative */ } }
+  function nowIso() { try { return new Date().toISOString(); } catch (e) { return ''; } }
+
+  /* ---- BossDefinition table (Zone 1 vertical slice) ----
+     Later zones add entries here; bosses without an entry keep the
+     legacy presentation untouched. */
+  const DEFS = {
+    boss1: {
+      id: 'boss1', zoneId: 'z1', nodeRef: 'boss1',
+      name: 'THE BROKEN GAIN PLUGIN',
+      subtitle: 'GainPlug v0.9 — corrupted inheritance',
+      description: 'A half-finished plugin left behind by a departed developer. It fights back with build errors, silent bugs and an unsafe callback. Repair it stage by stage.',
+      // phases: active while bossHp > until (scan top-down). Deterministic from HP.
+      phases: [
+        { id: 'shielded', until: 4, title: 'PHASE 1 — SHIELDED FAULTS', behavior: 'The corruption hides behind compiler errors.' },
+        { id: 'exposed', until: 2, title: 'PHASE 2 — EXPOSED WIRING', behavior: 'The faults are visible. Precision matters now.' },
+        { id: 'critical', until: -1, title: 'PHASE 3 — SYSTEM FAILING', behavior: 'The plugin is failing. Finish the repair.' },
+      ],
+      presentation: { integrityLabel: 'SIGNAL INTEGRITY', hpLabel: 'CORRUPTION', defeatLineLabel: 'REPAIR THRESHOLD' },
+      accessibility: { textOnly: 'Answer stages to repair the plugin. Each correct stage removes one block of corruption; each failed stage costs one integrity cell. Repair enough stages to win.' },
+    },
+  };
+
+  const STATES = ['LOCKED', 'READY', 'INTRO', 'QUESTION', 'RESOLVING_CORRECT', 'RESOLVING_INCORRECT', 'PHASE_TRANSITION', 'VICTORY', 'DEFEAT', 'PAUSED', 'COMPLETE'];
+  // Deterministic transition table: state -> the states it may move to.
+  const T = {
+    LOCKED: ['READY'],
+    READY: ['INTRO'],
+    INTRO: ['QUESTION'],
+    QUESTION: ['RESOLVING_CORRECT', 'RESOLVING_INCORRECT', 'PAUSED'],
+    RESOLVING_CORRECT: ['QUESTION', 'PHASE_TRANSITION', 'VICTORY', 'DEFEAT', 'PAUSED'],
+    RESOLVING_INCORRECT: ['QUESTION', 'PHASE_TRANSITION', 'VICTORY', 'DEFEAT', 'PAUSED'],
+    PHASE_TRANSITION: ['QUESTION', 'VICTORY', 'DEFEAT', 'PAUSED'],
+    VICTORY: ['COMPLETE'],
+    DEFEAT: ['COMPLETE'],
+    PAUSED: ['QUESTION', 'RESOLVING_CORRECT', 'RESOLVING_INCORRECT', 'PHASE_TRANSITION'],
+    COMPLETE: [],
+  };
+
+  function has(id) { return !!DEFS[id]; }
+  function def(id) { return DEFS[id] || null; }
+
+  function node(id) {
+    try { return (typeof Engine !== 'undefined' && Engine.NODES[DEFS[id].nodeRef]) || null; } catch (e) { return null; }
+  }
+
+  function createSession(bossId) {
+    const d = DEFS[bossId];
+    const n = node(bossId);
+    if (!d || !n || !Array.isArray(n.stages) || !n.stages.length) return null;
+
+    const total = n.stages.length;
+    const passNeed = n.passNeed || 4;
+    const maxHp = total;
+    const defeatLine = maxHp - passNeed;                 // hp <= this at run end => boss falls
+    const maxIntegrity = total - passNeed + 1;
+
+    const s = {
+      bossId, state: 'READY',
+      bossHp: maxHp, maxHp, defeatLine, passNeed,
+      playerIntegrity: maxIntegrity, maxIntegrity,
+      phaseIndex: 0, questionIndex: 0, total,
+      correctCount: 0, incorrectCount: 0, retryCount: 0,
+      startedAt: null, completedAt: null,
+      lowHpWarned: false, lowIntegrityWarned: false,
+    };
+
+    function phaseIndexFor(hp) {
+      for (let i = 0; i < d.phases.length; i++) if (hp > d.phases[i].until) return i;
+      return d.phases.length - 1;
+    }
+    function to(next) {
+      if (!STATES.includes(next)) return false;          // unknown state: fail safely, keep current
+      if (!(T[s.state] || []).includes(next)) return false;
+      s.state = next;
+      return true;
+    }
+
+    return {
+      get state() { return s.state; },
+      get snapshot() { return Object.assign({}, s, { phase: d.phases[s.phaseIndex] }); },
+      def: d,
+
+      enter() {
+        if (!to('INTRO')) return false;
+        bus('BOSS_ENTERED', { bossId, zoneId: d.zoneId });
+        bus('BOSS_INTRO', { bossId, name: d.name });
+        return true;
+      },
+      start() {
+        if (!to('QUESTION')) return false;
+        s.startedAt = nowIso();
+        bus('BOSS_STARTED', { bossId, maxHp, maxIntegrity: s.maxIntegrity, passNeed });
+        return true;
+      },
+      // Observe a stage resolution from the curriculum runner. `res` is the
+      // runner's result: { correct, firstTry, attempts }.
+      resolve(res) {
+        const target = res.correct ? 'RESOLVING_CORRECT' : 'RESOLVING_INCORRECT';
+        to(target);                                       // QUESTION or PAUSED -> RESOLVING_*
+        if (s.state !== target) return null;              // invalid from any other state: fail safely
+        s.questionIndex += 1;
+        if (!res.firstTry && res.correct) s.retryCount += 1;
+        const before = { hp: s.bossHp, integrity: s.playerIntegrity, phase: s.phaseIndex };
+        if (res.correct) {
+          s.correctCount += 1;
+          s.bossHp = Math.max(0, s.bossHp - 1);
+          bus('BOSS_HP_CHANGED', { bossId, hp: s.bossHp, maxHp, delta: -1, heavy: !!res.firstTry, belowDefeatLine: s.bossHp <= defeatLine });
+          if (!s.lowHpWarned && s.bossHp <= defeatLine) { s.lowHpWarned = true; bus('BOSS_LOW_HP', { bossId, hp: s.bossHp }); }
+        } else {
+          s.incorrectCount += 1;
+          s.playerIntegrity = Math.max(0, s.playerIntegrity - 1);
+          bus('PLAYER_HP_CHANGED', { bossId, integrity: s.playerIntegrity, maxIntegrity: s.maxIntegrity, delta: -1 });
+          if (!s.lowIntegrityWarned && s.playerIntegrity === 1) { s.lowIntegrityWarned = true; bus('PLAYER_LOW_HP', { bossId, integrity: 1 }); }
+        }
+        bus('BOSS_QUESTION_RESOLVED', { bossId, index: s.questionIndex - 1, correct: !!res.correct, attempt: res.attempts });
+        const newPhase = phaseIndexFor(s.bossHp);
+        const phaseChanged = newPhase !== before.phase;
+        if (phaseChanged) {
+          s.phaseIndex = newPhase;
+          to('PHASE_TRANSITION');
+          bus('BOSS_PHASE_CHANGED', { bossId, phaseIndex: newPhase, phaseId: d.phases[newPhase].id, title: d.phases[newPhase].title });
+        }
+        return { correct: !!res.correct, bossHp: s.bossHp, integrity: s.playerIntegrity, phaseChanged, phase: d.phases[s.phaseIndex], defeatImminent: s.playerIntegrity === 0 };
+      },
+      // Advance after a resolution: next question, or a terminal state.
+      // Called by the view when the learner continues (or immediately on
+      // early defeat). Deterministic — depends only on counters.
+      advance() {
+        if (s.playerIntegrity <= 0) {                     // passing is now impossible
+          if (to('DEFEAT')) { s.completedAt = nowIso(); bus('BOSS_GAME_OVER', { bossId, correct: s.correctCount, total: s.total }); }
+          return 'DEFEAT';
+        }
+        if (s.questionIndex >= s.total) {
+          if (s.correctCount >= passNeed) {
+            if (to('VICTORY')) { s.completedAt = nowIso(); bus('BOSS_DEFEATED', { bossId, correct: s.correctCount, total: s.total, integrity: s.playerIntegrity }); }
+            return 'VICTORY';
+          }
+          if (to('DEFEAT')) { s.completedAt = nowIso(); bus('BOSS_GAME_OVER', { bossId, correct: s.correctCount, total: s.total }); }
+          return 'DEFEAT';
+        }
+        to('QUESTION');
+        return 'QUESTION';
+      },
+      pause() { if (s.state === 'QUESTION') to('PAUSED'); },
+      resume() { if (s.state === 'PAUSED') to('QUESTION'); },
+      acknowledge() { to('COMPLETE'); },
+      restartEvent() { bus('BOSS_RESTARTED', { bossId }); },
+    };
+  }
+
+  /* ---- small persisted stats (attempts / victories) ---- */
+  function stats(bossId) {
+    try { return (Store.gameSetting('boss.' + bossId) || { attempts: 0, victories: 0 }); } catch (e) { return { attempts: 0, victories: 0 }; }
+  }
+  function recordAttempt(bossId) {
+    try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: (st.attempts | 0) + 1, victories: st.victories | 0 }); } catch (e) { /* decorative */ }
+  }
+  function recordVictory(bossId) {
+    try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: st.attempts | 0, victories: (st.victories | 0) + 1 }); } catch (e) { /* decorative */ }
+  }
+
+  return { has, def, createSession, stats, recordAttempt, recordVictory, STATES, TRANSITIONS: T };
 })();
 
 ;
@@ -20105,6 +20436,154 @@ const Views = (() => {
   }
 
   /* =====================================================================
+     BOSS ENCOUNTER (v1.2.0) — presentation for BossKit bosses. The
+     sequence runner still owns grading, retries, XP and completion; the
+     session state machine only mirrors those resolutions as HP/phases.
+     ===================================================================== */
+  function bossEncounter(main, node, ready) {
+    const d = BossKit.def(node.id);
+    const passNeed = node.passNeed || 4;
+    const cleared = Store.isDone(node.id);
+
+    // one-time unlock event (decorative)
+    if (!cleared && !Store.gameSetting('seen.bossUnlocked_' + node.id)) {
+      Store.setGameSetting('seen.bossUnlocked_' + node.id, 1);
+      emitG('BOSS_UNLOCKED', { bossId: node.id, zoneId: d.zoneId });
+    }
+
+    const session = BossKit.createSession(node.id);
+    if (!session) { main.appendChild(el('div', { class: 'card' }, el('p', { class: 'small dim' }, 'Encounter data unavailable — using standard mode.'))); return; }
+
+    /* ---- HUD ---- */
+    const hpSegs = [], integrityPips = [];
+    const phaseTitle = el('div', { class: 'eyebrow red' }, d.phases[0].title);
+    const phaseNote = el('div', { class: 'small faint' }, d.phases[0].behavior);
+    const hpRow = el('div', { class: 'hp-bar', role: 'img', 'aria-label': 'Boss corruption remaining' });
+    for (let i = 0; i < session.snapshot.maxHp; i++) {
+      const seg = el('i', { class: 'hp-seg on' });
+      hpSegs.push(seg); hpRow.appendChild(seg);
+      // Segments 0..hp-1 light up, so "boss falls at hp <= defeatLine" is the
+      // boundary AFTER segment index defeatLine-1: the bar must drain to the
+      // left of this marker for the repair to hold.
+      if (i === session.snapshot.defeatLine - 1) {
+        hpRow.appendChild(el('span', { class: 'defeat-marker', title: d.presentation.defeatLineLabel }));
+      }
+    }
+    const intRow = el('div', { class: 'integrity-row', role: 'img', 'aria-label': 'Your signal integrity' });
+    for (let i = 0; i < session.snapshot.maxIntegrity; i++) { const p = el('i', { class: 'int-pip on' }); integrityPips.push(p); intRow.appendChild(p); }
+
+    const hud = el('div', { class: 'boss-hud card col', style: 'gap:8px' },
+      el('div', { class: 'row between', style: 'align-items:flex-start' },
+        el('div', { style: 'min-width:0' },
+          el('div', { class: 'boss-name' }, d.name),
+          el('div', { class: 'small faint' }, d.subtitle)),
+        el('span', { class: 'chip' }, cleared ? 'REPLAY' : 'LIVE')),
+      el('div', { class: 'col', style: 'gap:4px' },
+        el('div', { class: 'row between' }, el('span', { class: 'mono small dim' }, d.presentation.hpLabel), phaseTitle),
+        hpRow,
+        el('div', { class: 'small faint' }, '▼ ' + d.presentation.defeatLineLabel + ' — repair ' + passNeed + ' of ' + session.snapshot.maxHp + ' stages to win')),
+      el('div', { class: 'row between', style: 'align-items:center' },
+        el('span', { class: 'mono small dim' }, d.presentation.integrityLabel),
+        intRow),
+      phaseNote);
+
+    function refreshHud(snap) {
+      hpSegs.forEach((s, i) => s.classList.toggle('on', i < snap.bossHp));
+      integrityPips.forEach((p, i) => p.classList.toggle('on', i < snap.playerIntegrity));
+      phaseTitle.textContent = snap.phase.title;
+      phaseNote.textContent = snap.phase.behavior;
+      hud.classList.toggle('critical', snap.bossHp <= snap.defeatLine);
+      hud.classList.toggle('danger', snap.playerIntegrity === 1);
+    }
+
+    /* ---- defeat / outcome sheets ---- */
+    function defeatSheet(correct, total, early) {
+      UI.sheet([
+        el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
+          el('div', { class: 'eyebrow red', style: 'justify-content:center' }, early ? 'SIGNAL INTEGRITY LOST' : 'SESSION FAILED'),
+          el('div', { class: 'h-display' }, correct + ' / ' + total + ' stages repaired'),
+          el('p', { class: 'small dim' }, early
+            ? 'Three failed stages — the corruption held this time. No damage done: your progress is untouched, and the plugin remembers nothing. Sharpen the weak concepts and run the session again.'
+            : 'You need ' + passNeed + '. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
+        el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
+        el('button', { class: 'btn block', onclick: () => { session.restartEvent(); App.go('boss', { id: node.id }); } }, 'Run the session again'),
+        el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
+      ], { sticky: true });
+    }
+
+    /* ---- intro (READY state) ---- */
+    const intro = el('div', { class: 'col', style: 'gap:14px' },
+      el('div', { class: 'boss-banner col', style: 'gap:10px' },
+        el('div', { class: 'eyebrow red' }, '☠ ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' BOSS' + (cleared ? ' · CLEARED — REPLAY' : '')),
+        el('h1', { class: 'h-display' }, node.title),
+        el('p', { class: 'small', style: 'color:var(--ink-dim)' }, d.description),
+        el('p', { class: 'small faint' }, d.accessibility.textOnly),
+        el('div', { class: 'row wrap mt-s' },
+          el('span', { class: 'chip' }, session.snapshot.maxHp + ' stages'),
+          el('span', { class: 'chip' }, '1 retry per stage'),
+          el('span', { class: 'chip' }, 'repair ' + passNeed + '+ to win'),
+          el('span', { class: 'chip' }, session.snapshot.maxIntegrity + ' integrity cells'),
+          el('span', { class: 'chip' }, '+' + XP_RULES.boss + ' XP max')),
+        el('button', { class: 'btn danger block', style: 'margin-top:6px', onclick: start }, 'Enter the session')));
+    main.appendChild(intro);
+
+    let started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      session.enter();                     // READY -> INTRO (BOSS_ENTERED + BOSS_INTRO)
+      session.start();                     // INTRO -> QUESTION (BOSS_STARTED)
+      BossKit.recordAttempt(node.id);
+      const alreadyDone = cleared;
+
+      // presentational pause when the tab is hidden mid-fight; self-removes
+      // once the encounter leaves the document (route change) or ends.
+      const onVis = () => {
+        if (!document.contains(hud)) { document.removeEventListener('visibilitychange', onVis); return; }
+        if (document.hidden) session.pause(); else session.resume();
+      };
+      document.addEventListener('visibilitychange', onVis);
+
+      const fight = el('div', { class: 'col', style: 'gap:12px' });
+      fight.appendChild(hud);
+      fight.appendChild(el('div', { class: 'card' }, sequenceRunner({
+        eyebrow: 'BOSS FIGHT',
+        bossMode: true,
+        questions: node.stages.map((q) => ({ q })),
+        baseXp: alreadyDone ? 0 : XP_RULES.boss,
+        nodeId: node.id,
+        onQuestionResolved: (item, res) => {
+          const r = session.resolve(res);
+          if (!r) return;
+          refreshHud(session.snapshot);
+          if (r.defeatImminent) {          // passing is now impossible — end the run
+            const out = session.advance();
+            if (out === 'DEFEAT') { document.removeEventListener('visibilitychange', onVis); defeatSheet(session.snapshot.correctCount, session.snapshot.total, true); }
+          }
+        },
+        onStep: (idx) => { if (idx < node.stages.length) session.advance(); },   // -> next QUESTION
+        onFinish: (result) => {
+          document.removeEventListener('visibilitychange', onVis);
+          const outcome = session.advance();                 // terminal state + events
+          const passed = result.correct >= passNeed;          // authoritative (identical math)
+          if (passed) {
+            if (result.earned > 0) App.awardXp(result.earned);
+            Store.completeNode(node.id, result.firstTry, result.total);
+            App.flushAchievements();
+            BossKit.recordVictory(node.id);
+            session.acknowledge();
+            completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
+          } else if (outcome === 'DEFEAT' || !passed) {
+            session.acknowledge();
+            defeatSheet(result.correct, result.total, false);
+          }
+        },
+      })));
+      intro.replaceWith(fight);
+    }
+  }
+
+  /* =====================================================================
      BOSS CHALLENGE
      ===================================================================== */
   function boss(params) {
@@ -20128,6 +20607,10 @@ const Views = (() => {
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Train in Practice Mode')));
       return main;
     }
+
+    // v1.2.0: bosses with a BossKit definition get the encounter presentation
+    // (Zone 1 vertical slice). All other bosses keep the legacy flow untouched.
+    if (BossKit.has(node.id)) { bossEncounter(main, node, ready); return main; }
 
     let started = false;
     const intro = el('div', { class: 'col', style: 'gap:14px' },
@@ -20693,7 +21176,13 @@ const Views = (() => {
       range.addEventListener('change', () => { Store.setGameSetting('audio.' + key, parseInt(range.value, 10)); });
       return el('div', { class: 'set-row' }, el('div', { style: 'min-width:0' }, el('div', { class: 'set-name' }, name)), el('div', { class: 'row', style: 'gap:8px; align-items:center' }, range, out));
     }
-    const hStatus = Game.Haptic.status();   // on | off | unsupported
+    const hd = Game.Haptic.diagnostics();   // { enabled, supported, adapter, deliverable, status }
+    const hapticStatusLine = () => {
+      const d = Game.Haptic.diagnostics();
+      if (!d.supported) return 'Haptic feedback is unavailable in this browser. Audio and visual feedback remain active.';
+      return (d.enabled ? 'Enabled' : 'Off') + ' · adapter: ' + d.adapter + (d.enabled ? (d.deliverable ? ' · ready' : ' · paused (page hidden)') : '');
+    };
+    const hapticDesc = el('span', null, hapticStatusLine());
     main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
       el('div', { class: 'eyebrow phos', style: 'margin-bottom:4px' }, 'WORKSHOP & GAME FEEL'),
       segRow('PATCH presence', 'How often PATCH the assistant reacts.', G.patch, [['full', 'FULL'], ['balanced', 'BAL'], ['minimal', 'MIN'], ['hidden', 'OFF']], (v) => { Store.setGameSetting('patch', v); Game.Patch.applyPresence(); }),
@@ -20701,7 +21190,13 @@ const Views = (() => {
       segRow('Reduced motion (reactions)', 'AUTO follows your system + Motion switch.', G.reducedMotion, [['system', 'AUTO'], ['on', 'ON'], ['off', 'OFF']], (v) => Store.setGameSetting('reducedMotion', v)),
       gToggle('Particles', 'Small signal particles on milestones.', G.particles, (nv) => Store.setGameSetting('particles', nv)),
       gToggle('Screen shake', 'Off by default; reserved for future events.', G.screenShake, (nv) => Store.setGameSetting('screenShake', nv)),
-      gToggle('Haptic feedback', hStatus === 'unsupported' ? 'Unsupported on this device / browser.' : 'Short vibration on supported devices.', hStatus === 'on', (nv) => Store.setGameSetting('haptics', nv), hStatus === 'unsupported')));
+      (() => {
+        const row = gToggle('Haptic feedback', '', hd.status === 'on', (nv) => { Store.setGameSetting('haptics', nv); hapticDesc.textContent = hapticStatusLine(); }, !hd.supported);
+        row.querySelector('.set-desc').replaceChildren(hapticDesc);
+        return row;
+      })(),
+      hd.supported ? el('div', { class: 'row', style: 'gap:8px; margin-top:4px' },
+        el('button', { class: 'btn sm ghost', onclick: () => { const r = Game.Haptic.test(); UI.toast(r.message); hapticDesc.textContent = hapticStatusLine(); } }, 'Test haptic')) : null));
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
       el('div', { class: 'eyebrow phos', style: 'margin-bottom:2px' }, 'GAME AUDIO'),
@@ -20746,7 +21241,7 @@ const Views = (() => {
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.1.1 — a single local learner profile stored on this device, with PATCH the workshop assistant alongside you.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.0 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, and the first boss encounter live in Zone 1.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
     return main;
   }

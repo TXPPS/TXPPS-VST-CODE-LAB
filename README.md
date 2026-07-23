@@ -49,6 +49,22 @@ implemented in this pass. **Version 1.1.1** is a focused visual correction that
 re-centres PATCH's waveform mouth beneath its eyes across every face state,
 using one shared mouth coordinate system so no state can drift.
 
+**Version 1.2.0 — Haptic Expansion & Zone 1 Boss** expands the haptic system
+into a semantic category vocabulary (one centralized pattern table, global +
+per-category cooldowns, critical events superseding minor ones, an honest
+Test control, and a documented adapter contract so a future native iOS shell
+can inject Core Haptics without touching course code — iPhone browsers still
+honestly report "unavailable"). It also introduces BossKit, a reusable
+data-driven boss framework (`boss.js`): definitions reference curriculum
+nodes (no duplicated questions), and a pure deterministic session state
+machine mirrors the existing runner's resolutions as boss HP, player signal
+integrity, and phases — grading, retries, XP, stars, and achievements stay
+byte-identical to the legacy rules. The Zone 1 encounter (THE BROKEN GAIN
+PLUGIN) is the vertical slice: corruption bar with a repair-threshold marker,
+integrity cells, three phases, early defeat only when passing is already
+mathematically impossible, and PATCH assisting from the dock. Bosses 2–7
+keep the legacy flow until future releases.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -99,6 +115,10 @@ src/
                              events; the reaction layer subscribes (isolated)
     game.js                  PATCH the workshop assistant + Animation / Audio /
                              Haptic / Reaction / Accessibility directors (v1.1.0)
+    boss.js                  BossKit — data-driven boss encounter framework:
+                             definitions reference curriculum nodes; a pure
+                             deterministic session mirrors runner results as
+                             HP / integrity / phases (v1.2.0, Zone 1 slice)
     engine.js                pure challenge evaluation (no DOM): fill/mcq/order/
                              bugspot/match validation, seeded shuffles, daily pick
     store.js                 single-profile state + progress; versioned checksummed

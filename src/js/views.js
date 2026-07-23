@@ -977,6 +977,154 @@ const Views = (() => {
   }
 
   /* =====================================================================
+     BOSS ENCOUNTER (v1.2.0) — presentation for BossKit bosses. The
+     sequence runner still owns grading, retries, XP and completion; the
+     session state machine only mirrors those resolutions as HP/phases.
+     ===================================================================== */
+  function bossEncounter(main, node, ready) {
+    const d = BossKit.def(node.id);
+    const passNeed = node.passNeed || 4;
+    const cleared = Store.isDone(node.id);
+
+    // one-time unlock event (decorative)
+    if (!cleared && !Store.gameSetting('seen.bossUnlocked_' + node.id)) {
+      Store.setGameSetting('seen.bossUnlocked_' + node.id, 1);
+      emitG('BOSS_UNLOCKED', { bossId: node.id, zoneId: d.zoneId });
+    }
+
+    const session = BossKit.createSession(node.id);
+    if (!session) { main.appendChild(el('div', { class: 'card' }, el('p', { class: 'small dim' }, 'Encounter data unavailable — using standard mode.'))); return; }
+
+    /* ---- HUD ---- */
+    const hpSegs = [], integrityPips = [];
+    const phaseTitle = el('div', { class: 'eyebrow red' }, d.phases[0].title);
+    const phaseNote = el('div', { class: 'small faint' }, d.phases[0].behavior);
+    const hpRow = el('div', { class: 'hp-bar', role: 'img', 'aria-label': 'Boss corruption remaining' });
+    for (let i = 0; i < session.snapshot.maxHp; i++) {
+      const seg = el('i', { class: 'hp-seg on' });
+      hpSegs.push(seg); hpRow.appendChild(seg);
+      // Segments 0..hp-1 light up, so "boss falls at hp <= defeatLine" is the
+      // boundary AFTER segment index defeatLine-1: the bar must drain to the
+      // left of this marker for the repair to hold.
+      if (i === session.snapshot.defeatLine - 1) {
+        hpRow.appendChild(el('span', { class: 'defeat-marker', title: d.presentation.defeatLineLabel }));
+      }
+    }
+    const intRow = el('div', { class: 'integrity-row', role: 'img', 'aria-label': 'Your signal integrity' });
+    for (let i = 0; i < session.snapshot.maxIntegrity; i++) { const p = el('i', { class: 'int-pip on' }); integrityPips.push(p); intRow.appendChild(p); }
+
+    const hud = el('div', { class: 'boss-hud card col', style: 'gap:8px' },
+      el('div', { class: 'row between', style: 'align-items:flex-start' },
+        el('div', { style: 'min-width:0' },
+          el('div', { class: 'boss-name' }, d.name),
+          el('div', { class: 'small faint' }, d.subtitle)),
+        el('span', { class: 'chip' }, cleared ? 'REPLAY' : 'LIVE')),
+      el('div', { class: 'col', style: 'gap:4px' },
+        el('div', { class: 'row between' }, el('span', { class: 'mono small dim' }, d.presentation.hpLabel), phaseTitle),
+        hpRow,
+        el('div', { class: 'small faint' }, '▼ ' + d.presentation.defeatLineLabel + ' — repair ' + passNeed + ' of ' + session.snapshot.maxHp + ' stages to win')),
+      el('div', { class: 'row between', style: 'align-items:center' },
+        el('span', { class: 'mono small dim' }, d.presentation.integrityLabel),
+        intRow),
+      phaseNote);
+
+    function refreshHud(snap) {
+      hpSegs.forEach((s, i) => s.classList.toggle('on', i < snap.bossHp));
+      integrityPips.forEach((p, i) => p.classList.toggle('on', i < snap.playerIntegrity));
+      phaseTitle.textContent = snap.phase.title;
+      phaseNote.textContent = snap.phase.behavior;
+      hud.classList.toggle('critical', snap.bossHp <= snap.defeatLine);
+      hud.classList.toggle('danger', snap.playerIntegrity === 1);
+    }
+
+    /* ---- defeat / outcome sheets ---- */
+    function defeatSheet(correct, total, early) {
+      UI.sheet([
+        el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
+          el('div', { class: 'eyebrow red', style: 'justify-content:center' }, early ? 'SIGNAL INTEGRITY LOST' : 'SESSION FAILED'),
+          el('div', { class: 'h-display' }, correct + ' / ' + total + ' stages repaired'),
+          el('p', { class: 'small dim' }, early
+            ? 'Three failed stages — the corruption held this time. No damage done: your progress is untouched, and the plugin remembers nothing. Sharpen the weak concepts and run the session again.'
+            : 'You need ' + passNeed + '. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
+        el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
+        el('button', { class: 'btn block', onclick: () => { session.restartEvent(); App.go('boss', { id: node.id }); } }, 'Run the session again'),
+        el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
+      ], { sticky: true });
+    }
+
+    /* ---- intro (READY state) ---- */
+    const intro = el('div', { class: 'col', style: 'gap:14px' },
+      el('div', { class: 'boss-banner col', style: 'gap:10px' },
+        el('div', { class: 'eyebrow red' }, '☠ ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' BOSS' + (cleared ? ' · CLEARED — REPLAY' : '')),
+        el('h1', { class: 'h-display' }, node.title),
+        el('p', { class: 'small', style: 'color:var(--ink-dim)' }, d.description),
+        el('p', { class: 'small faint' }, d.accessibility.textOnly),
+        el('div', { class: 'row wrap mt-s' },
+          el('span', { class: 'chip' }, session.snapshot.maxHp + ' stages'),
+          el('span', { class: 'chip' }, '1 retry per stage'),
+          el('span', { class: 'chip' }, 'repair ' + passNeed + '+ to win'),
+          el('span', { class: 'chip' }, session.snapshot.maxIntegrity + ' integrity cells'),
+          el('span', { class: 'chip' }, '+' + XP_RULES.boss + ' XP max')),
+        el('button', { class: 'btn danger block', style: 'margin-top:6px', onclick: start }, 'Enter the session')));
+    main.appendChild(intro);
+
+    let started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      session.enter();                     // READY -> INTRO (BOSS_ENTERED + BOSS_INTRO)
+      session.start();                     // INTRO -> QUESTION (BOSS_STARTED)
+      BossKit.recordAttempt(node.id);
+      const alreadyDone = cleared;
+
+      // presentational pause when the tab is hidden mid-fight; self-removes
+      // once the encounter leaves the document (route change) or ends.
+      const onVis = () => {
+        if (!document.contains(hud)) { document.removeEventListener('visibilitychange', onVis); return; }
+        if (document.hidden) session.pause(); else session.resume();
+      };
+      document.addEventListener('visibilitychange', onVis);
+
+      const fight = el('div', { class: 'col', style: 'gap:12px' });
+      fight.appendChild(hud);
+      fight.appendChild(el('div', { class: 'card' }, sequenceRunner({
+        eyebrow: 'BOSS FIGHT',
+        bossMode: true,
+        questions: node.stages.map((q) => ({ q })),
+        baseXp: alreadyDone ? 0 : XP_RULES.boss,
+        nodeId: node.id,
+        onQuestionResolved: (item, res) => {
+          const r = session.resolve(res);
+          if (!r) return;
+          refreshHud(session.snapshot);
+          if (r.defeatImminent) {          // passing is now impossible — end the run
+            const out = session.advance();
+            if (out === 'DEFEAT') { document.removeEventListener('visibilitychange', onVis); defeatSheet(session.snapshot.correctCount, session.snapshot.total, true); }
+          }
+        },
+        onStep: (idx) => { if (idx < node.stages.length) session.advance(); },   // -> next QUESTION
+        onFinish: (result) => {
+          document.removeEventListener('visibilitychange', onVis);
+          const outcome = session.advance();                 // terminal state + events
+          const passed = result.correct >= passNeed;          // authoritative (identical math)
+          if (passed) {
+            if (result.earned > 0) App.awardXp(result.earned);
+            Store.completeNode(node.id, result.firstTry, result.total);
+            App.flushAchievements();
+            BossKit.recordVictory(node.id);
+            session.acknowledge();
+            completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
+          } else if (outcome === 'DEFEAT' || !passed) {
+            session.acknowledge();
+            defeatSheet(result.correct, result.total, false);
+          }
+        },
+      })));
+      intro.replaceWith(fight);
+    }
+  }
+
+  /* =====================================================================
      BOSS CHALLENGE
      ===================================================================== */
   function boss(params) {
@@ -1000,6 +1148,10 @@ const Views = (() => {
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Train in Practice Mode')));
       return main;
     }
+
+    // v1.2.0: bosses with a BossKit definition get the encounter presentation
+    // (Zone 1 vertical slice). All other bosses keep the legacy flow untouched.
+    if (BossKit.has(node.id)) { bossEncounter(main, node, ready); return main; }
 
     let started = false;
     const intro = el('div', { class: 'col', style: 'gap:14px' },
@@ -1565,7 +1717,13 @@ const Views = (() => {
       range.addEventListener('change', () => { Store.setGameSetting('audio.' + key, parseInt(range.value, 10)); });
       return el('div', { class: 'set-row' }, el('div', { style: 'min-width:0' }, el('div', { class: 'set-name' }, name)), el('div', { class: 'row', style: 'gap:8px; align-items:center' }, range, out));
     }
-    const hStatus = Game.Haptic.status();   // on | off | unsupported
+    const hd = Game.Haptic.diagnostics();   // { enabled, supported, adapter, deliverable, status }
+    const hapticStatusLine = () => {
+      const d = Game.Haptic.diagnostics();
+      if (!d.supported) return 'Haptic feedback is unavailable in this browser. Audio and visual feedback remain active.';
+      return (d.enabled ? 'Enabled' : 'Off') + ' · adapter: ' + d.adapter + (d.enabled ? (d.deliverable ? ' · ready' : ' · paused (page hidden)') : '');
+    };
+    const hapticDesc = el('span', null, hapticStatusLine());
     main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
       el('div', { class: 'eyebrow phos', style: 'margin-bottom:4px' }, 'WORKSHOP & GAME FEEL'),
       segRow('PATCH presence', 'How often PATCH the assistant reacts.', G.patch, [['full', 'FULL'], ['balanced', 'BAL'], ['minimal', 'MIN'], ['hidden', 'OFF']], (v) => { Store.setGameSetting('patch', v); Game.Patch.applyPresence(); }),
@@ -1573,7 +1731,13 @@ const Views = (() => {
       segRow('Reduced motion (reactions)', 'AUTO follows your system + Motion switch.', G.reducedMotion, [['system', 'AUTO'], ['on', 'ON'], ['off', 'OFF']], (v) => Store.setGameSetting('reducedMotion', v)),
       gToggle('Particles', 'Small signal particles on milestones.', G.particles, (nv) => Store.setGameSetting('particles', nv)),
       gToggle('Screen shake', 'Off by default; reserved for future events.', G.screenShake, (nv) => Store.setGameSetting('screenShake', nv)),
-      gToggle('Haptic feedback', hStatus === 'unsupported' ? 'Unsupported on this device / browser.' : 'Short vibration on supported devices.', hStatus === 'on', (nv) => Store.setGameSetting('haptics', nv), hStatus === 'unsupported')));
+      (() => {
+        const row = gToggle('Haptic feedback', '', hd.status === 'on', (nv) => { Store.setGameSetting('haptics', nv); hapticDesc.textContent = hapticStatusLine(); }, !hd.supported);
+        row.querySelector('.set-desc').replaceChildren(hapticDesc);
+        return row;
+      })(),
+      hd.supported ? el('div', { class: 'row', style: 'gap:8px; margin-top:4px' },
+        el('button', { class: 'btn sm ghost', onclick: () => { const r = Game.Haptic.test(); UI.toast(r.message); hapticDesc.textContent = hapticStatusLine(); } }, 'Test haptic')) : null));
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
       el('div', { class: 'eyebrow phos', style: 'margin-bottom:2px' }, 'GAME AUDIO'),
@@ -1618,7 +1782,7 @@ const Views = (() => {
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.1.1 — a single local learner profile stored on this device, with PATCH the workshop assistant alongside you.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.0 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, and the first boss encounter live in Zone 1.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
     return main;
   }

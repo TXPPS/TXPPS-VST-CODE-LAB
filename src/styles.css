@@ -914,3 +914,30 @@ input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-ra
 /* lift PATCH clear of a lesson/challenge sticky action bar so it never sits over the Check/Continue button */
 .has-actionbar .patch-dock { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
 @media (max-height: 480px) { .has-actionbar .patch-dock { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
+
+/* ============================================================
+   Boss encounter HUD (v1.2.0) — corruption bar with a repair-threshold
+   marker, signal-integrity pips, phase titles. Matches the workshop theme.
+   ============================================================ */
+.boss-hud { border-color: var(--red); background: linear-gradient(180deg, rgba(240,120,98,0.06), var(--bg1)); }
+.boss-hud.critical { border-color: var(--phos-dim); background: linear-gradient(180deg, rgba(93,232,148,0.06), var(--bg1)); }
+.boss-name { font-family: var(--mono); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; color: var(--red); }
+.boss-hud.critical .boss-name { color: var(--phos); }
+.hp-bar { display: flex; gap: 4px; align-items: center; }
+.hp-seg {
+  flex: 1; height: 12px; border-radius: 3px;
+  background: var(--bg3); border: 1px solid var(--line);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.hp-seg.on { background: linear-gradient(180deg, var(--red), #a34a3c); border-color: var(--red); }
+.boss-hud.critical .hp-seg.on { background: linear-gradient(180deg, var(--amber), #a3742c); border-color: var(--amber); }
+.defeat-marker { width: 2px; height: 18px; background: var(--phos); flex: none; border-radius: 1px; box-shadow: 0 0 6px var(--phos-glow); }
+.integrity-row { display: flex; gap: 5px; }
+.int-pip {
+  width: 22px; height: 10px; border-radius: 3px;
+  background: var(--bg3); border: 1px solid var(--line);
+  transition: background 0.3s ease;
+}
+.int-pip.on { background: linear-gradient(180deg, var(--phos), var(--phos-dim)); border-color: var(--phos-dim); }
+.boss-hud.danger .int-pip.on { background: linear-gradient(180deg, var(--amber), #a3742c); border-color: var(--amber); }
+.reduce-motion .hp-seg, .reduce-motion .int-pip { transition: none; }

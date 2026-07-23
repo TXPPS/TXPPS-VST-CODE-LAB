@@ -97,8 +97,10 @@ const Game = (() => {
       ACHIEVEMENT_UNLOCK: 'celebration', RANK_UP: 'celebration', ZONE_UNLOCKED: 'celebration',
       PROFILE_CREATED: 'patch', PROFILE_SAVED: 'ui', SAVE_FAILED: 'feedback', BACKUP_COMPLETE: 'ui',
       PATCH_BOOT: 'patch', PATCH_ENTER: 'patch', PATCH_EXIT: 'patch',
+      BOSS_INTRO: 'celebration', PLAYER_ATTACK: 'feedback', PLAYER_ATTACK_HEAVY: 'feedback', PLAYER_DAMAGE: 'feedback',
+      BOSS_PHASE: 'celebration', BOSS_WARNING: 'feedback', BOSS_DEFEATED: 'celebration', PLAYER_DEFEATED: 'feedback',
     };
-    const COOLDOWN = { UI_PRESS: 45, NAVIGATION: 90, INCORRECT: 120, CORRECT: 120, PROFILE_SAVED: 400 };
+    const COOLDOWN = { UI_PRESS: 45, NAVIGATION: 90, INCORRECT: 120, CORRECT: 120, PROFILE_SAVED: 400, PLAYER_ATTACK: 150, PLAYER_DAMAGE: 150 };
 
     function tryCtx() {
       if (ctx) return ctx;
@@ -164,6 +166,15 @@ const Game = (() => {
       PATCH_BOOT: (t, v) => { slide(t, 200, 660, 0.22, 'triangle', 0.05 * v); },
       PATCH_ENTER: (t, v) => tone(t, 880, 0.04, 'sine', 0.03 * v),
       PATCH_EXIT: (t, v) => tone(t, 520, 0.04, 'sine', 0.025 * v),
+      // boss encounter — restrained, still the workshop sound language
+      BOSS_INTRO: (t, v) => { slide(t, 220, 110, 0.3, 'sawtooth', 0.045 * v); tone(t + 0.32, 98, 0.24, 'triangle', 0.05 * v); },
+      PLAYER_ATTACK: (t, v) => { slide(t, 500, 900, 0.07, 'square', 0.045 * v); tone(t + 0.06, 1100, 0.06, 'sine', 0.05 * v); },
+      PLAYER_ATTACK_HEAVY: (t, v) => { slide(t, 400, 1000, 0.09, 'square', 0.05 * v); tone(t + 0.08, 1244.5, 0.12, 'triangle', 0.06 * v); },
+      PLAYER_DAMAGE: (t, v) => { slide(t, 260, 140, 0.14, 'sawtooth', 0.045 * v); },
+      BOSS_PHASE: (t, v) => { tone(t, 174.61, 0.14, 'sawtooth', 0.05 * v); tone(t + 0.13, 233.08, 0.18, 'sawtooth', 0.05 * v); },
+      BOSS_WARNING: (t, v) => { tone(t, 196, 0.1, 'square', 0.045 * v); tone(t + 0.14, 196, 0.1, 'square', 0.045 * v); },
+      BOSS_DEFEATED: (t, v) => { [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(t + i * 0.08, f, 0.18, 'triangle', 0.07 * v)); },
+      PLAYER_DEFEATED: (t, v) => { slide(t, 330, 165, 0.3, 'triangle', 0.05 * v); tone(t + 0.32, 130.81, 0.28, 'sine', 0.05 * v); },
     };
     function play(cat) {
       try {
@@ -185,35 +196,105 @@ const Game = (() => {
   })();
 
   /* =====================================================================
-     HAPTIC DIRECTOR — capability-honest. navigator.vibrate only where it
-     really exists; iOS Safari has none, so we NEVER claim otherwise. A
-     future native iOS Core Haptics bridge plugs in via setAdapter().
+     HAPTIC DIRECTOR — capability-honest, semantic-category based.
+
+     Course/boss logic NEVER touches navigator.vibrate; it emits GameBus
+     events, and only this director maps them to physical feedback through
+     the active adapter. iOS Safari exposes no vibration API, so on iPhone
+     browsers the status reports "unsupported" — we never simulate or
+     falsely claim haptics there.
+
+     NATIVE ADAPTER CONTRACT (for a future iOS/Android shell — e.g. a
+     Core Haptics bridge). Inject via Game.setHapticAdapter(adapter):
+       adapter = {
+         supported(): boolean       // real capability on this device
+         play(category: string)     // one of Haptic.CATEGORIES below;
+                                    // map to impact styles as suits the
+                                    // platform, e.g.:
+                                    //   UI_LIGHT            -> selection/light impact
+                                    //   UI_CONFIRM          -> light impact
+                                    //   ANSWER_CORRECT      -> success notification
+                                    //   ANSWER_INCORRECT    -> warning notification
+                                    //   PLAYER_ATTACK_HEAVY -> heavy impact
+                                    //   PLAYER_DAMAGE_HEAVY -> error notification
+                                    //   BOSS_DEFEATED       -> custom success pattern
+         // optional: name(): string  — shown in diagnostics ("native")
+       }
+     The director handles enable/disable, cooldowns, and page-visibility
+     suppression — adapters only render a category when asked.
      ===================================================================== */
   const Haptic = (() => {
-    let adapter = null;   // future native bridge: { supported(), play(name) }
-    const lastAt = {};
-    const PAT = {
-      'ui.light': [8], 'feedback.correct': [14], 'feedback.incorrect': [22],
-      'milestone.lesson': [12, 40, 12], 'milestone.perfect': [16, 40, 16, 40, 24],
-      'milestone.rank': [20, 60, 20], 'warning.save': [30, 40, 30],
+    let adapter = null;
+    const lastAt = {};              // per-category cooldown clocks
+    let lastAnyAt = 0;              // global cooldown clock (minor events only)
+
+    // ONE centralized pattern table — raw vibration arrays live nowhere else.
+    // critical:true events may supersede the global minor-event cooldown.
+    const CATEGORIES = {
+      UI_LIGHT:            { pat: [8],               cd: 60 },
+      UI_CONFIRM:          { pat: [12],              cd: 80 },
+      ANSWER_CORRECT:      { pat: [14],              cd: 120 },
+      ANSWER_RECOVERED:    { pat: [10, 30, 16],      cd: 120 },
+      ANSWER_INCORRECT:    { pat: [22],              cd: 120 },
+      HINT_AVAILABLE:      { pat: [8, 40, 8],        cd: 300 },
+      PLAYER_ATTACK_LIGHT: { pat: [12],              cd: 100 },
+      PLAYER_ATTACK_HEAVY: { pat: [10, 30, 22],      cd: 150, critical: true },
+      PLAYER_DAMAGE_LIGHT: { pat: [18],              cd: 100 },
+      PLAYER_DAMAGE_HEAVY: { pat: [26, 40, 18],      cd: 150, critical: true },
+      BOSS_PHASE_CHANGE:   { pat: [14, 50, 14, 50, 22], cd: 800, critical: true },
+      BOSS_WARNING:        { pat: [24, 60, 24],      cd: 800, critical: true },
+      BOSS_DEFEATED:       { pat: [16, 40, 16, 40, 30], cd: 1500, critical: true },
+      PLAYER_DEFEATED:     { pat: [30, 60, 30],      cd: 1500, critical: true },
+      ACHIEVEMENT:         { pat: [12, 40, 12],      cd: 400, critical: true },
+      RANK_UP:             { pat: [20, 60, 20],      cd: 400, critical: true },
+      MISSION_COMPLETE:    { pat: [12, 40, 12, 40, 18], cd: 400, critical: true },
+      WARNING_SAVE:        { pat: [30, 40, 30],      cd: 800, critical: true },
     };
-    const COOLDOWN = 60;
+    // Back-compat aliases: pre-1.2.0 dotted names -> semantic categories.
+    const ALIAS = {
+      'ui.light': 'UI_LIGHT', 'feedback.correct': 'ANSWER_CORRECT', 'feedback.incorrect': 'ANSWER_INCORRECT',
+      'milestone.lesson': 'UI_CONFIRM', 'milestone.perfect': 'MISSION_COMPLETE', 'milestone.rank': 'RANK_UP',
+      'warning.save': 'WARNING_SAVE',
+    };
+    const GLOBAL_CD = 90;           // minor events share this floor; critical events bypass it
+
     function browserSupported() { try { return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'; } catch (e) { return false; } }
-    function supported() { return !!(adapter ? adapter.supported && adapter.supported() : browserSupported()); }
+    function supported() { return !!(adapter ? (adapter.supported && adapter.supported()) : browserSupported()); }
     function enabled() { return gs().haptics !== false; }
+    function adapterName() { return adapter ? ((adapter.name && adapter.name()) || 'native') : (browserSupported() ? 'browser vibration' : 'none'); }
     function status() { return !supported() ? 'unsupported' : (enabled() ? 'on' : 'off'); }
+    // Rich diagnostics for the settings screen — always honest.
+    function diagnostics() {
+      return {
+        enabled: enabled(), supported: supported(), adapter: adapterName(),
+        deliverable: enabled() && supported() && !document.hidden,
+        status: status(),
+      };
+    }
     function trigger(name) {
       try {
+        const cat = CATEGORIES[name] ? name : ALIAS[name];
+        const c = CATEGORIES[cat];
+        if (!c) return false;
         if (!enabled() || !supported() || document.hidden) return false;
         const nowMs = Date.now();
-        if (lastAt[name] && nowMs - lastAt[name] < COOLDOWN) return false;
-        lastAt[name] = nowMs;
-        if (adapter && adapter.play) { adapter.play(name); return true; }
-        const p = PAT[name]; if (!p) return false;
-        return navigator.vibrate(p) !== false;
+        if (lastAt[cat] && nowMs - lastAt[cat] < c.cd) return false;         // per-category cooldown
+        if (!c.critical && nowMs - lastAnyAt < GLOBAL_CD) return false;      // global floor for minor events
+        lastAt[cat] = nowMs; lastAnyAt = nowMs;
+        if (adapter && adapter.play) { adapter.play(cat); return true; }
+        return navigator.vibrate(c.pat) !== false;
       } catch (e) { return false; }   // silent, never breaks anything
     }
-    return { trigger, supported, status, setAdapter(a) { adapter = a; } };
+    // Honest test: reports what actually happened, never fakes success.
+    function test() {
+      const d = diagnostics();
+      if (!d.supported) return { ok: false, message: 'Haptic feedback is unavailable in this browser. Audio and visual feedback remain active.' };
+      if (!d.enabled) return { ok: false, message: 'Haptic feedback is switched off.' };
+      const fired = trigger('UI_CONFIRM');
+      return fired ? { ok: true, message: 'Test pulse sent via ' + d.adapter + '.' }
+                   : { ok: false, message: 'Pulse suppressed (cooldown or hidden page) — try again in a moment.' };
+    }
+    return { trigger, supported, status, diagnostics, test, CATEGORIES, setAdapter(a) { adapter = a; } };
   })();
 
   /* =====================================================================
@@ -246,6 +327,12 @@ const Game = (() => {
       RECOVERING: { mouth: 'wavy', eyes: 'dot', led: 'amber', cls: 'p-save' },
       SLEEPING: { mouth: 'flat', eyes: 'shut', led: 'dim', cls: 'p-sleep' },
       HIDDEN: { mouth: 'wave', eyes: 'dot', led: 'dim', cls: '' },
+      // boss encounter states (v1.2.0) — reuse the accepted shared mouth
+      // geometry; no new paths, so the v1.1.1 alignment guarantees hold.
+      BOSS_INTRO: { mouth: 'flat', eyes: 'dot', led: 'amber', cls: 'p-attn' },
+      BOSS_ASSIST: { mouth: 'wave', eyes: 'dot', led: 'phos', cls: 'p-attn' },
+      BOSS_CONCERNED: { mouth: 'wavy', eyes: 'flat', led: 'amber', cls: 'p-concern' },
+      BOSS_VICTORY: { mouth: 'smile', eyes: 'happy', led: 'phos', cls: 'p-celebrate' },
     };
     // Every mouth shares ONE stable coordinate system so no state can drift:
     //   horizontal centre x = 24 (directly under the eyes at cx 18 / 30),
@@ -418,10 +505,15 @@ const Game = (() => {
       // Home (a route change cancels in-flight reactions). Defer the intro so it lands
       // on the freshly-rendered dashboard instead of being torn down in the same tick.
       setTimeout(() => {
+        // If the learner already navigated into a work screen (lesson/boss —
+        // marked by has-actionbar), skip the greeting rather than letting it
+        // land as stale dialogue on an unrelated screen. introSeen is already
+        // recorded, so it simply never replays.
+        if (document.body.classList.contains('has-actionbar')) return;
         Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
           Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
           Audio.play('PROFILE_CREATED');
-          Haptic.trigger('milestone.lesson');
+          Haptic.trigger('UI_CONFIRM');
           Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
         } });
       }, 550);
@@ -440,15 +532,15 @@ const Game = (() => {
     on(E.QUESTION_PRESENTED, () => { if (atLeastBalanced()) Reactions.dispatch({ priority: 1, dedupeKey: 'q', dedupeMs: 400, holdMs: 400, run: () => Patch.setState('LISTENING', { dur: 1200 }) }); });
 
     on(E.ANSWER_CORRECT, (ev) => {
-      Audio.play('CORRECT'); Haptic.trigger('feedback.correct');
+      Audio.play('CORRECT'); Haptic.trigger('ANSWER_CORRECT');
       Reactions.dispatch({ priority: 2, holdMs: 800, run: () => Patch.setState('APPROVING', (full() || (atLeastBalanced() && ((ev.id % 3) === 0))) ? { text: pick(CORRECT_LINES, ev.id), dur: 1400 } : { dur: 1200 }) });
     });
     on(E.ANSWER_CORRECT_AFTER_RETRY, (ev) => {
-      Audio.play('CORRECT_AFTER_RETRY'); Haptic.trigger('feedback.correct');
+      Audio.play('CORRECT_AFTER_RETRY'); Haptic.trigger('ANSWER_RECOVERED');
       Reactions.dispatch({ priority: 2, holdMs: 900, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: pick(RETRY_LINES, ev.id), dur: 1600 } : { dur: 1200 }) });
     });
     on(E.ANSWER_INCORRECT, (ev) => {
-      Audio.play('INCORRECT'); Haptic.trigger('feedback.incorrect');
+      Audio.play('INCORRECT'); Haptic.trigger('ANSWER_INCORRECT');
       Reactions.dispatch({ priority: 2, holdMs: 800, run: () => Patch.setState('CONCERNED', full() ? { text: pick(INCORRECT_LINES, ev.id), dur: 1400 } : { dur: 1100 }) });
     });
     on(E.ANSWER_REPEATED_INCORRECT, () => {
@@ -458,36 +550,52 @@ const Game = (() => {
       Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
     });
 
-    on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Lesson complete — filed.', 3));
-    on(E.CHALLENGE_COMPLETE, () => milestone('CHALLENGE_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Diagnostic resolved.', 3));
-    on(E.QUIZ_PERFECT, () => milestone('QUIZ_PERFECT', 'CELEBRATING', 'milestone.perfect', 'Clean 100% signal.', 3, 2200));
-    on(E.QUIZ_PASSED, () => { Audio.play('QUIZ_PASS'); Haptic.trigger('milestone.lesson'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: 'Passed. Signal is stable.', dur: 1600 } : { dur: 1200 }) }); });
+    on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'UI_CONFIRM', 'Lesson complete — filed.', 3));
+    on(E.CHALLENGE_COMPLETE, () => milestone('CHALLENGE_COMPLETE', 'CELEBRATING', 'UI_CONFIRM', 'Diagnostic resolved.', 3));
+    on(E.QUIZ_PERFECT, () => milestone('QUIZ_PERFECT', 'CELEBRATING', 'MISSION_COMPLETE', 'Clean 100% signal.', 3, 2200));
+    on(E.QUIZ_PASSED, () => { Audio.play('QUIZ_PASS'); Haptic.trigger('UI_CONFIRM'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: 'Passed. Signal is stable.', dur: 1600 } : { dur: 1200 }) }); });
     on(E.QUIZ_FAILED, () => { Audio.play('QUIZ_FAIL'); Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Review the diagnostic, then retry.', dur: 2000 } : { dur: 1200 }) }); });
-    on(E.MISSION_COMPLETE, () => milestone('MISSION_COMPLETE', 'MISSION_COMPLETE', 'milestone.rank', 'Module connected. Mission complete.', 4, 2600));
+    on(E.MISSION_COMPLETE, () => milestone('MISSION_COMPLETE', 'MISSION_COMPLETE', 'MISSION_COMPLETE', 'Module connected. Mission complete.', 4, 2600));
 
     on(E.ACHIEVEMENT_UNLOCKED, (ev) => {
       const key = 'ach:' + (ev.achievementId || '');
       if (wasSeen(key)) { return; }        // never replay a badge celebration
       markSeen(key);
-      Audio.play('ACHIEVEMENT_UNLOCK'); Haptic.trigger('milestone.lesson');
+      Audio.play('ACHIEVEMENT_UNLOCK'); Haptic.trigger('ACHIEVEMENT');
       Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => Patch.setState('ACHIEVEMENT', atLeastBalanced() ? { text: 'Badge installed.', dur: 2000 } : { dur: 1400 }) });
     });
     on(E.RANK_UP, (ev) => {
       const key = 'rank:' + (ev.to || ev.level || '');
       if (wasSeen(key)) return;
       markSeen(key);
-      Audio.play('RANK_UP'); Haptic.trigger('milestone.rank');
+      Audio.play('RANK_UP'); Haptic.trigger('RANK_UP');
       Reactions.dispatch({ priority: 4, holdMs: 2000, run: () => Patch.setState('RANK_UP', atLeastBalanced() ? { text: 'ID plate updated.', dur: 2200 } : { dur: 1400 }) });
     });
     on(E.ZONE_UNLOCKED, () => { Audio.play('ZONE_UNLOCKED'); if (atLeastBalanced()) Patch.setState('ATTENTIVE', { text: 'New workspace online.', dur: 1600 }); });
 
     on(E.LOCAL_SAVE_COMPLETE, () => { if (Patch.state === 'SAVING' || Patch.state === 'STORING') Patch.toIdle(); });
-    on(E.LOCAL_SAVE_FAILED, () => { Audio.play('SAVE_FAILED'); Haptic.trigger('warning.save'); Patch.setState('CONCERNED', { text: 'Save failed — export a backup.', dur: 2600 }); });
+    on(E.LOCAL_SAVE_FAILED, () => { Audio.play('SAVE_FAILED'); Haptic.trigger('WARNING_SAVE'); Patch.setState('CONCERNED', { text: 'Save failed — export a backup.', dur: 2600 }); });
     on(E.STORAGE_RECOVERED, () => { Patch.setState('RECOVERING', { text: 'Backup restored. No progress lost.', dur: 2400 }); });
     on(E.BACKUP_EXPORTED, () => { Audio.play('BACKUP_COMPLETE'); if (atLeastBalanced()) Patch.setState('STORING', { text: 'Backup archived.', dur: 1400 }); });
     on(E.BACKUP_IMPORTED, () => { Audio.play('BACKUP_COMPLETE'); Patch.setState('STORING', { text: 'Profile restored.', dur: 1600 }); });
 
     on(E.SETTINGS_UPDATED, () => { Patch.applyPresence(); });
+
+    /* ---- boss encounter (v1.2.0) ---- */
+    on(E.BOSS_INTRO, () => { Audio.play('BOSS_INTRO'); Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => Patch.setState('BOSS_INTRO', atLeastBalanced() ? { text: 'Diagnostics ready. I am with you.', dur: 2200 } : { dur: 1400 }) }); });
+    on(E.BOSS_STARTED, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { dur: 1400 }); });
+    on(E.BOSS_HP_CHANGED, (ev) => {
+      if (ev.delta < 0) { Audio.play(ev.heavy ? 'PLAYER_ATTACK_HEAVY' : 'PLAYER_ATTACK'); Haptic.trigger(ev.heavy ? 'PLAYER_ATTACK_HEAVY' : 'PLAYER_ATTACK_LIGHT'); if (atLeastBalanced()) Reactions.dispatch({ priority: 2, holdMs: 700, run: () => Patch.setState('BOSS_ASSIST', { dur: 1000 }) }); }
+    });
+    on(E.PLAYER_HP_CHANGED, (ev) => {
+      if (ev.delta < 0) { Audio.play('PLAYER_DAMAGE'); Haptic.trigger(ev.integrity <= 1 ? 'PLAYER_DAMAGE_HEAVY' : 'PLAYER_DAMAGE_LIGHT'); if (atLeastBalanced()) Reactions.dispatch({ priority: 2, holdMs: 700, run: () => Patch.setState('BOSS_CONCERNED', { dur: 1100 }) }); }
+    });
+    on(E.PLAYER_LOW_HP, () => { Audio.play('BOSS_WARNING'); Haptic.trigger('BOSS_WARNING'); Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('BOSS_CONCERNED', atLeastBalanced() ? { text: 'Integrity low. Steady — read each signal.', dur: 2000 } : { dur: 1200 }) }); });
+    on(E.BOSS_LOW_HP, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { text: 'It is failing. Keep the pressure on.', dur: 1800 }); });
+    on(E.BOSS_PHASE_CHANGED, () => { Audio.play('BOSS_PHASE'); Haptic.trigger('BOSS_PHASE_CHANGE'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('BOSS_ASSIST', { dur: 1400 }) }); });
+    on(E.BOSS_DEFEATED, () => { Audio.play('BOSS_DEFEATED'); Haptic.trigger('BOSS_DEFEATED'); Reactions.dispatch({ priority: 5, holdMs: 2400, run: () => Patch.setState('BOSS_VICTORY', atLeastBalanced() ? { text: 'System repaired. Clean work.', dur: 2600 } : { dur: 1600 }) }); });
+    on(E.BOSS_GAME_OVER, () => { Audio.play('PLAYER_DEFEATED'); Haptic.trigger('PLAYER_DEFEATED'); Reactions.dispatch({ priority: 5, holdMs: 2400, run: () => Patch.setState('BOSS_CONCERNED', atLeastBalanced() ? { text: 'No damage done. Regroup and retry.', dur: 2600 } : { dur: 1600 }) }); });
+    on(E.BOSS_RESTARTED, () => { if (atLeastBalanced()) Patch.setState('BOSS_ASSIST', { text: 'Fresh diagnostics. Go again.', dur: 1600 }); });
   }
 
   function milestone(sound, state, haptic, text, prio, holdMs) {
@@ -515,7 +623,7 @@ const Game = (() => {
         const t = e.target && e.target.closest && e.target.closest('.btn, .opt, .card-tap, .avatar-opt, .gloss-term, .chip, .icon-btn');
         if (!t || t.classList.contains('tab')) return;   // tabs get NAVIGATION instead
         Audio.play('UI_PRESS');
-        Haptic.trigger('ui.light');
+        Haptic.trigger('UI_LIGHT');
       } catch (err) { /* ignore */ }
     }, true);
   }

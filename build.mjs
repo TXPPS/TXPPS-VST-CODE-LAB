@@ -45,6 +45,7 @@ const JS_ORDER = [
   'viz.js',
   'dict.js',
   'game.js',
+  'boss.js',
   'views.js',
   'app.js',
 ];

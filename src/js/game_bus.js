@@ -54,12 +54,9 @@ const GameBus = (() => {
     STORAGE_RECOVERED: 'STORAGE_RECOVERED',
     STORAGE_WARNING: 'STORAGE_WARNING',
     SETTINGS_UPDATED: 'SETTINGS_UPDATED',
-  };
-
-  // Reserved for the future boss / zone-completion / graduation pass.
-  // Declared now so course code can be wired against stable names, but
-  // NOTHING emits or handles these in v1.1.0.
-  const FUTURE = {
+    // ---- boss encounter catalog (activated in v1.2.0) ----
+    BOSS_UNLOCKED: 'BOSS_UNLOCKED',
+    BOSS_ENTERED: 'BOSS_ENTERED',
     BOSS_INTRO: 'BOSS_INTRO',
     BOSS_STARTED: 'BOSS_STARTED',
     BOSS_QUESTION_RESOLVED: 'BOSS_QUESTION_RESOLVED',
@@ -71,6 +68,11 @@ const GameBus = (() => {
     BOSS_GAME_OVER: 'BOSS_GAME_OVER',
     BOSS_RESTARTED: 'BOSS_RESTARTED',
     BOSS_DEFEATED: 'BOSS_DEFEATED',
+  };
+
+  // Reserved for the future zone-completion / graduation pass. Declared so
+  // code can be wired against stable names, but NOTHING emits these yet.
+  const FUTURE = {
     ZONE_COMPLETE: 'ZONE_COMPLETE',
     COURSE_COMPLETE: 'COURSE_COMPLETE',
     GRADUATION_STARTED: 'GRADUATION_STARTED',
