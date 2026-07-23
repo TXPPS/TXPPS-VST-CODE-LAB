@@ -756,14 +756,17 @@ textarea.io {
    profile hero, snapshot rows, profile switcher cards.
    ============================================================ */
 
-/* first-launch welcome screen (full-screen, no app chrome) */
-.welcome-wrap {
-  min-height: 100vh; min-height: 100dvh;
+/* first-launch / migration setup — a true modal overlay ABOVE the app shell */
+.welcome-overlay {
+  position: fixed; inset: 0; z-index: 90;
   display: flex; align-items: center; justify-content: center;
-  padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
-  background: radial-gradient(120% 80% at 50% 0%, rgba(93,232,148,0.05), transparent 60%);
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: rgba(6, 8, 11, 0.82);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
 }
-.welcome-card { width: 100%; max-width: 460px; }
+.welcome-card { width: 100%; max-width: 460px; margin: auto; }
+body.modal-open { overflow: hidden; }   /* lock background scroll while the overlay is up */
 .welcome-brand { font-size: 15px; letter-spacing: 0.02em; }
 .welcome-brand .led {
   width: 8px; height: 8px; border-radius: 50%;

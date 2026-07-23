@@ -17,15 +17,19 @@ TXPPS Signature commercial-VST3 capstone, ending at the Release Candidate
 final boss and permanent Graduate status). This is Version 1.0 of the
 TXPPS VST CODE LAB curriculum.
 
-**Version 1.0.1 — Local Profiles** adds an offline profile system (no
-account, no password, no network). On first launch a friendly welcome
-screen collects a display name, username, optional bio and avatar and
-creates a local profile automatically; after that the profile loads on its
-own every visit. Multiple learners can share a device — create, switch,
-rename and delete profiles, each with completely independent progress —
-and any profile can be exported to or imported from a human-readable JSON
-file. Every existing single-save learner is migrated into a profile with
-no progress lost.
+**Version 1.0.2 — Single Local Profile** gives the app one local learner
+profile, like a single signed-in account (no cloud, no password, no
+network). On first launch a centered modal overlay — rendered above the app
+shell, not as a section in the page — collects a display name, username,
+optional bio and avatar and creates the one profile; afterwards it loads on
+its own every visit and the overlay never returns. The profile is viewed and
+edited from the Profile tab (editing never changes the profile id or touches
+progress); a backup can be exported to / imported from a human-readable JSON
+file (import replaces the single profile, backing the current one up first);
+and a clearly-labelled reset returns the app to first-launch. Every earlier
+save — a pre-1.0.1 single save, or a 1.0.1 profile / multi-profile
+registry — is migrated into the one profile with no progress lost, backing up
+prior data before any cleanup.
 
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
@@ -38,13 +42,14 @@ Real Plugin, 🎹 Studio Analogy, ⚠ Common Beginner Mistake, and 💡 Remember
 
 The build output `dist/index.html` is a self-contained HTML fragment (inline CSS + JS,
 no dependencies, no network calls) designed to be published as a Claude Artifact page —
-it also works wrapped in any plain HTML document. Each profile persists in `localStorage`
-as a single versioned, checksummed save object, written with a current + previous
-double buffer so a corrupted save is detected on load and the previous one is restored
-automatically. Autosave fires on every completion, achievement, profile edit and
-settings change, on a 30-second heartbeat, and when the tab is hidden or closed. A
-defensive in-memory fallback keeps everything working (for the session) when storage is
-blocked, and every profile can be exported to / imported from JSON.
+it also works wrapped in any plain HTML document. The single local profile persists in
+`localStorage` as one versioned, checksummed save object, written with a current +
+previous double buffer so a corrupted save is detected on load and the previous one is
+restored automatically. Autosave fires on every completion, achievement, profile edit
+and settings change, on a 30-second heartbeat, and when the tab is hidden or closed; a
+`storage`-event listener keeps a second tab from overwriting newer progress. A defensive
+in-memory fallback keeps everything working (for the session) when storage is blocked,
+and the profile can be exported to / imported from JSON.
 
 ## Honesty by design
 
@@ -74,9 +79,9 @@ src/
     data_glossary*.js        Signal Dictionary mini-lesson entries (parts a–i)
     engine.js                pure challenge evaluation (no DOM): fill/mcq/order/
                              bugspot/match validation, seeded shuffles, daily pick
-    store.js                 profile state + progress; versioned checksummed saves,
-                             current+backup double buffer, corruption recovery,
-                             legacy migration, and multi-profile CRUD / import / export
+    store.js                 single-profile state + progress; versioned checksummed
+                             saves, current+backup double buffer, corruption recovery,
+                             1.0.1 + legacy migration, edit / import-replace / export
     audio.js                 optional WebAudio feedback blips
     ui.js                    DOM helpers, C++ highlighter, shared widgets
     viz.js                   data-driven SVG lesson diagrams (palette-matched)

@@ -5,21 +5,25 @@
    ============================================================ */
 
 const Store = (() => {
-  const LEGACY_KEY = 'txpps_vst_code_lab_v1';   // the pre-1.0.1 single save
-  const INDEX_KEY = 'txpps_profiles_v1';        // registry of local profiles
+  const LEGACY_KEY = 'txpps_vst_code_lab_v1';   // pre-1.0.1 single save
+  const V101_INDEX = 'txpps_profiles_v1';       // 1.0.1 multi-profile registry (migrate-in only)
+  const v101P = (id) => 'txpps_profile_' + id;  // 1.0.1 per-profile current save
+  const v101B = (id) => 'txpps_profile_' + id + '_bak';
+  const SKEY = 'txpps_profile';                 // v1.0.2 single authoritative save
+  const SBAK = 'txpps_profile_backup';          // its previous-save backup
+  const MIGBAK = 'txpps_v101_backup';           // one-time snapshot of pre-migration data
   const SAVE_V = 2;
-  const pKey = (id) => 'txpps_profile_' + id;   // a profile's current save
-  const bKey = (id) => 'txpps_profile_' + id + '_bak'; // its previous save (backup)
 
   // Curated offline avatar set — emoji only, no uploads, no network.
   const AVATARS = ['🎹', '🎛️', '🎚️', '🎧', '🎸', '🎺', '🥁', '🎤', '🔊', '⚡', '🌊', '🔥', '🌀', '💾', '📼', '🎶'];
 
   let storageOk = true;
   let memory = {};        // key -> json string, used when localStorage is blocked
-  let activeId = null;
+  let hasProfile = false; // is there exactly one authoritative local profile?
   let needsWelcome = false;
+  let pendingMigration = null; // {candidates:[...]} when a 1.0.1 multi-profile choice is required
   let recoveredFlag = false;
-  let state;              // active profile: flat identity + progress + settings
+  let state;              // the one local profile: flat identity + progress + settings
 
   function nowIso() { try { return new Date().toISOString(); } catch (e) { return ''; } }
 
@@ -59,30 +63,47 @@ const Store = (() => {
     return env.data;
   }
 
-  /* ---- atomic double-buffered write: current save + previous backup ---- */
-  function writeProfile(id, data) {
+  /* ---- atomic double-buffered write of THE single profile: current + backup ---- */
+  function writeProfile(data) {
     const raw = pack(data);
-    const cur = lsGet(pKey(id));
-    if (cur && unpack(cur)) lsSet(bKey(id), cur);  // only ever promote a *valid* prior save to backup
-    lsSet(pKey(id), raw);                           // setItem is all-or-nothing per key — never a partial overwrite
+    const cur = lsGet(SKEY);
+    if (cur && unpack(cur)) lsSet(SBAK, cur);  // only ever promote a *valid* prior save to backup
+    lsSet(SKEY, raw);                           // setItem is all-or-nothing per key — never a partial overwrite
   }
-  function readProfile(id) {
-    const data = unpack(lsGet(pKey(id)));
+  function readSingle() {
+    const data = unpack(lsGet(SKEY));
     if (data) return { data, recovered: false };
-    const bak = unpack(lsGet(bKey(id)));            // current missing/corrupt -> restore the backup
-    if (bak) { lsSet(pKey(id), pack(bak)); return { data: bak, recovered: true }; }
+    const bak = unpack(lsGet(SBAK));            // current missing/corrupt -> restore the backup
+    if (bak) { lsSet(SKEY, pack(bak)); return { data: bak, recovered: true }; }
     return { data: null, recovered: false };
   }
+  // Write `data` to the single key and confirm it reached DISK (not just memory).
+  function adoptAsSingle(data) {
+    const d = sanitizeFull(data);
+    writeProfile(d);
+    state = d; hasProfile = true; needsWelcome = false; pendingMigration = null;
+    return !!unpack(rawLocalGet(SKEY));         // false if the write only hit the in-memory fallback
+  }
 
-  /* ---- profile index (which profiles exist, which is active) ---- */
-  function readIndex() {
-    const raw = lsGet(INDEX_KEY);
+  /* ---- 1.0.1 multi-profile registry: read-only, for migration ---- */
+  function readV101Index() {
+    const raw = lsGet(V101_INDEX);
     if (!raw) return null;
     let idx; try { idx = JSON.parse(raw); } catch (e) { return null; }
     if (!idx || idx.schema !== 'txpps.index' || !Array.isArray(idx.ids)) return null;
     return idx;
   }
-  function writeIndex(idx) { lsSet(INDEX_KEY, JSON.stringify(idx)); }
+  function readV101Profile(id) { return unpack(lsGet(v101P(id))) || unpack(lsGet(v101B(id))); }
+  function backupV101(idx) {
+    if (rawLocalGet(MIGBAK)) return;            // idempotent: snapshot once
+    const dump = { schema: 'txpps.v101.backup', at: nowIso(), index: lsGet(V101_INDEX), profiles: {} };
+    for (const id of idx.ids) dump.profiles[id] = { cur: lsGet(v101P(id)), bak: lsGet(v101B(id)) };
+    lsSet(MIGBAK, JSON.stringify(dump));
+  }
+  function cleanupV101(idx) {
+    lsDel(V101_INDEX);
+    for (const id of idx.ids) { lsDel(v101P(id)); lsDel(v101B(id)); }
+  }
 
   function readLegacy() {
     const raw = lsGet(LEGACY_KEY);
@@ -103,43 +124,80 @@ const Store = (() => {
     s.createdAt = (raw && typeof raw.createdAt === 'string' && raw.createdAt) ? raw.createdAt : idn.createdAt;
     s.lastPlayed = (raw && typeof raw.lastPlayed === 'string' && raw.lastPlayed) ? raw.lastPlayed : idn.lastPlayed;
     s.currentNode = (raw && typeof raw.currentNode === 'string') ? raw.currentNode : null;
-    s.id = (raw && raw.id) || activeId || null;
+    s.id = (raw && raw.id) || (state && state.id) || null;
     s.v = SAVE_V;
     return s;
   }
 
-  // One-time migration: an existing single-save learner becomes a local profile
-  // with every field of progress preserved and a default identity attached.
+  // Lightweight display summary for a profile (used by the migration chooser).
+  function metaFromData(id, data) {
+    const s = sanitizeFull(data);
+    const order = liveOrder();
+    const done = order.filter((x) => s.nodes[x] && s.nodes[x].done).length;
+    let lv = 1; for (let i = 0; i < LEVELS.length; i++) if (s.xp >= LEVELS[i]) lv = i + 1;
+    return {
+      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio,
+      xp: s.xp, level: lv, rank: LEVEL_TITLES[Math.min(lv - 1, LEVEL_TITLES.length - 1)],
+      completion: order.length ? Math.round((done / order.length) * 100) : 0, doneCount: done, total: order.length,
+      graduate: !!(s.nodes['boss7'] && s.nodes['boss7'].done),
+      achievements: Array.isArray(s.achievements) ? s.achievements.length : 0,
+      createdAt: s.createdAt, lastPlayed: s.lastPlayed,
+    };
+  }
+
+  // Migrate any prior storage into ONE authoritative profile. Idempotent: once the
+  // single save exists, later launches just load it. Never discards old data before
+  // a confirmed backup + commit.
   function migrate() {
-    let idx = readIndex();
+    // 1. The single save already exists → load it (idempotent).
+    const single = readSingle();
+    if (single.data) { state = sanitizeFull(single.data); hasProfile = true; recoveredFlag = single.recovered; return; }
+
+    // 2. A 1.0.1 multi-profile registry exists → collapse to one.
+    const idx = readV101Index();
     if (idx && idx.ids.length) {
-      if (!idx.ids.includes(idx.activeId)) idx.activeId = idx.ids[0];
-      return idx;
+      backupV101(idx);                                   // snapshot EVERYTHING before touching it
+      const readable = idx.ids.filter((id) => readV101Profile(id));
+      let chosen = null;
+      if (idx.activeId && readV101Profile(idx.activeId)) chosen = idx.activeId;   // the currently-active readable profile
+      else if (readable.length === 1) chosen = readable[0];
+      else if (readable.length >= 2) {                   // uncertain → one-time choice modal
+        pendingMigration = { candidates: readable.map((id) => metaFromData(id, readV101Profile(id))), idx };
+        return;
+      }
+      if (chosen) {
+        const committed = adoptAsSingle(readV101Profile(chosen));
+        if (committed) cleanupV101(idx);                 // drop old keys only after the single save is on disk
+        return;
+      }
+      // 0 readable profiles → fall through (data safe in MIGBAK); try legacy, then welcome.
     }
+
+    // 3. Pre-1.0.1 legacy single save → migrate.
     const legacy = readLegacy();
     if (legacy) {
-      const id = newId();
       const data = Object.assign(freshState(), sanitize(legacy), {
-        id, displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '',
+        id: newId(), displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '',
         createdAt: (typeof legacy.createdAt === 'string' && legacy.createdAt) ? legacy.createdAt : nowIso(),
         lastPlayed: nowIso(), v: SAVE_V,
       });
-      writeProfile(id, data);
-      idx = { schema: 'txpps.index', v: 1, activeId: id, ids: [id], migratedFromLegacy: true };
-      // ATOMIC migration. Commit the index and retire the legacy key ONLY once the
-      // new profile is confirmed on DISK (not merely the in-memory fallback). If the
-      // profile write hit quota, keep the index in memory for this session and leave
-      // the legacy save authoritative, so the next launch re-migrates it instead of
-      // being permanently shadowed by a half-committed index.
-      if (unpack(rawLocalGet(pKey(id)))) {
-        writeIndex(idx);
-        if (rawLocalGet(INDEX_KEY)) lsDel(LEGACY_KEY);   // drop legacy only after the index is on disk too
-      } else {
-        memory[INDEX_KEY] = JSON.stringify(idx);          // session-only; reload re-migrates from the intact legacy save
-      }
-      return idx;
+      const committed = adoptAsSingle(data);
+      if (committed) lsDel(LEGACY_KEY);                  // retire legacy only once the single save is on disk
+      return;
     }
-    return null;
+
+    // 4. Nothing recoverable → first-launch welcome.
+    needsWelcome = true;
+  }
+
+  function commitMigrationChoice(id) {
+    if (!pendingMigration) return false;
+    const idx = pendingMigration.idx || readV101Index();
+    const data = idx ? readV101Profile(id) : null;
+    if (!data) return false;
+    const committed = adoptAsSingle(data);               // adoptAsSingle clears pendingMigration
+    if (committed && idx) cleanupV101(idx);
+    return true;
   }
 
   function defaults() {
@@ -213,27 +271,14 @@ const Store = (() => {
   }
 
   (function initState() {
-    const idx = migrate();
-    if (idx) {
-      activeId = idx.activeId;
-      let r = readProfile(activeId);
-      if (!r.data) {                       // active profile unreadable — try any other, else fall through to welcome
-        const alt = idx.ids.find((pid) => readProfile(pid).data);
-        if (alt) { activeId = alt; idx.activeId = alt; writeIndex(idx); r = readProfile(alt); }
-      }
-      if (r.data) { state = sanitizeFull(r.data); recoveredFlag = r.recovered; }
-      else { state = freshState(); activeId = null; needsWelcome = true; }
-    } else {
-      state = freshState();                // truly first launch — no profile, no legacy save
-      needsWelcome = true;
-    }
+    state = freshState();                   // a valid empty state so the shell can render behind any overlay
+    migrate();                              // sets state / hasProfile / needsWelcome / pendingMigration
   })();
 
   function save() {
-    if (!activeId) return;                 // welcome pending — nothing to persist yet
+    if (!hasProfile) return;                // welcome or migration pending — nothing authoritative to persist yet
     state.lastPlayed = nowIso();
-    state.id = activeId;
-    writeProfile(activeId, state);
+    writeProfile(state);
   }
 
   /* ---- date helpers ---- */
@@ -484,7 +529,7 @@ const Store = (() => {
   function buildExport(data) {
     return {
       schema: 'txpps.profile.export', v: SAVE_V, app: 'TXPPS VST CODE LAB', exportedAt: nowIso(),
-      profile: { displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, createdAt: data.createdAt },
+      profile: { id: data.id, displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, createdAt: data.createdAt },
       progress: {
         xp: data.xp, nodes: data.nodes, achievements: data.achievements, weak: data.weak,
         streak: data.streak, daily: data.daily, dailyDone: data.dailyDone,
@@ -493,12 +538,8 @@ const Store = (() => {
       settings: data.settings,
     };
   }
-  function exportProfile(id) {
-    const src = (id === activeId) ? state : (readProfile(id).data);
-    if (!src) return '';
-    return JSON.stringify(buildExport(sanitizeFull(src)), null, 2);
-  }
-  function exportJson() { return exportProfile(activeId); }
+  function exportProfile() { return hasProfile ? JSON.stringify(buildExport(sanitizeFull(state)), null, 2) : ''; }
+  function exportJson() { return exportProfile(); }
 
   function coerceImport(obj) {
     if (!obj || typeof obj !== 'object') return null;
@@ -509,57 +550,50 @@ const Store = (() => {
     if (typeof obj.xp === 'number') return obj;  // legacy flat save
     return null;
   }
-  function importProfileText(text) {
+  // Parse+validate a backup WITHOUT applying it (used for the replace preview).
+  function parseImport(text) {
     let obj;
     try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: 'That isn\'t valid JSON — paste the exact text you exported.' }; }
     const flat = coerceImport(obj);
-    if (!flat) return { ok: false, error: 'That JSON doesn\'t look like a TXPPS profile (no progress found).' };
-    const id = createProfile({
-      displayName: flat.displayName || 'Imported learner',
-      username: flat.username || ('learner' + newId().slice(-4)),
-      avatar: flat.avatar || AVATARS[0], bio: flat.bio || '',
-    });
-    const merged = sanitizeFull(Object.assign({}, flat, {
-      id, displayName: state.displayName, username: state.username, avatar: state.avatar, bio: state.bio,
-      createdAt: (typeof flat.createdAt === 'string' && flat.createdAt) ? flat.createdAt : state.createdAt,
+    if (!flat) return { ok: false, error: 'That JSON doesn\'t look like a TXPPS backup (no progress found).' };
+    return { ok: true, flat, meta: metaFromData(flat.id || null, flat) };
+  }
+  // Import the ONE profile. If a profile already exists it is REPLACED — the current
+  // one is first promoted to the backup slot so it stays recoverable. Never creates a
+  // second profile or a parallel identity.
+  function importProfileText(text) {
+    const p = parseImport(text);
+    if (!p.ok) return p;
+    const flat = p.flat;
+    if (hasProfile) {                                   // auto-backup the current profile before replacing
+      const cur = lsGet(SKEY);
+      if (cur && unpack(cur)) lsSet(SBAK, cur);
+    }
+    const keepId = (hasProfile && state.id) || flat.id || newId();  // one stable installation identity
+    const data = sanitizeFull(Object.assign({}, flat, {
+      id: keepId,
+      createdAt: (typeof flat.createdAt === 'string' && flat.createdAt) ? flat.createdAt : nowIso(),
       lastPlayed: nowIso(),
     }));
-    state = merged; save();
-    return { ok: true, id };
+    state = data; hasProfile = true; needsWelcome = false;
+    writeProfile(state);
+    return { ok: true, id: keepId };
   }
   function importJson(text) { return importProfileText(text); }
 
-  function reset() {
-    if (!activeId) { state = freshState(); return; }
-    const keep = { displayName: state.displayName, username: state.username, avatar: state.avatar, bio: state.bio, createdAt: state.createdAt };
-    state = Object.assign(freshState(), keep, { id: activeId, lastPlayed: nowIso() });
-    save();
+  // Destructive reset: remove the single profile AND all local backups, returning to
+  // first launch. This is a reset, not profile switching.
+  function resetProfile() {
+    lsDel(SKEY); lsDel(SBAK); lsDel(MIGBAK);
+    state = freshState(); hasProfile = false; needsWelcome = true; pendingMigration = null;
+    return { ok: true };
   }
+  function reset() { return resetProfile(); }
 
-  /* ---- profile registry operations ---- */
-  function profileMeta(id) {
-    const src = (id === activeId) ? state : (readProfile(id).data);
-    if (!src) return null;
-    const s = (id === activeId) ? state : sanitizeFull(src);
-    const order = liveOrder();
-    const done = order.filter((x) => s.nodes[x] && s.nodes[x].done).length;
-    let lv = 1; for (let i = 0; i < LEVELS.length; i++) if (s.xp >= LEVELS[i]) lv = i + 1;
-    return {
-      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio,
-      xp: s.xp, level: lv, rank: LEVEL_TITLES[Math.min(lv - 1, LEVEL_TITLES.length - 1)],
-      completion: order.length ? Math.round((done / order.length) * 100) : 0, doneCount: done, total: order.length,
-      graduate: !!(s.nodes['boss7'] && s.nodes['boss7'].done),
-      achievements: Array.isArray(s.achievements) ? s.achievements.length : 0,
-      createdAt: s.createdAt, lastPlayed: s.lastPlayed, active: id === activeId,
-    };
-  }
-  function listProfiles() {
-    const idx = readIndex();
-    if (!idx) return activeId ? [profileMeta(activeId)].filter(Boolean) : [];
-    return idx.ids.map(profileMeta).filter(Boolean);
-  }
+  /* ---- the single profile: read summary, create, edit ---- */
+  function profileMeta() { return hasProfile ? metaFromData(state.id, state) : null; }
+
   function createProfile(identity) {
-    if (activeId) save();
     const id = newId();
     state = Object.assign(freshState(), {
       id,
@@ -569,67 +603,27 @@ const Store = (() => {
       bio: String((identity && identity.bio) || '').slice(0, 280),
       createdAt: nowIso(), lastPlayed: nowIso(),
     });
-    activeId = id;
-    writeProfile(id, state);
-    const idx = readIndex() || { schema: 'txpps.index', v: 1, activeId: id, ids: [] };
-    if (!idx.ids.includes(id)) idx.ids.push(id);
-    idx.activeId = id;
-    writeIndex(idx);
-    needsWelcome = false;
+    hasProfile = true; needsWelcome = false; pendingMigration = null;
+    writeProfile(state);
     return id;
   }
-  function switchProfile(id) {
-    if (id === activeId) return true;
-    const idx = readIndex();
-    if (!idx || !idx.ids.includes(id)) return false;
-    if (activeId) save();
-    const r = readProfile(id);
-    if (!r.data) return false;
-    activeId = id; state = sanitizeFull(r.data); recoveredFlag = r.recovered;
-    idx.activeId = id; writeIndex(idx); needsWelcome = false;
-    return true;
-  }
-  function editProfile(id, patch) {
+  // Edit identity IN PLACE — same profile, same id, progress untouched.
+  function editProfile(patch) {
+    if (!hasProfile) return false;
     patch = patch || {};
-    const apply = (d) => {
-      if (patch.displayName !== undefined) d.displayName = cleanName(patch.displayName) || d.displayName;
-      if (patch.username !== undefined) d.username = cleanUser(patch.username) || d.username;
-      if (patch.avatar !== undefined && patch.avatar) d.avatar = patch.avatar;
-      if (patch.bio !== undefined) d.bio = String(patch.bio || '').slice(0, 280);
-      return d;
-    };
-    if (id === activeId) { apply(state); save(); return true; }
-    const r = readProfile(id);
-    if (!r.data) return false;
-    const d = apply(sanitizeFull(r.data)); d.id = id;
-    writeProfile(id, d);
+    if (patch.displayName !== undefined) state.displayName = cleanName(patch.displayName) || state.displayName;
+    if (patch.username !== undefined) state.username = cleanUser(patch.username) || state.username;
+    if (patch.avatar !== undefined && patch.avatar) state.avatar = patch.avatar;
+    if (patch.bio !== undefined) state.bio = String(patch.bio || '').slice(0, 280);
+    save();                                             // preserves id, xp, progress, achievements
     return true;
-  }
-  function deleteProfile(id) {
-    const idx = readIndex();
-    if (!idx || !idx.ids.includes(id)) return { ok: false };
-    idx.ids = idx.ids.filter((x) => x !== id);
-    lsDel(pKey(id)); lsDel(bKey(id));
-    let switchedTo = null;
-    if (id === activeId) {
-      const alt = idx.ids.find((pid) => readProfile(pid).data);   // first READABLE profile, not blindly ids[0]
-      if (alt) {
-        const r = readProfile(alt);
-        activeId = alt; state = sanitizeFull(r.data); recoveredFlag = recoveredFlag || r.recovered;
-        idx.activeId = alt; switchedTo = alt;
-      } else {
-        activeId = null; idx.activeId = null; state = freshState(); needsWelcome = true;
-      }
-    }
-    writeIndex(idx);
-    return { ok: true, switchedTo, needsWelcome };
   }
 
-  // Cross-tab convergence: when another tab writes THIS tab's active profile,
-  // adopt the newer save so our next autosave can't clobber it with stale state.
+  // Cross-tab convergence: when another tab writes the single profile, adopt the
+  // newer save so our next autosave can't clobber it with stale state.
   function adoptExternal(key) {
-    if (!activeId || key !== pKey(activeId)) return false;
-    const d = unpack(rawLocalGet(pKey(activeId)));
+    if (!hasProfile || key !== SKEY) return false;
+    const d = unpack(rawLocalGet(SKEY));
     if (!d) return false;
     state = sanitizeFull(d);
     return true;
@@ -639,7 +633,8 @@ const Store = (() => {
     get state() { return state; },
     get storageOk() { return storageOk; },
     get needsWelcome() { return needsWelcome; },
-    get activeId() { return activeId; },
+    get hasProfile() { return hasProfile; },
+    get pendingMigration() { return pendingMigration; },
     get recovered() { return recoveredFlag; },
     clearRecovered() { recoveredFlag = false; },
     AVATARS,
@@ -651,7 +646,7 @@ const Store = (() => {
     grant, drainAchievements,
     zoneMastery, bossReady,
     setSetting, markDictViewed, setCurrentNode,
-    exportJson, importJson, exportProfile, importProfileText, reset,
-    listProfiles, profileMeta, createProfile, switchProfile, editProfile, deleteProfile, adoptExternal,
+    exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
+    profileMeta, createProfile, editProfile, adoptExternal, commitMigrationChoice,
   };
 })();

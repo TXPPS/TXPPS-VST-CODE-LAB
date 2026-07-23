@@ -149,19 +149,41 @@ const App = (() => {
     autosaveTimer = setInterval(() => { try { Store.save(); } catch (e) { /* keep running */ } }, 30000);
   }
 
-  // First-launch identity screen — shown full-screen, without the app chrome.
-  function showWelcome(mode) {
-    if (screenEl) { screenEl.remove(); screenEl = null; }
-    if (topbarEl) { topbarEl.remove(); topbarEl = null; }
-    if (tabbarEl) { tabbarEl.remove(); tabbarEl = null; }
-    document.querySelectorAll('.sheet-veil').forEach((v) => v.remove());
-    const view = Views.welcome({
-      mode: mode || 'first',
-      onDone: () => { startAutosave(); reboot(); },
-      onCancel: () => { reboot(); },
-    });
-    root.appendChild(view);
-    window.scrollTo({ top: 0 });
+  // First-launch / migration setup is a TRUE modal overlay: the app shell renders
+  // behind it, but the overlay (mounted on <body>, not the app flow) blocks all
+  // interaction, locks background scroll, and traps focus until setup completes.
+  let overlayEl = null;
+  function mountOverlay(card) {
+    unmountOverlay();
+    const veil = el('div', { class: 'welcome-overlay' }, card);
+    document.body.appendChild(veil);
+    document.body.classList.add('modal-open');
+    overlayEl = veil;
+    const focusables = () => Array.from(veil.querySelectorAll('input,textarea,button,[tabindex]:not([tabindex="-1"])')).filter((n) => !n.disabled && n.offsetParent !== null);
+    const f0 = focusables()[0]; if (f0) setTimeout(() => { try { f0.focus(); } catch (e) { /* ignore */ } }, 40);
+    veil._onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); return; }   // setup cannot be dismissed
+      if (e.key !== 'Tab') return;
+      const f = focusables(); if (!f.length) return;
+      const a = f[0], b = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
+      else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
+    };
+    document.addEventListener('keydown', veil._onKey, true);
+    return veil;
+  }
+  function unmountOverlay() {
+    if (overlayEl) { if (overlayEl._onKey) document.removeEventListener('keydown', overlayEl._onKey, true); overlayEl.remove(); overlayEl = null; }
+    document.body.classList.remove('modal-open');
+  }
+
+  function showWelcome() {
+    go('dashboard');                                            // render the app shell behind the overlay
+    mountOverlay(Views.welcome({ onDone: () => { unmountOverlay(); startAutosave(); reboot(); } }));
+  }
+  function showMigrationChooser() {
+    go('dashboard');
+    mountOverlay(Views.migrationChooser({ onDone: () => { unmountOverlay(); startAutosave(); reboot(); } }));
   }
 
   // Re-apply the active profile's settings and return to the dashboard
@@ -207,7 +229,8 @@ const App = (() => {
 
       applyCodeSize();
       applyMotion();
-      if (Store.needsWelcome) { showWelcome('first'); return; }
+      if (Store.pendingMigration) { showMigrationChooser(); return; }   // rare: several 1.0.1 profiles
+      if (Store.needsWelcome) { showWelcome(); return; }
       startAutosave();
       notifyIfRecovered();
       go('dashboard');
@@ -221,7 +244,7 @@ const App = (() => {
   }
 
   // public API (Views call these)
-  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, reboot, boot };
+  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, showMigrationChooser, reboot, boot };
 })();
 
 App.boot();

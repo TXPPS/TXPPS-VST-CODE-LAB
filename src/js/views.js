@@ -1300,134 +1300,108 @@ const Views = (() => {
     return { node, read };
   }
 
+  // First-launch modal CARD (app.js mounts it inside the fixed overlay). Single
+  // profile only — no "add profile", no switching.
   function welcome(opts) {
     opts = opts || {};
-    const adding = opts.mode === 'add';
     const form = profileFormFields();
-    const wrap = el('div', { class: 'welcome-wrap' },
-      el('div', { class: 'welcome-card card raised col', style: 'gap:16px' },
-        el('div', { class: 'brand welcome-brand' }, el('span', { class: 'led' }), el('span', null, 'TXPPS '), el('b', null, 'VST CODE LAB')),
-        el('div', { class: 'col', style: 'gap:4px' },
-          el('div', { class: 'eyebrow phos' }, adding ? 'NEW LOCAL PROFILE' : 'WELCOME TO THE LAB'),
-          el('h1', { class: 'h-display' }, adding ? 'Create a profile' : 'Set up your profile'),
-          el('p', { class: 'small dim' }, adding
-            ? 'A second learner on this device? Give them their own profile — separate progress, same offline app.'
-            : 'This lives only on this device — no account, no password, nothing sent anywhere. Your progress saves here automatically as you learn.')),
-        form.node,
-        el('button', { class: 'btn primary block', onclick: () => {
-          const v = form.read();
-          if (!v) return;
-          Sfx.tap();
-          Store.createProfile(v);
-          if (opts.onDone) opts.onDone(v);
-        } }, adding ? 'Create profile' : 'Start learning'),
-        adding
-          ? el('button', { class: 'btn ghost block', onclick: () => { if (opts.onCancel) opts.onCancel(); } }, 'Cancel')
-          : el('p', { class: 'small faint center' }, 'You can rename yourself, change avatars, or add more profiles anytime.')));
-    return wrap;
+    const submit = () => { const v = form.read(); if (!v) return; Sfx.tap(); Store.createProfile(v); if (opts.onDone) opts.onDone(v); };
+    const card = el('div', { class: 'welcome-card card raised col', style: 'gap:16px', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Set up your profile' },
+      el('div', { class: 'brand welcome-brand' }, el('span', { class: 'led' }), el('span', null, 'TXPPS '), el('b', null, 'VST CODE LAB')),
+      el('div', { class: 'col', style: 'gap:4px' },
+        el('div', { class: 'eyebrow phos' }, 'WELCOME TO THE LAB'),
+        el('h1', { class: 'h-display' }, 'Set up your profile'),
+        el('p', { class: 'small dim' }, 'This profile and your progress are stored locally on this device.')),
+      form.node,
+      el('button', { class: 'btn primary block', onclick: submit }, 'Start learning'),
+      el('p', { class: 'small faint center' }, 'No account, no password, nothing sent anywhere.'));
+    return card;
   }
 
-  function renameProfileSheet(id, after) {
-    const meta = Store.profileMeta(id);
-    const form = profileFormFields(meta || {});
+  // One-time migration chooser CARD (rare: several 1.0.1 profiles, no clear active one).
+  function migrationChooser(opts) {
+    opts = opts || {};
+    const cands = (Store.pendingMigration && Store.pendingMigration.candidates) || [];
+    return el('div', { class: 'welcome-card card raised col', style: 'gap:14px', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Choose your profile' },
+      el('div', { class: 'col', style: 'gap:4px' },
+        el('div', { class: 'eyebrow amber' }, 'ONE MORE STEP'),
+        el('h1', { class: 'h-display' }, 'Choose your profile'),
+        el('p', { class: 'small dim' }, 'This version keeps a single local profile. Pick the one to keep — the rest are saved to a backup on this device first. Only one profile can remain active.')),
+      el('div', { class: 'col', style: 'gap:10px' }, cands.map((p) =>
+        el('button', { class: 'profile-card card-tap', style: 'text-align:left; width:100%', onclick: () => { Store.commitMigrationChoice(p.id); if (opts.onDone) opts.onDone(); } },
+          el('div', { class: 'row', style: 'gap:10px; align-items:center' },
+            avatarBadge(p.avatar, 'sm'),
+            el('div', { style: 'min-width:0; flex:1' },
+              el('div', { class: 'pc-name' }, p.displayName, p.graduate ? el('span', { class: 'amber', style: 'margin-left:4px' }, '★') : null),
+              el('div', { class: 'pc-sub' }, '@' + p.username + ' · LV ' + p.level + ' · ' + p.completion + '% · ' + fmtWhen(p.lastPlayed))))))));
+  }
+
+  // Edit the single profile identity (shared form) — never regenerates the profile ID.
+  function editProfileSheet(after) {
+    const form = profileFormFields(Store.profileMeta() || {});
     const s = UI.sheet([
       el('div', { class: 'eyebrow phos' }, 'EDIT PROFILE'),
-      el('p', { class: 'small faint' }, 'Progress is untouched — this only changes how the profile looks.'),
+      el('p', { class: 'small faint' }, 'Progress, XP and achievements stay exactly as they are — this only updates your identity.'),
       form.node,
       el('div', { class: 'row' },
         el('button', { class: 'btn ghost', style: 'flex:1', onclick: () => s.close() }, 'Cancel'),
         el('button', { class: 'btn primary', style: 'flex:1', onclick: () => {
           const v = form.read(); if (!v) return;
-          Store.editProfile(id, v);
-          s.close();
-          UI.toast('Profile updated');
+          Store.editProfile(v);
+          s.close(); UI.toast('Profile updated');
           if (after) after();
         } }, 'Save')),
     ]);
     return s;
   }
 
-  function exportProfileFile(id) {
-    const json = Store.exportProfile(id);
-    if (!json) { UI.toast('Nothing to export'); return; }
-    const meta = Store.profileMeta(id);
+  function exportBackupFile() {
+    const json = Store.exportProfile();
+    if (!json) { UI.toast('Nothing to export yet'); return; }
+    const meta = Store.profileMeta();
     try {
       const blob = new Blob([json], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'txpps-profile-' + (meta ? meta.username : 'export') + '.json';
+      a.download = 'txpps-backup-' + (meta ? meta.username : 'profile') + '.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      UI.toast('Profile exported to a file');
+      UI.toast('Backup exported to a file');
     } catch (e) {
-      try { if (navigator.clipboard) navigator.clipboard.writeText(json); UI.toast('Profile JSON copied to clipboard'); } catch (e2) { UI.toast('Export blocked here — copy from Settings instead'); }
+      try { if (navigator.clipboard) navigator.clipboard.writeText(json); UI.toast('Backup JSON copied to clipboard'); } catch (e2) { UI.toast('Export blocked here'); }
     }
   }
 
-  function importProfileSheet(after) {
-    const ta = el('textarea', { class: 'io', placeholder: 'Paste exported profile JSON here…', 'aria-label': 'Profile JSON' });
+  // Import a backup as THE single profile. If one already exists, preview + confirm
+  // the replacement (Store backs the current one up automatically first).
+  function importReplaceSheet(after) {
+    const ta = el('textarea', { class: 'io', placeholder: 'Paste exported backup JSON here…', 'aria-label': 'Backup JSON' });
     const file = el('input', { type: 'file', accept: 'application/json,.json', style: 'display:none' });
-    file.addEventListener('change', () => {
-      const f = file.files && file.files[0]; if (!f) return;
-      const rd = new FileReader();
-      rd.onload = () => { ta.value = String(rd.result || ''); };
-      rd.readAsText(f);
-    });
+    file.addEventListener('change', () => { const f = file.files && file.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { ta.value = String(rd.result || ''); }; rd.readAsText(f); });
+    const doImport = () => {
+      if (!ta.value.trim()) { UI.toast('Paste JSON or choose a file first'); return; }
+      const p = Store.parseImport(ta.value);
+      if (!p.ok) { UI.toast(p.error); return; }
+      const m = p.meta; const hasCur = Store.hasProfile;
+      UI.confirmSheet(hasCur ? 'Replace your profile?' : 'Import this profile?',
+        (hasCur ? 'This REPLACES your current profile and progress. Your current profile is saved to a local backup first, so it can be recovered. ' : '') +
+        'Importing: ' + m.displayName + ' (@' + m.username + ') — ' + m.completion + '% complete, LV ' + m.level + '.',
+        hasCur ? 'Replace' : 'Import', () => {
+          const r = Store.importProfileText(ta.value);
+          if (r.ok) { s.close(); if (after) after(); App.reboot(); UI.toast(hasCur ? 'Profile replaced from backup' : 'Profile imported'); }
+          else UI.toast(r.error);
+        }, hasCur);
+    };
     const s = UI.sheet([
-      el('div', { class: 'eyebrow phos' }, 'IMPORT PROFILE'),
-      el('p', { class: 'small dim' }, 'Load a profile you exported before. It becomes a new local profile — nothing you already have is overwritten.'),
+      el('div', { class: 'eyebrow phos' }, 'IMPORT BACKUP'),
+      el('p', { class: 'small dim' }, Store.hasProfile
+        ? 'Load a backup you exported before. It replaces your current single profile — your current one is backed up first, and no second profile is created.'
+        : 'Load a backup you exported before to restore your profile.'),
       el('button', { class: 'btn sm', onclick: () => file.click() }, 'Choose a file…'),
       ta,
       el('div', { class: 'row' },
         el('button', { class: 'btn ghost', style: 'flex:1', onclick: () => s.close() }, 'Cancel'),
-        el('button', { class: 'btn primary', style: 'flex:1', onclick: () => {
-          if (!ta.value.trim()) { UI.toast('Paste JSON or choose a file first'); return; }
-          const r = Store.importProfileText(ta.value);
-          if (r.ok) { s.close(); if (after) after(); App.reboot(); UI.toast('Profile imported'); }
-          else UI.toast(r.error);
-        } }, 'Import')),
-    ]);
-    return s;
-  }
-
-  function switchProfileSheet() {
-    const rows = el('div', { class: 'col', style: 'gap:10px' });
-    let s;
-    function confirmDelete(p) {
-      UI.confirmSheet('Delete ' + p.displayName + '?',
-        'This permanently erases this profile and its progress on this device (' + p.completion + '% complete). This cannot be undone — Export it first if you might want it back.',
-        'Delete profile', () => {
-          const r = Store.deleteProfile(p.id);
-          UI.toast('Profile deleted');
-          if (r.needsWelcome) { s.close(); App.showWelcome(); return; }
-          if (r.switchedTo) App.reboot();
-          rebuild();
-        }, true);
-    }
-    function rebuild() {
-      rows.replaceChildren();
-      Store.listProfiles().forEach((p) => {
-        rows.appendChild(el('div', { class: 'profile-card' + (p.active ? ' active' : '') },
-          el('div', { class: 'row', style: 'gap:10px; align-items:center' },
-            avatarBadge(p.avatar, 'sm'),
-            el('div', { style: 'min-width:0; flex:1' },
-              el('div', { class: 'pc-name' }, p.displayName, p.graduate ? el('span', { class: 'amber', style: 'margin-left:4px' }, '★') : null, p.active ? el('span', { class: 'pc-active' }, '● active') : null),
-              el('div', { class: 'pc-sub' }, '@' + p.username + ' · LV ' + p.level + ' · ' + p.completion + '% · ' + fmtWhen(p.lastPlayed)))),
-          el('div', { class: 'row wrap', style: 'gap:6px; margin-top:8px' },
-            p.active ? null : el('button', { class: 'btn sm primary', onclick: () => { Store.switchProfile(p.id); s.close(); App.reboot(); UI.toast('Switched to ' + p.displayName); } }, 'Switch to'),
-            el('button', { class: 'btn sm ghost', onclick: () => renameProfileSheet(p.id, rebuild) }, 'Rename'),
-            el('button', { class: 'btn sm ghost', onclick: () => exportProfileFile(p.id) }, 'Export'),
-            el('button', { class: 'btn sm danger', onclick: () => confirmDelete(p) }, 'Delete'))));
-      });
-    }
-    rebuild();
-    s = UI.sheet([
-      el('div', { class: 'eyebrow phos' }, 'LOCAL PROFILES'),
-      el('p', { class: 'small dim' }, 'Each profile keeps its own progress on this device. Everything stays offline.'),
-      rows,
-      el('div', { class: 'col gap-s', style: 'margin-top:6px' },
-        el('button', { class: 'btn block', onclick: () => { s.close(); App.showWelcome('add'); } }, '＋ Create new profile'),
-        el('button', { class: 'btn ghost block', onclick: () => importProfileSheet() }, 'Import profile from a file')),
+        el('button', { class: 'btn primary', style: 'flex:1', onclick: doImport }, 'Continue')),
     ]);
     return s;
   }
@@ -1457,8 +1431,7 @@ const Views = (() => {
         el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear'))),
       st.bio ? el('p', { class: 'small', style: 'color:var(--ink-dim)' }, st.bio) : null,
       el('div', { class: 'row wrap', style: 'gap:8px' },
-        el('button', { class: 'btn sm', onclick: () => renameProfileSheet(Store.activeId, () => App.go('profile')) }, 'Edit profile'),
-        el('button', { class: 'btn sm ghost', onclick: () => switchProfileSheet() }, 'Switch profile'))));
+        el('button', { class: 'btn sm', onclick: () => editProfileSheet(() => App.go('profile')) }, 'Edit profile'))));
 
     if (grad) {
       main.appendChild(el('div', { class: 'card', style: 'border-color:var(--amber); background:linear-gradient(180deg, rgba(240,180,80,0.07), var(--bg1))' },
@@ -1481,7 +1454,7 @@ const Views = (() => {
       snapRow('Current zone', curZone ? ('Zone ' + curZone.num + ' — ' + curZone.title) : '—'),
       snapRow('Current lesson', grad ? 'Curriculum complete' : (curNode ? curNode.title : '—')),
       snapRow('Dictionary', dictPct + '% explored'),
-      snapRow('Last played', fmtWhen(st.lastPlayed)),
+      snapRow('Last active', fmtWhen(st.lastPlayed)),
       snapRow('Profile created', fmtDate(st.createdAt))));
 
     // achievements
@@ -1549,53 +1522,39 @@ const Views = (() => {
           seg);
       })()));
 
-    // data
-    const ioArea = el('textarea', { class: 'io', placeholder: 'Exported JSON appears here. To import: paste JSON here, then tap Import.', 'aria-label': 'Progress JSON' });
+    // data management
+    const ioArea = el('textarea', { class: 'io', placeholder: 'Your backup JSON appears here when you tap Export.', 'aria-label': 'Backup JSON' });
     main.appendChild(el('div', { class: 'card col', style: 'gap:10px' },
-      el('div', { class: 'eyebrow' }, 'PROFILE DATA'),
+      el('div', { class: 'eyebrow' }, 'BACKUP & DATA'),
       el('p', { class: 'small faint' }, Store.storageOk
-        ? 'This profile saves automatically to local storage on this device. Export a copy to back it up or move it to another device. Import loads a file as a new local profile — manage them all from your Profile page.'
-        : '⚠ Local storage is blocked in this browser — export your profile to keep it, since it can\'t be saved here.'),
+        ? 'Your profile saves automatically to local storage on this device. Export a backup to keep a copy or move it to another device; Import restores a backup, replacing the current profile (the current one is backed up first).'
+        : '⚠ Local storage is blocked in this browser — export a backup to keep your profile, since it can\'t be saved here.'),
       ioArea,
       el('div', { class: 'row wrap' },
         el('button', { class: 'btn sm', onclick: () => {
           ioArea.value = Store.exportJson();
           ioArea.select();
-          try { navigator.clipboard && navigator.clipboard.writeText(ioArea.value); UI.toast('Profile JSON copied to clipboard'); } catch (e) { UI.toast('JSON in the text box — copy it manually'); }
-        } }, 'Export'),
-        el('button', { class: 'btn sm', onclick: () => {
-          if (!ioArea.value.trim()) { UI.toast('Paste exported JSON into the box first'); return; }
-          const r = Store.importJson(ioArea.value);
-          if (r.ok) { UI.toast('Profile imported as a new profile'); App.reboot(); }
-          else UI.toast(r.error);
-        } }, 'Import'),
-        el('button', { class: 'btn sm', onclick: () => {
-          try {
-            const blob = new Blob([Store.exportJson()], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'txpps-vst-code-lab-progress.json';
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-          } catch (e) { UI.toast('Download blocked here — use Export + copy instead'); }
-        } }, 'Download file'))));
+          try { navigator.clipboard && navigator.clipboard.writeText(ioArea.value); UI.toast('Backup JSON copied to clipboard'); } catch (e) { UI.toast('JSON in the text box — copy it manually'); }
+        } }, 'Export backup'),
+        el('button', { class: 'btn sm', onclick: () => exportBackupFile() }, 'Download file'),
+        el('button', { class: 'btn sm ghost', onclick: () => importReplaceSheet() }, 'Import backup'))));
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:10px' },
       el('div', { class: 'eyebrow red' }, 'DANGER ZONE'),
+      el('p', { class: 'small faint' }, 'A full reset returns the app to its first-launch state.'),
       el('button', { class: 'btn danger block', onclick: () => {
-        UI.confirmSheet('RESET THIS PROFILE\'S PROGRESS?', 'XP, stars, streak, achievements and the practice queue will be wiped for this profile. Your name and avatar stay. This cannot be undone — export first if unsure. (To remove a whole profile, use Profile → Switch profile → Delete.)', 'Wipe progress', () => {
-          Store.reset();
-          UI.toast('Progress reset');
-          App.reboot();
+        UI.confirmSheet('RESET LOCAL PROFILE AND PROGRESS', 'This permanently removes your profile identity, all course progress, achievements, settings, and local backups on this device, then returns to the welcome screen. This cannot be undone — export a backup first if you might want any of it back.', 'Reset everything', () => {
+          Store.resetProfile();
+          App.showWelcome();
         }, true);
-      } }, 'Reset progress')));
+      } }, 'Reset local profile and progress')));
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.0.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.0.2, with a single local learner profile stored on this device.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
     return main;
   }
 
-  return { dashboard, map, lesson, challenge, project, boss, practice, practiceRun, daily, glossary, profile, settings, welcome, questionView, sequenceRunner, nodeKindLabel, conceptLabel };
+  return { dashboard, map, lesson, challenge, project, boss, practice, practiceRun, daily, glossary, profile, settings, welcome, migrationChooser, questionView, sequenceRunner, nodeKindLabel, conceptLabel };
 })();
