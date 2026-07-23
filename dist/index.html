@@ -4542,83 +4542,89 @@ const ZONE2_CHALLENGES = [
 
   /* ============ BOSS ============ */
   {
-    id: 'boss2', kind: 'boss', title: 'BOSS: The Haunted Synth', short: 'Zone 2 boss',
-    concepts: ['smart-pointers', 'move-semantics', 'threading', 'raii'],
-    brief: 'A collaborator\'s half-finished synth: it leaks, it drops out when the editor opens, and sometimes a preset loads as silence. Every ghost in it is a Zone 2 lesson wearing a sheet. Six stages, one retry each, clear 4 to ship it.',
+    id: 'boss2', kind: 'boss', title: 'BOSS: Ownership Crisis', short: 'Zone 2 boss', passNeed: 4,
+    concepts: ['object-lifetime', 'raii', 'smart-pointers', 'ownership-transfer', 'double-ownership'],
+    brief: 'A collaborator\'s synth has a corrupting ownership graph: objects allocated with no clear owner, resources that never release, pointers that outlive what they point to. Trace every object back to exactly one owner. Six repairs, one retry each, contain at least 4 to stabilise it.',
     stages: [
       {
-        type: 'compiler', concept: 'smart-pointers',
-        prompt: 'Stage 1 — It won\'t even build. Fix it while keeping single ownership.',
-        code: 'auto voice = std::make_unique<Voice>();\nactiveVoices.push_back(voice);',
-        error: "synth.cpp:2:29: error: use of deleted function\n'std::unique_ptr<Voice>::unique_ptr(const unique_ptr&)'",
+        type: 'mcq', concept: 'object-lifetime', qid: 'b2s1',
+        prompt: 'Phase 1 — Three objects, one has no owner watching it. When renderVoice() returns, which one leaks?',
+        code: 'void renderVoice() {\n    Envelope env;                        // 1\n    auto lfo = std::make_unique<LFO>();  // 2\n    Filter* filt = new Filter();         // 3\n}                                        // scope ends here',
         options: [
-          { t: '`activeVoices.push_back(std::move(voice));`', why: '' },
-          { t: 'Store raw pointers instead', why: 'Trading a build error for manual delete and double-free risk. Keep the safety; use the handover.' },
-          { t: 'Make the vector hold copies of Voice objects', why: 'Possible but changes the design — and copying voices mid-life duplicates state. The intended fix is one word: move.' },
-          { t: 'Remove the unique_ptr entirely', why: '"Delete the safety" is never the fix. The compiler is asking for a transfer, not a surrender.' },
+          { t: '(3) filt — a raw `new` with no `delete`. The pointer dies with the scope; the heap Filter is orphaned.', why: '' },
+          { t: '(1) env — it lives on the stack', why: 'Stack objects are destroyed automatically at the closing brace — env\'s destructor runs on the way out. Nothing leaks there.' },
+          { t: '(2) lfo — make_unique put it on the heap', why: 'It is on the heap, but unique_ptr owns it: when lfo leaves scope its destructor deletes the LFO. That is exactly what make_unique buys you.' },
+          { t: 'None — the compiler frees all three', why: 'The compiler only cleans up stack objects and RAII owners. A bare `new` with no matching `delete` is orphaned heap memory — nothing collects it for you.' },
         ],
         answer: 0,
-        explain: '"use of deleted function" on a unique_ptr copy = the compiler protecting single ownership. push_back(std::move(voice)) hands the voice into the pool — one owner, before and after.',
+        explain: 'Stack objects (env) and RAII owners (lfo) clean themselves up at scope end; a bare `new` (filt) has no owner, so it leaks. Modern fix: `auto filt = std::make_unique<Filter>();` — now it has one owner and an automatic release.',
       },
       {
-        type: 'bugspot', concept: 'threading',
-        prompt: 'Stage 2 — Dropouts whenever the editor repaints. Tap the cause.',
+        type: 'bugspot', concept: 'object-lifetime', qid: 'b2s2',
+        prompt: 'Phase 1 — This hands the caller a pointer to something that will not survive. Tap the line that dangles.',
         code: [
-          'void processBlock(AudioBuffer& buffer)',
+          'Preset* currentPreset()',
           '{',
-          '    std::lock_guard<std::mutex> lock(uiMutex);',
-          '    renderVoices(buffer);',
+          '    Preset p = loadDefault();',
+          '    return &p;',
           '}',
         ],
-        buggy: 2,
-        explain: 'The editor holds uiMutex while repainting; processBlock waits; the deadline dies. Knob values cross by atomic, streams by FIFO — locks never enter the render path.',
-        fix: 'Replace the shared state with std::atomic values',
+        buggy: 3,
+        explain: '`&p` is the address of a local. p\'s lifetime ends at the closing brace, so the caller gets a pointer to destroyed memory — a dangling pointer, undefined behavior. Return by value and let move / RVO carry it out safely.',
+        fix: 'Preset currentPreset() { ...; return p; }   // return by value',
       },
       {
-        type: 'predict', concept: 'move-semantics',
-        prompt: 'Stage 3 — Presets sometimes load as silence. Why?',
-        code: 'auto table = loadWavetable(path);\nengine.setTable(std::move(table));\nvalidateTable(table);   // "verify after applying"',
+        type: 'compiler', concept: 'ownership-transfer', qid: 'b2s3',
+        prompt: 'Phase 2 — Hand the filter from `a` to `b`. It will not build. What is the fix?',
+        code: 'std::unique_ptr<Filter> a = std::make_unique<Filter>();\nstd::unique_ptr<Filter> b = a;   // give ownership to b',
+        error: "ownership.cpp:2:31: error: use of deleted function\n'std::unique_ptr<Filter>::unique_ptr(const unique_ptr&)'",
         options: [
-          { t: 'validateTable checks an empty husk — the data moved into the engine', why: '' },
-          { t: 'std::move deleted the table', why: 'Nothing is deleted — the contents changed owner. But the old name now holds an empty vector, and validating *that* is meaningless.' },
-          { t: 'loadWavetable always fails', why: 'The load is fine — the post-move read is the ghost.' },
-          { t: 'setTable copies, so everything works', why: 'std::move exists to prevent exactly that copy — and it did. The husk is the price.' },
+          { t: '`std::unique_ptr<Filter> b = std::move(a);`', why: '' },
+          { t: '`std::unique_ptr<Filter> b = a.get();`', why: '`get()` copies out the raw pointer without transferring ownership — now `a` and the raw pointer both think they manage the Filter. That is double ownership and a double delete waiting to happen.' },
+          { t: 'Make `Filter` copyable', why: 'The error is not about Filter. unique_ptr forbids copying on purpose — two owners of one resource is the bug it prevents. Move, do not copy.' },
+          { t: 'Switch both to `std::shared_ptr`', why: 'That changes the design to shared ownership when you only need to hand it over once. For a one-time transfer, `std::move` is the precise tool.' },
         ],
         answer: 0,
-        explain: 'Validating after moving validates nothing. Check *before* the handover — or ask the engine to validate what it received. Moved-from means empty-handed.',
+        explain: 'unique_ptr is non-copyable by design: one resource, one owner. `std::move(a)` transfers ownership — afterward `b` owns the Filter and `a` is empty (null). The resource is still deleted exactly once, when `b` dies.',
       },
       {
-        type: 'order', concept: 'threading',
-        prompt: 'Stage 4 — Rebuild the knob-to-audio path properly.',
-        lines: [
-          '// UI thread:',
-          'targetGain.store(sliderValue);',
-          '// audio thread:',
-          'float target = targetGain.load();',
-          'applySmoothed(target);',
-        ],
-        explain: 'Store → load → smooth. Safe crossing, musical result — the pipeline every parameter in this synth now uses.',
-      },
-      {
-        type: 'fill', concept: 'raii',
-        prompt: 'Stage 5 — The old code leaked its sample file handle on early returns. Give the wrapper its RAII release.',
-        code: 'class SampleHandle {\npublic:\n    SampleHandle(const char* path) { open(path); }\n    ___()                          { close(); }\n};',
-        accept: ['~SampleHandle'],
+        type: 'fill', concept: 'raii', qid: 'b2s4',
+        prompt: 'Phase 2 — This guard opens a file but leaks the handle on every early return. Give it the member that releases automatically.',
+        code: 'class FileGuard {\npublic:\n    FileGuard(const char* path) { handle = openFile(path); }\n    ___()                       { closeFile(handle); }\nprivate:\n    FileHandle handle;\n};',
+        accept: ['~FileGuard'],
         placeholder: 'name',
-        hint: 'The power-down twin of the constructor.',
-        explain: '~SampleHandle(): with close() wired to the destructor, every path out — normal, early return, error — releases the file. The leak is structurally gone.',
+        hint: 'The constructor\'s counterpart — runs automatically when the guard leaves scope.',
+        mistakes: [
+          { match: '^FileGuard$', msg: 'Missing the tilde — a destructor is written `~FileGuard`, the power-down twin of the constructor.' },
+          { match: 'delete', msg: 'No manual delete needed. Name the destructor `~FileGuard`; wiring closeFile into it releases on every exit path.' },
+        ],
+        explain: '`~FileGuard()`: with closeFile wired into the destructor, every exit — normal return, early return, or exception — releases the file. That is RAII: the resource\'s lifetime is tied to an object\'s, so cleanup cannot be forgotten.',
       },
       {
-        type: 'mcq', concept: 'threading',
-        prompt: 'Stage 6 — Final ship check. Which belongs in this synth\'s processBlock?',
+        type: 'mcq', concept: 'double-ownership', qid: 'b2s5',
+        prompt: 'Phase 3 — Both pools store the same raw `Voice*`, and each deletes its voices on teardown. What happens?',
+        code: 'Voice* v = new Voice();\npoolA.push_back(v);   // pool A holds the raw pointer\npoolB.push_back(v);   // pool B holds the SAME raw pointer\n// teardown: each pool deletes the voices it holds',
         options: [
-          { t: 'Atomic loads, smoothing math, and rendering into pre-allocated buffers', why: '' },
-          { t: 'A quick std::cout to trace gain values', why: 'I/O on the deadline thread — the Synth Skeleton\'s ghost. Meter through atomics instead.' },
-          { t: 'make_unique for voices as notes arrive', why: 'Allocation on stage. The pool was sized in prepareToPlay; busy pools steal.' },
-          { t: 'A try/catch around everything, throwing on bad state', why: 'Throwing is banned where the deadline lives — design the path so it can\'t need to.' },
+          { t: 'Double delete — the Voice is freed twice. Undefined behavior: crash or heap corruption.', why: '' },
+          { t: 'Nothing — deleting the same pointer twice is harmless', why: 'The second delete operates on already-freed memory: undefined behavior. It may crash now, corrupt the heap, or rot silently until it crashes somewhere else.' },
+          { t: 'A memory leak — the Voice is never freed', why: 'The opposite problem — it is freed too many times, not too few. Two owners each claim responsibility for one resource.' },
+          { t: 'The compiler rejects the second push_back', why: 'Copying a raw pointer is perfectly legal — which is exactly why raw pointers cannot express ownership. The compiler cannot see the intent.' },
         ],
         answer: 0,
-        explain: 'Load, compute, write — on memory that already exists. That\'s the whole legal vocabulary, and this synth now speaks it fluently. The haunting is over: Zone 2 cleared.',
+        explain: 'Two owners, one resource → double delete → undefined behavior. If both pools truly share the voice, say so: `std::shared_ptr<Voice>` frees it once, when the last owner leaves. If only one should own it, keep a single `unique_ptr` and let the other pool hold a non-owning (borrowed) pointer.',
+      },
+      {
+        type: 'predict', concept: 'smart-pointers', qid: 'b2s6',
+        prompt: 'Phase 3 — Final repair. Two Tracks hold a shared_ptr to each other, then both go out of scope. What happens, and what fixes it?',
+        code: 'struct Track {\n    std::shared_ptr<Track> link;   // points to another Track\n};\n// a->link = b;   b->link = a;   // the two Tracks now reference each other',
+        options: [
+          { t: 'Neither is freed — each keeps the other\'s reference count at 1. Break the cycle: make one edge a `std::weak_ptr<Track>`.', why: '' },
+          { t: 'Both are freed normally — shared_ptr always cleans up', why: 'shared_ptr frees when its count reaches zero, but here each object holds the other alive, so neither count ever hits zero. A reference cycle: a leak smart pointers alone cannot solve.' },
+          { t: 'Double delete — they free each other twice', why: 'The opposite: nothing is freed. The mutual shared_ptrs pin both counts at 1 forever.' },
+          { t: 'It will not compile — shared_ptrs cannot reference each other', why: 'It compiles fine — which is what makes the leak sneaky. The fix is to make the non-owning edge a `weak_ptr`, which does not raise the count.' },
+        ],
+        answer: 0,
+        explain: 'A shared_ptr cycle is a leak: the mutual references keep each refcount above zero, so neither destructor ever runs. Decide which edge is ownership and which is a back-reference, and make the back-reference a `std::weak_ptr` — it observes without owning. The cycle breaks and both objects free. Ownership graph stabilised: Zone 2 cleared.',
       },
     ],
   },
@@ -19847,6 +19853,28 @@ const BossKit = (() => {
       presentation: { integrityLabel: 'SIGNAL INTEGRITY', hpLabel: 'CORRUPTION', defeatLineLabel: 'REPAIR THRESHOLD' },
       accessibility: { textOnly: 'Answer stages to repair the plugin. Each correct stage removes one block of corruption; each failed stage costs one integrity cell. Repair enough stages to win.' },
     },
+    // ---- Zone 2 (v1.3.1) — the first fully-authored production encounter.
+    //      Theme: modern C++ memory ownership. Questions live in the boss2
+    //      curriculum node (nodeRef); phases/dialogue/viz are authored here. ----
+    boss2: {
+      id: 'boss2', zoneId: 'z2', nodeRef: 'boss2',
+      name: 'THE OWNERSHIP CRISIS',
+      subtitle: 'Corrupted ownership graph — objects with no owner',
+      description: 'The synth\'s ownership graph is corrupting: objects allocated with no clear owner, resources that never release, pointers that outlive what they point to. Trace every object back to exactly one owner before the leaks cascade.',
+      phases: [
+        { id: 'identify', until: 4, title: 'PHASE 1 — WHO OWNS THIS?', behavior: 'Objects are appearing with no clear owner. Work out who is responsible for cleaning up each one.' },
+        { id: 'repair', until: 2, title: 'PHASE 2 — RESOURCE REPAIR', behavior: 'Owners are wrong or missing. Give each resource a safe owner and a guaranteed release.' },
+        { id: 'cascade', until: -1, title: 'PHASE 3 — OWNERSHIP CASCADE', behavior: 'Ownership is tangled across the graph. Untangle the final cycles before the leaks spread.' },
+      ],
+      presentation: { integrityLabel: 'GRAPH INTEGRITY', hpLabel: 'CORRUPTION', defeatLineLabel: 'CONTAINMENT' },
+      accessibility: { textOnly: 'Answer each ownership problem to contain the corruption. Each correct repair removes one block of corruption; each miss costs one graph-integrity cell. Contain enough repairs to stabilise the ownership graph.' },
+      dialogue: {
+        briefing: 'Every object needs exactly one owner and a clean path to release. Trace each allocation to its owner — I will help you read the graph.',
+        victory: 'Ownership graph stabilised. Every resource has one owner and a guaranteed release — that is production-grade C++.',
+        defeat: 'A few owners are still unclear, so the graph is not contained yet — but nothing shipped and nothing broke. Review the ownership rules and run it again.',
+      },
+      viz: { t: 'owners', mode: 'shared' },   // the generator draws its own caption
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -19867,7 +19895,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 2; z <= 7; z++) {
+    for (let z = 3; z <= 7; z++) {   // Zone 2 is now a production encounter (DEFS.boss2); Zones 3–7 remain development
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {
@@ -20058,29 +20086,34 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
+  const PRODUCTION = { 1: true, 2: true };                    // Zones 1–2 are production encounters
+  function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
+
   const REGISTRY = {};
   for (let n = 1; n <= 7; n++) {
-    const production = (n === 1);
+    const production = !!PRODUCTION[n];
     const nodeId = 'boss' + n;
+    const definitionId = production ? nodeId : ('dev_boss' + n);
+    const def = bkdef(definitionId);
     REGISTRY[nodeId] = {
       id: nodeId,
       zoneId: 'z' + n,
       zoneNum: n,
       nodeId: nodeId,
-      title: production ? 'THE BROKEN GAIN PLUGIN' : ('Zone ' + n + ' Boss'),
-      subtitle: production ? 'GainPlug v0.9 — corrupted inheritance' : (zoneTitle(n) + ' — encounter in development'),
+      title: production ? ((def && def.name) || ('Zone ' + n + ' Boss')) : ('Zone ' + n + ' Boss'),
+      subtitle: production ? ((def && def.subtitle) || zoneTitle(n)) : (zoneTitle(n) + ' — encounter in development'),
       theme: zoneTitle(n),
       status: production ? 'production' : 'development',
-      implementationLevel: production ? 'reference' : 'development',
+      implementationLevel: production ? (n === 1 ? 'reference' : 'production') : 'development',
       prerequisiteRule: 'zoneMastery',                       // lessons + missions done + avg mastery >= 2
-      definitionId: production ? 'boss1' : ('dev_boss' + n), // the BossKit definition to instantiate
+      definitionId: definitionId,                            // the BossKit definition to instantiate
       introSequence: 'standard',
       phaseCount: 3,
       rewardId: 'zone' + n + '_clear',                       // the achievement a real learner victory grants
       completionRule: 'passNeed',                            // clear passNeed of N stages (owned by the runner)
       nextBossId: n < 7 ? ('boss' + (n + 1)) : null,
       accessibilityLabel: production
-        ? 'Zone 1 boss — the broken gain plugin. Production encounter.'
+        ? ('Zone ' + n + ' boss — production encounter.')
         : ('Zone ' + n + ' boss — development encounter, QA only, not finished content.'),
       qaLaunchable: true,                                    // every boss can be launched from Owner QA
       learnerLaunchable: production,                         // only the production BossKit encounter is learner-facing
@@ -21471,6 +21504,10 @@ const Views = (() => {
     'references': 'references', 'pointers': 'pointers', 'memory': 'memory safety',
     'classes': 'classes', 'encapsulation': 'encapsulation', 'headers': 'headers',
     'compiler-errors': 'compiler errors', 'realtime-safety': 'real-time safety',
+    // Zone 2 — memory ownership (v1.3.1)
+    'object-lifetime': 'object lifetime', 'raii': 'RAII', 'smart-pointers': 'smart pointers',
+    'ownership-transfer': 'ownership transfer', 'double-ownership': 'double ownership',
+    'move-semantics': 'move semantics',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -21859,6 +21896,7 @@ const Views = (() => {
             ? 'Integrity ran out this run. No damage done: your progress is untouched and nothing was recorded. Sharpen the weak concepts and run it again.'
             : 'You need ' + passNeed + '. Nothing was banked this run — clear the session to collect it. Your existing XP and completed lessons are safe.'),
           concepts.length ? el('p', { class: 'small faint' }, 'Concepts to review: ' + concepts.join(', ')) : null,
+          (d.dialogue && d.dialogue.defeat) ? el('p', { class: 'small faint' }, 'PATCH: ' + d.dialogue.defeat) : null,
           simulated() ? el('div', { class: 'qa-note', role: 'note' }, 'QA / development — no real progress changed.') : null),
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review lessons'),
         el('button', { class: 'btn block', onclick: () => { retry(); } }, 'Retry'),
@@ -21879,6 +21917,7 @@ const Views = (() => {
           el('div', { class: 'xp-pop', style: 'font-size:24px' }, '+' + result.earned + ' XP'),
           el('div', { class: 'small dim' }, result.correct + ' of ' + result.total + ' stages · ' + result.firstTry + ' first try · ' + acc + '% accuracy'),
           concepts.length ? el('p', { class: 'small faint' }, 'Concepts demonstrated: ' + concepts.join(', ')) : null,
+          (d.dialogue && d.dialogue.victory) ? el('p', { class: 'small faint' }, 'PATCH: ' + d.dialogue.victory) : null,
           el('div', { class: simulated() ? 'qa-note' : 'small phos', role: 'note' }, simulated()
             ? 'QA / development — result simulated. No XP, stars, or completion recorded.'
             : ('Rewards granted: +' + result.earned + ' XP, mastery stars, and Zone ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' cleared.')),
@@ -21915,7 +21954,8 @@ const Views = (() => {
       el('p', { class: 'small', style: 'color:var(--ink-dim)' }, d.description),
       el('p', { class: 'small faint' }, d.accessibility.textOnly),
       concepts.length ? el('p', { class: 'small faint' }, 'Concepts tested: ' + concepts.join(', ')) : null,
-      el('p', { class: 'small faint' }, 'PATCH: ' + (development ? 'Framework check — I am driving diagnostics only.' : 'Diagnostics ready. Read each signal; I am with you.')),
+      (d.viz && typeof Viz !== 'undefined') ? Viz.render(d.viz) : null,   // lightweight authored visual (e.g. ownership graph)
+      el('p', { class: 'small faint' }, 'PATCH: ' + (development ? 'Framework check — I am driving diagnostics only.' : ((d.dialogue && d.dialogue.briefing) || 'Diagnostics ready. Read each signal; I am with you.'))),
       el('div', { class: 'row wrap mt-s' },
         el('span', { class: 'chip' }, session.snapshot.maxHp + ' stages'),
         el('span', { class: 'chip' }, '1 retry per stage'),
@@ -22682,12 +22722,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.0'));
+      el('span', { class: 'mono small phos' }, 'v1.3.1'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.0 — a single local learner profile stored on this device, PATCH the workshop assistant, the production Zone 1 boss encounter, a seven-zone boss-campaign framework (Zones 2–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.1 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–2 (Zone 2: Ownership Crisis, modern C++ memory ownership), a seven-zone boss-campaign framework (Zones 3–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.

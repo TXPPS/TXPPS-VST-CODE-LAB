@@ -98,6 +98,22 @@ flow (review/retry), plus a validated, production-only session resume. Rewards
 stay authoritative and idempotent; QA simulations and development encounters
 never touch real progression.
 
+**Version 1.3.1 — Zone 2 Boss: Ownership Crisis** promotes Zone 2 from a
+development encounter to the first fully-authored production BossKit boss, and
+sets the quality bar for future educational bosses. Themed as a corrupting
+memory-ownership graph (no fantasy lore — it reads like debugging a real system),
+its six technically-accurate stages teach modern C++ ownership through gameplay
+across three phases: **Who Owns This?** (stack vs heap, object lifetime, dangling
+references), **Resource Repair** (unique_ptr, ownership transfer via `std::move`,
+RAII destructors), and **Ownership Cascade** (double ownership / double delete,
+shared_ptr reference cycles broken with weak_ptr). Correct answers describe the
+repair, wrong answers the engineering consequence (leaked, orphaned, double
+delete) — PATCH stays supportive throughout with authored briefing / victory /
+defeat dialogue, and a reused ownership-graph diagram lightly illustrates the
+intro. It runs on the same shared encounter shell (HUD, phases, victory/defeat,
+retry, resume) and the same Owner QA campaign console; Zones 3–7 remain
+development encounters.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,

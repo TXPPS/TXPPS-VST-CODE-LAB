@@ -46,6 +46,28 @@ const BossKit = (() => {
       presentation: { integrityLabel: 'SIGNAL INTEGRITY', hpLabel: 'CORRUPTION', defeatLineLabel: 'REPAIR THRESHOLD' },
       accessibility: { textOnly: 'Answer stages to repair the plugin. Each correct stage removes one block of corruption; each failed stage costs one integrity cell. Repair enough stages to win.' },
     },
+    // ---- Zone 2 (v1.3.1) — the first fully-authored production encounter.
+    //      Theme: modern C++ memory ownership. Questions live in the boss2
+    //      curriculum node (nodeRef); phases/dialogue/viz are authored here. ----
+    boss2: {
+      id: 'boss2', zoneId: 'z2', nodeRef: 'boss2',
+      name: 'THE OWNERSHIP CRISIS',
+      subtitle: 'Corrupted ownership graph — objects with no owner',
+      description: 'The synth\'s ownership graph is corrupting: objects allocated with no clear owner, resources that never release, pointers that outlive what they point to. Trace every object back to exactly one owner before the leaks cascade.',
+      phases: [
+        { id: 'identify', until: 4, title: 'PHASE 1 — WHO OWNS THIS?', behavior: 'Objects are appearing with no clear owner. Work out who is responsible for cleaning up each one.' },
+        { id: 'repair', until: 2, title: 'PHASE 2 — RESOURCE REPAIR', behavior: 'Owners are wrong or missing. Give each resource a safe owner and a guaranteed release.' },
+        { id: 'cascade', until: -1, title: 'PHASE 3 — OWNERSHIP CASCADE', behavior: 'Ownership is tangled across the graph. Untangle the final cycles before the leaks spread.' },
+      ],
+      presentation: { integrityLabel: 'GRAPH INTEGRITY', hpLabel: 'CORRUPTION', defeatLineLabel: 'CONTAINMENT' },
+      accessibility: { textOnly: 'Answer each ownership problem to contain the corruption. Each correct repair removes one block of corruption; each miss costs one graph-integrity cell. Contain enough repairs to stabilise the ownership graph.' },
+      dialogue: {
+        briefing: 'Every object needs exactly one owner and a clean path to release. Trace each allocation to its owner — I will help you read the graph.',
+        victory: 'Ownership graph stabilised. Every resource has one owner and a guaranteed release — that is production-grade C++.',
+        defeat: 'A few owners are still unclear, so the graph is not contained yet — but nothing shipped and nothing broke. Review the ownership rules and run it again.',
+      },
+      viz: { t: 'owners', mode: 'shared' },   // the generator draws its own caption
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -66,7 +88,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 2; z <= 7; z++) {
+    for (let z = 3; z <= 7; z++) {   // Zone 2 is now a production encounter (DEFS.boss2); Zones 3–7 remain development
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {

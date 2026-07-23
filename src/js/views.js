@@ -711,6 +711,10 @@ const Views = (() => {
     'references': 'references', 'pointers': 'pointers', 'memory': 'memory safety',
     'classes': 'classes', 'encapsulation': 'encapsulation', 'headers': 'headers',
     'compiler-errors': 'compiler errors', 'realtime-safety': 'real-time safety',
+    // Zone 2 — memory ownership (v1.3.1)
+    'object-lifetime': 'object lifetime', 'raii': 'RAII', 'smart-pointers': 'smart pointers',
+    'ownership-transfer': 'ownership transfer', 'double-ownership': 'double ownership',
+    'move-semantics': 'move semantics',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -1099,6 +1103,7 @@ const Views = (() => {
             ? 'Integrity ran out this run. No damage done: your progress is untouched and nothing was recorded. Sharpen the weak concepts and run it again.'
             : 'You need ' + passNeed + '. Nothing was banked this run — clear the session to collect it. Your existing XP and completed lessons are safe.'),
           concepts.length ? el('p', { class: 'small faint' }, 'Concepts to review: ' + concepts.join(', ')) : null,
+          (d.dialogue && d.dialogue.defeat) ? el('p', { class: 'small faint' }, 'PATCH: ' + d.dialogue.defeat) : null,
           simulated() ? el('div', { class: 'qa-note', role: 'note' }, 'QA / development — no real progress changed.') : null),
         el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review lessons'),
         el('button', { class: 'btn block', onclick: () => { retry(); } }, 'Retry'),
@@ -1119,6 +1124,7 @@ const Views = (() => {
           el('div', { class: 'xp-pop', style: 'font-size:24px' }, '+' + result.earned + ' XP'),
           el('div', { class: 'small dim' }, result.correct + ' of ' + result.total + ' stages · ' + result.firstTry + ' first try · ' + acc + '% accuracy'),
           concepts.length ? el('p', { class: 'small faint' }, 'Concepts demonstrated: ' + concepts.join(', ')) : null,
+          (d.dialogue && d.dialogue.victory) ? el('p', { class: 'small faint' }, 'PATCH: ' + d.dialogue.victory) : null,
           el('div', { class: simulated() ? 'qa-note' : 'small phos', role: 'note' }, simulated()
             ? 'QA / development — result simulated. No XP, stars, or completion recorded.'
             : ('Rewards granted: +' + result.earned + ' XP, mastery stars, and Zone ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' cleared.')),
@@ -1155,7 +1161,8 @@ const Views = (() => {
       el('p', { class: 'small', style: 'color:var(--ink-dim)' }, d.description),
       el('p', { class: 'small faint' }, d.accessibility.textOnly),
       concepts.length ? el('p', { class: 'small faint' }, 'Concepts tested: ' + concepts.join(', ')) : null,
-      el('p', { class: 'small faint' }, 'PATCH: ' + (development ? 'Framework check — I am driving diagnostics only.' : 'Diagnostics ready. Read each signal; I am with you.')),
+      (d.viz && typeof Viz !== 'undefined') ? Viz.render(d.viz) : null,   // lightweight authored visual (e.g. ownership graph)
+      el('p', { class: 'small faint' }, 'PATCH: ' + (development ? 'Framework check — I am driving diagnostics only.' : ((d.dialogue && d.dialogue.briefing) || 'Diagnostics ready. Read each signal; I am with you.'))),
       el('div', { class: 'row wrap mt-s' },
         el('span', { class: 'chip' }, session.snapshot.maxHp + ' stages'),
         el('span', { class: 'chip' }, '1 retry per stage'),
@@ -1922,12 +1929,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.0'));
+      el('span', { class: 'mono small phos' }, 'v1.3.1'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.0 — a single local learner profile stored on this device, PATCH the workshop assistant, the production Zone 1 boss encounter, a seven-zone boss-campaign framework (Zones 2–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.1 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–2 (Zone 2: Ownership Crisis, modern C++ memory ownership), a seven-zone boss-campaign framework (Zones 3–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.

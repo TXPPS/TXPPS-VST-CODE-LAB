@@ -17,29 +17,34 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
+  const PRODUCTION = { 1: true, 2: true };                    // Zones 1–2 are production encounters
+  function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
+
   const REGISTRY = {};
   for (let n = 1; n <= 7; n++) {
-    const production = (n === 1);
+    const production = !!PRODUCTION[n];
     const nodeId = 'boss' + n;
+    const definitionId = production ? nodeId : ('dev_boss' + n);
+    const def = bkdef(definitionId);
     REGISTRY[nodeId] = {
       id: nodeId,
       zoneId: 'z' + n,
       zoneNum: n,
       nodeId: nodeId,
-      title: production ? 'THE BROKEN GAIN PLUGIN' : ('Zone ' + n + ' Boss'),
-      subtitle: production ? 'GainPlug v0.9 — corrupted inheritance' : (zoneTitle(n) + ' — encounter in development'),
+      title: production ? ((def && def.name) || ('Zone ' + n + ' Boss')) : ('Zone ' + n + ' Boss'),
+      subtitle: production ? ((def && def.subtitle) || zoneTitle(n)) : (zoneTitle(n) + ' — encounter in development'),
       theme: zoneTitle(n),
       status: production ? 'production' : 'development',
-      implementationLevel: production ? 'reference' : 'development',
+      implementationLevel: production ? (n === 1 ? 'reference' : 'production') : 'development',
       prerequisiteRule: 'zoneMastery',                       // lessons + missions done + avg mastery >= 2
-      definitionId: production ? 'boss1' : ('dev_boss' + n), // the BossKit definition to instantiate
+      definitionId: definitionId,                            // the BossKit definition to instantiate
       introSequence: 'standard',
       phaseCount: 3,
       rewardId: 'zone' + n + '_clear',                       // the achievement a real learner victory grants
       completionRule: 'passNeed',                            // clear passNeed of N stages (owned by the runner)
       nextBossId: n < 7 ? ('boss' + (n + 1)) : null,
       accessibilityLabel: production
-        ? 'Zone 1 boss — the broken gain plugin. Production encounter.'
+        ? ('Zone ' + n + ' boss — production encounter.')
         : ('Zone ' + n + ' boss — development encounter, QA only, not finished content.'),
       qaLaunchable: true,                                    // every boss can be launched from Owner QA
       learnerLaunchable: production,                         // only the production BossKit encounter is learner-facing
