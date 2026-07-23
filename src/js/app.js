@@ -6,6 +6,8 @@
 const App = (() => {
   const { el } = UI;
   const root = document.getElementById('app');
+  const EV = GameBus.EVENTS;
+  function emitG(t, p) { try { GameBus.emit(t, p); } catch (e) { /* game layer is decorative */ } }
   let current = { name: 'dashboard', params: {} };
   let topbarEl = null;
   let tabbarEl = null;
@@ -76,6 +78,9 @@ const App = (() => {
 
   function go(name, params) {
     if (!SCREENS[name]) name = 'dashboard';
+    const from = current.name;
+    emitG(EV.NAVIGATION_SELECTED, { from, to: name });
+    try { Game.onRoute(); } catch (e) { /* decorative */ }   // cancel stale reactions/dialogue
     // cleanup old screen (scope canvas raf etc.)
     if (screenEl) {
       screenEl.querySelectorAll('.scope-wrap').forEach((sw) => { if (sw.cleanup) sw.cleanup(); });
@@ -100,6 +105,7 @@ const App = (() => {
     root.insertBefore(view, tabbarEl);
     renderTabbar();
     window.scrollTo({ top: 0 });
+    emitG(EV.NAVIGATION_COMPLETED, { from, to: name });
   }
 
   function openNode(id) {
@@ -107,6 +113,8 @@ const App = (() => {
     if (!node) { UI.toast('Content not found'); return; }
     Sfx.tap();
     Store.setCurrentNode(id);
+    const z = Store.zoneOfNode(id);
+    emitG(EV.LESSON_ENTERED, { nodeId: id, kind: node.kind, zoneId: z ? z.id : null });
     if (node.kind === 'lesson') go('lesson', { id });
     else if (node.kind === 'project') go('project', { id });
     else if (node.kind === 'boss') go('boss', { id });
@@ -115,10 +123,13 @@ const App = (() => {
 
   function awardXp(amount) {
     if (!amount || amount <= 0) { Store.touchStreak(); renderTopbar(); return; }
+    const before = Store.level();
     const r = Store.addXp(amount);
     renderTopbar();
+    emitG(EV.XP_GAINED, { xp: amount, total: Store.state.xp });
     if (r.leveledUp) {
       Sfx.levelUp();
+      emitG(EV.RANK_UP, { from: before, to: r.level, level: r.level, rank: Store.levelTitle() });
       UI.toast('▲ LEVEL UP — LV ' + r.level + ': ' + Store.levelTitle(), 3200);
     }
     flushAchievements();
@@ -128,7 +139,7 @@ const App = (() => {
     const ids = Store.drainAchievements();
     ids.forEach((id, i) => {
       const a = ACHIEVEMENTS.find((x) => x.id === id);
-      if (a) setTimeout(() => UI.toast('🏆 ' + a.name + ' — ' + a.desc, 3000), 400 + i * 3200);
+      if (a) { emitG(EV.ACHIEVEMENT_UNLOCKED, { achievementId: id, name: a.name }); setTimeout(() => UI.toast('🏆 ' + a.name + ' — ' + a.desc, 3000), 400 + i * 3200); }
     });
   }
 
@@ -210,6 +221,7 @@ const App = (() => {
   // everywhere, not just at boot, per the "notify the learner" requirement.
   function notifyIfRecovered() {
     if (Store.recovered) {
+      emitG(EV.STORAGE_RECOVERED, { severity: 'info' });
       UI.toast('⚠ A save looked corrupted — we restored your previous backup. No progress lost.', 5200);
       Store.clearRecovered();
     }
@@ -217,6 +229,8 @@ const App = (() => {
 
   function boot() {
     try {
+      emitG(EV.APPLICATION_BOOT_STARTED, {});
+      try { Game.init(); } catch (e) { /* the game-feel layer must never block boot */ }
       // tap-to-define: abbreviations in prose open their dictionary card
       document.addEventListener('click', (e) => {
         const tl = e.target.closest && e.target.closest('.term-link');
@@ -244,11 +258,13 @@ const App = (() => {
 
       applyCodeSize();
       applyMotion();
+      emitG(EV.OFFLINE_READY, {});
       if (Store.pendingMigration) { showMigrationChooser(); return; }   // rare: several 1.0.1 profiles
       if (Store.needsWelcome) { showWelcome(); return; }
       startAutosave();
       notifyIfRecovered();
       go('dashboard');
+      emitG(EV.APPLICATION_READY, { profileId: Store.state && Store.state.id });
     } catch (err) {
       root.innerHTML = '';
       root.appendChild(el('div', { style: 'padding:24px; font-family:monospace; color:#EAE4D4' },

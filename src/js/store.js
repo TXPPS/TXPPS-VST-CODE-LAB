@@ -34,6 +34,8 @@ const Store = (() => {
     return (h >>> 0).toString(16);
   }
   function newId() { return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  // Fire a decorative game-layer event, never letting it affect persistence.
+  function bus(t, p) { try { if (typeof GameBus !== 'undefined') GameBus.emit(t, p); } catch (e) { /* decorative */ } }
 
   function cleanName(s) { return String(s == null ? '' : s).replace(/[\x00-\x1f]/g, '').trim().slice(0, 40); }
   function cleanUser(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24); }
@@ -236,6 +238,10 @@ const Store = (() => {
     s.streak = (s.streak && typeof s.streak === 'object') ? { count: s.streak.count | 0, last: String(s.streak.last || '') } : d.streak;
     s.achievements = Array.isArray(s.achievements) ? s.achievements.filter((a) => typeof a === 'string') : [];
     s.settings = { ...d.settings, ...(s.settings && typeof s.settings === 'object' ? s.settings : {}) };
+    // v1.1.0 game-feel settings live under settings.game; keep it an object so
+    // older v1.0.2 profiles simply fall back to defaults (applied at read time).
+    if (s.settings.game && typeof s.settings.game !== 'object') delete s.settings.game;
+    if (s.settings.game && (!s.settings.game.seen || typeof s.settings.game.seen !== 'object')) s.settings.game.seen = {};
     s.dailyDone = s.dailyDone | 0;
     s.practiceCleared = s.practiceCleared | 0;
     if (!['s', 'm', 'l'].includes(s.settings.codeSize)) s.settings.codeSize = 'm';
@@ -286,6 +292,7 @@ const Store = (() => {
     if (!hasProfile) return;                // welcome or migration pending — nothing authoritative to persist yet
     state.lastPlayed = nowIso();
     writeProfile(state);
+    if (!storageOk) bus('LOCAL_SAVE_FAILED', { saveStatus: 'failed', severity: 'error' });
   }
 
   /* ---- date helpers ---- */
@@ -517,7 +524,18 @@ const Store = (() => {
   }
 
   /* ---- settings / io ---- */
-  function setSetting(k, v) { state.settings[k] = v; save(); }
+  function setSetting(k, v) { state.settings[k] = v; save(); bus('SETTINGS_UPDATED', { key: k }); }
+  // Game-feel settings live under settings.game (dot-path for nested audio.*).
+  function setGameSetting(key, value) {
+    const s = state.settings; s.game = s.game || {};
+    if (key.indexOf('.') > -1) { const p = key.split('.'); s.game[p[0]] = s.game[p[0]] || {}; s.game[p[0]][p[1]] = value; }
+    else s.game[key] = value;
+    save(); bus('SETTINGS_UPDATED', { key: 'game.' + key });
+    return true;
+  }
+  function gameSetting(key, fallback) {
+    try { const g = state.settings.game || {}; if (key.indexOf('.') > -1) { const p = key.split('.'); return (g[p[0]] || {})[p[1]]; } return g[key]; } catch (e) { return fallback; }
+  }
 
   function markDictViewed(id) {
     if (!state.dictViewed.includes(id)) {
@@ -584,6 +602,7 @@ const Store = (() => {
     }));
     state = data; hasProfile = true; needsWelcome = false;
     writeProfile(state);
+    bus('BACKUP_IMPORTED', { profileId: keepId, replay: !!hasProfile });
     return { ok: true, id: keepId };
   }
   function importJson(text) { return importProfileText(text); }
@@ -616,6 +635,7 @@ const Store = (() => {
     });
     hasProfile = true; needsWelcome = false; pendingMigration = null;
     writeProfile(state);
+    bus('PROFILE_CREATED', { profileId: id });
     return id;
   }
   // Edit identity IN PLACE — same profile, same id, progress untouched.
@@ -627,6 +647,7 @@ const Store = (() => {
     if (patch.avatar !== undefined && patch.avatar) state.avatar = patch.avatar;
     if (patch.bio !== undefined) state.bio = String(patch.bio || '').slice(0, 280);
     save();                                             // preserves id, xp, progress, achievements
+    bus('PROFILE_UPDATED', { profileId: state.id });
     return true;
   }
 
@@ -664,7 +685,7 @@ const Store = (() => {
     dailyToday, completeDaily,
     grant, drainAchievements,
     zoneMastery, bossReady,
-    setSetting, markDictViewed, setCurrentNode,
+    setSetting, setGameSetting, gameSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
     profileMeta, createProfile, editProfile, adoptExternal, syncTab, commitMigrationChoice,
   };

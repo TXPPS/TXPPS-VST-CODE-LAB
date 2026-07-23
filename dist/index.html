@@ -829,6 +829,89 @@ textarea.txt.bio { resize: vertical; min-height: 60px; font-size: 16px; }
 .pc-name { font-size: 14px; color: var(--ink); font-weight: 600; }
 .pc-sub { font-size: 11.5px; color: var(--ink-dim); font-family: var(--mono); margin-top: 2px; }
 .pc-active { color: var(--phos); font-size: 11px; margin-left: 6px; letter-spacing: 0.04em; }
+
+/* ============================================================
+   PATCH — workshop assistant (v1.1.0). Original inline-SVG robot,
+   docked at a safe screen edge; pointer-events managed so it never
+   blocks the controls beneath it. Theme-matched, reduced-motion aware.
+   ============================================================ */
+.patch-dock {
+  position: fixed; right: 10px; z-index: 45;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));   /* above the tab bar */
+  display: flex; align-items: flex-end; gap: 8px;
+  pointer-events: none;                                     /* never intercept taps on content */
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.patch-dock.hidden { display: none; }
+.patch-avatar {
+  width: 46px; height: 46px; flex: none;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+  opacity: 0.85; transition: opacity 0.25s ease, transform 0.2s ease;
+}
+.patch-dock.active .patch-avatar { opacity: 1; transform: translateY(-2px); }
+.patch-svg { width: 100%; height: 100%; display: block; }
+.patch-svg .patch-body { fill: var(--bg2); stroke: var(--line); stroke-width: 1.2; }
+.patch-svg .patch-screen { fill: #06110b; stroke: var(--phos-dim); stroke-width: 0.8; }
+.patch-svg .patch-scan { stroke: rgba(93,232,148,0.25); stroke-width: 0.6; }
+.patch-svg .patch-foot { fill: var(--bg3); }
+.patch-svg .patch-ant { stroke: var(--line); stroke-width: 1.2; }
+.patch-svg .patch-cable { stroke: var(--phos-dim); stroke-width: 1.4; }
+.patch-svg .patch-mouth { stroke: var(--phos); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: d 0.2s ease; }
+.patch-svg .patch-eyes .pe { fill: var(--phos); transition: all 0.15s ease; }
+.patch-svg .eyes-shut .pe { transform: scaleY(0.15); transform-origin: center; }
+.patch-svg .eyes-happy .pe { r: 1.4px; fill: var(--phos); }
+.patch-svg .eyes-flat .pe { transform: scaleY(0.45); transform-origin: center; }
+.patch-svg .eyes-up .pe { transform: translateY(-1px); }
+.patch-svg .patch-led { fill: var(--ink-faint); }
+.patch-svg .led-phos { fill: var(--phos); filter: drop-shadow(0 0 3px var(--phos)); }
+.patch-svg .led-amber { fill: var(--amber); filter: drop-shadow(0 0 3px var(--amber)); }
+.patch-svg .led-dim { fill: var(--phos-dim); }
+
+/* PATCH speech bubble — opens leftward, auto-dismisses, never blocks taps */
+.patch-bubble {
+  max-width: 190px; pointer-events: none;
+  background: var(--bg3); border: 1px solid var(--phos-dim); border-radius: 10px;
+  color: var(--ink); font-size: 12px; line-height: 1.35; padding: 7px 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(6px) scale(0.96); transform-origin: bottom right;
+  transition: opacity 0.18s ease, transform 0.18s ease; margin-bottom: 4px;
+}
+.patch-bubble.show { opacity: 1; transform: translateY(0) scale(1); }
+
+/* state entrance/idle micro-animations (transform/opacity only) */
+@keyframes patchApprove { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
+@keyframes patchConcern { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-1.5px); } 75% { transform: translateX(1.5px); } }
+@keyframes patchCelebrate { 0%,100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-5px) scale(1.05); } 60% { transform: translateY(0) scale(1); } }
+@keyframes patchBoot { from { opacity: 0; transform: translateY(6px); } to { opacity: 0.85; transform: translateY(0); } }
+@keyframes patchSaveBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+.patch-svg.p-approve { animation: patchApprove 0.5s ease; }
+.patch-svg.p-concern { animation: patchConcern 0.4s ease; }
+.patch-svg.p-celebrate { animation: patchCelebrate 0.7s ease; }
+.patch-svg.p-boot { animation: patchBoot 0.5s ease; }
+.patch-svg.p-save { animation: patchSaveBlink 0.6s ease; }
+.patch-svg.p-nav .patch-screen, .patch-svg.p-attn .patch-screen { stroke: var(--phos); }
+.patch-svg.p-think .patch-scan { stroke: var(--amber); }
+
+/* Reduced motion: no PATCH movement — state still reads via face + LED + bubble */
+.reduce-motion .patch-svg { animation: none !important; }
+.reduce-motion .patch-avatar { transition: none; }
+@media (prefers-reduced-motion: reduce) { .patch-svg { animation: none !important; } }
+
+/* landscape: keep PATCH clear of the shorter viewport */
+@media (max-height: 480px) { .patch-dock { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } .patch-avatar { width: 40px; height: 40px; } .patch-bubble { max-width: 150px; } }
+/* very narrow phones */
+@media (max-width: 340px) { .patch-bubble { max-width: 150px; } }
+
+/* v1.1.0 settings — volume sliders + tighter segmented controls */
+input[type="range"].vol {
+  -webkit-appearance: none; appearance: none; width: 116px; height: 4px;
+  background: var(--bg3); border-radius: 3px; outline-offset: 4px;
+}
+input[type="range"].vol::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--phos); border: none; cursor: pointer; }
+input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--phos); border: none; cursor: pointer; }
+.set-row .seg { flex: none; }
+.set-row .seg button { padding: 0 9px; font-size: 10px; min-width: 40px; }
+@media (max-width: 360px) { .set-row .seg button { padding: 0 6px; min-width: 34px; font-size: 9.5px; } }
 </style>
 <div id="app" class="app">
   <noscript><div style="padding:2rem;font-family:monospace;color:#EAE4D4;background:#0A0C0F">TXPPS VST CODE LAB requires JavaScript.</div></noscript>
@@ -16028,6 +16111,127 @@ DICT.push(
 );
 
 ;
+/* ===== src/js/game_bus.js ===== */
+/* ============================================================
+   Game Event Bus (v1.1.0) — the one place course logic talks to
+   the reaction layer. Views/lessons EMIT semantic events; they
+   never touch PATCH, audio, haptics, or animation directly.
+
+   A handler that throws is isolated — a decorative subsystem can
+   never break grading, navigation, or saving. Emitting is always
+   safe even if no director is listening.
+
+   Payload model: callers pass the relevant fields for an event
+   (never whole curriculum records). The bus stamps id/type/t.
+   Common fields: profileId, zoneId, lessonId, nodeId, questionId,
+   attempt, previousAttempts, xp, achievementId, from, to,
+   saveStatus, severity, replay.
+   ============================================================ */
+
+const GameBus = (() => {
+  // Live event catalog for this phase.
+  const EVENTS = {
+    APPLICATION_BOOT_STARTED: 'APPLICATION_BOOT_STARTED',
+    APPLICATION_READY: 'APPLICATION_READY',
+    PROFILE_CREATED: 'PROFILE_CREATED',
+    PROFILE_UPDATED: 'PROFILE_UPDATED',
+    NAVIGATION_SELECTED: 'NAVIGATION_SELECTED',
+    NAVIGATION_COMPLETED: 'NAVIGATION_COMPLETED',
+    LESSON_ENTERED: 'LESSON_ENTERED',
+    LESSON_EXITED: 'LESSON_EXITED',
+    QUESTION_PRESENTED: 'QUESTION_PRESENTED',
+    ANSWER_SUBMITTED: 'ANSWER_SUBMITTED',
+    ANSWER_CORRECT: 'ANSWER_CORRECT',
+    ANSWER_CORRECT_AFTER_RETRY: 'ANSWER_CORRECT_AFTER_RETRY',
+    ANSWER_INCORRECT: 'ANSWER_INCORRECT',
+    ANSWER_REPEATED_INCORRECT: 'ANSWER_REPEATED_INCORRECT',
+    HINT_OFFERED: 'HINT_OFFERED',
+    HINT_OPENED: 'HINT_OPENED',
+    HINT_DISMISSED: 'HINT_DISMISSED',
+    QUIZ_STARTED: 'QUIZ_STARTED',
+    QUIZ_PERFECT: 'QUIZ_PERFECT',
+    QUIZ_PASSED: 'QUIZ_PASSED',
+    QUIZ_FAILED: 'QUIZ_FAILED',
+    LESSON_COMPLETE: 'LESSON_COMPLETE',
+    CHALLENGE_COMPLETE: 'CHALLENGE_COMPLETE',
+    MISSION_COMPLETE: 'MISSION_COMPLETE',
+    ACHIEVEMENT_UNLOCKED: 'ACHIEVEMENT_UNLOCKED',
+    XP_GAINED: 'XP_GAINED',
+    RANK_UP: 'RANK_UP',
+    ZONE_UNLOCKED: 'ZONE_UNLOCKED',
+    LOCAL_SAVE_STARTED: 'LOCAL_SAVE_STARTED',
+    LOCAL_SAVE_COMPLETE: 'LOCAL_SAVE_COMPLETE',
+    LOCAL_SAVE_FAILED: 'LOCAL_SAVE_FAILED',
+    BACKUP_EXPORTED: 'BACKUP_EXPORTED',
+    BACKUP_IMPORTED: 'BACKUP_IMPORTED',
+    OFFLINE_READY: 'OFFLINE_READY',
+    STORAGE_RECOVERED: 'STORAGE_RECOVERED',
+    STORAGE_WARNING: 'STORAGE_WARNING',
+    SETTINGS_UPDATED: 'SETTINGS_UPDATED',
+  };
+
+  // Reserved for the future boss / zone-completion / graduation pass.
+  // Declared now so course code can be wired against stable names, but
+  // NOTHING emits or handles these in v1.1.0.
+  const FUTURE = {
+    BOSS_INTRO: 'BOSS_INTRO',
+    BOSS_STARTED: 'BOSS_STARTED',
+    BOSS_QUESTION_RESOLVED: 'BOSS_QUESTION_RESOLVED',
+    BOSS_HP_CHANGED: 'BOSS_HP_CHANGED',
+    PLAYER_HP_CHANGED: 'PLAYER_HP_CHANGED',
+    BOSS_PHASE_CHANGED: 'BOSS_PHASE_CHANGED',
+    PLAYER_LOW_HP: 'PLAYER_LOW_HP',
+    BOSS_LOW_HP: 'BOSS_LOW_HP',
+    BOSS_GAME_OVER: 'BOSS_GAME_OVER',
+    BOSS_RESTARTED: 'BOSS_RESTARTED',
+    BOSS_DEFEATED: 'BOSS_DEFEATED',
+    ZONE_COMPLETE: 'ZONE_COMPLETE',
+    COURSE_COMPLETE: 'COURSE_COMPLETE',
+    GRADUATION_STARTED: 'GRADUATION_STARTED',
+    GRADUATION_COMPLETE: 'GRADUATION_COMPLETE',
+  };
+
+  const ALL = Object.assign({}, EVENTS, FUTURE);
+  const known = new Set(Object.values(ALL));
+
+  const handlers = Object.create(null);   // type -> [fn]
+  const recent = [];                      // small ring buffer for tests/diagnostics
+  let seq = 0;
+  let enabled = true;
+
+  function now() { try { return Date.now(); } catch (e) { return 0; } }
+
+  function on(type, fn) {
+    (handlers[type] || (handlers[type] = [])).push(fn);
+    return () => off(type, fn);
+  }
+  function off(type, fn) {
+    if (handlers[type]) handlers[type] = handlers[type].filter((f) => f !== fn);
+  }
+
+  function emit(type, payload) {
+    // reserved envelope fields (id/type/t) always win over any payload keys
+    const ev = Object.assign({}, payload || {}, { id: ++seq, type, t: now() });
+    recent.push(ev); if (recent.length > 80) recent.shift();
+    if (!enabled) return ev;
+    const fire = (list) => { if (list) for (const fn of list.slice()) { try { fn(ev); } catch (e) { /* isolate decorative failures */ } } };
+    fire(handlers[type]);
+    fire(handlers['*']);         // wildcard subscribers (diagnostics/tests)
+    return ev;
+  }
+
+  return {
+    EVENTS, FUTURE, ALL,
+    isKnown: (t) => known.has(t),
+    on, off, emit,
+    get recent() { return recent; },
+    get seq() { return seq; },
+    setEnabled(v) { enabled = !!v; },   // tests: prove course logic survives a dead bus
+    reset() { for (const k of Object.keys(handlers)) delete handlers[k]; recent.length = 0; },
+  };
+})();
+
+;
 /* ===== src/js/engine.js ===== */
 /* ============================================================
    Challenge engine — pure logic, no DOM.
@@ -16231,6 +16435,8 @@ const Store = (() => {
     return (h >>> 0).toString(16);
   }
   function newId() { return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  // Fire a decorative game-layer event, never letting it affect persistence.
+  function bus(t, p) { try { if (typeof GameBus !== 'undefined') GameBus.emit(t, p); } catch (e) { /* decorative */ } }
 
   function cleanName(s) { return String(s == null ? '' : s).replace(/[\x00-\x1f]/g, '').trim().slice(0, 40); }
   function cleanUser(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24); }
@@ -16433,6 +16639,10 @@ const Store = (() => {
     s.streak = (s.streak && typeof s.streak === 'object') ? { count: s.streak.count | 0, last: String(s.streak.last || '') } : d.streak;
     s.achievements = Array.isArray(s.achievements) ? s.achievements.filter((a) => typeof a === 'string') : [];
     s.settings = { ...d.settings, ...(s.settings && typeof s.settings === 'object' ? s.settings : {}) };
+    // v1.1.0 game-feel settings live under settings.game; keep it an object so
+    // older v1.0.2 profiles simply fall back to defaults (applied at read time).
+    if (s.settings.game && typeof s.settings.game !== 'object') delete s.settings.game;
+    if (s.settings.game && (!s.settings.game.seen || typeof s.settings.game.seen !== 'object')) s.settings.game.seen = {};
     s.dailyDone = s.dailyDone | 0;
     s.practiceCleared = s.practiceCleared | 0;
     if (!['s', 'm', 'l'].includes(s.settings.codeSize)) s.settings.codeSize = 'm';
@@ -16483,6 +16693,7 @@ const Store = (() => {
     if (!hasProfile) return;                // welcome or migration pending — nothing authoritative to persist yet
     state.lastPlayed = nowIso();
     writeProfile(state);
+    if (!storageOk) bus('LOCAL_SAVE_FAILED', { saveStatus: 'failed', severity: 'error' });
   }
 
   /* ---- date helpers ---- */
@@ -16714,7 +16925,18 @@ const Store = (() => {
   }
 
   /* ---- settings / io ---- */
-  function setSetting(k, v) { state.settings[k] = v; save(); }
+  function setSetting(k, v) { state.settings[k] = v; save(); bus('SETTINGS_UPDATED', { key: k }); }
+  // Game-feel settings live under settings.game (dot-path for nested audio.*).
+  function setGameSetting(key, value) {
+    const s = state.settings; s.game = s.game || {};
+    if (key.indexOf('.') > -1) { const p = key.split('.'); s.game[p[0]] = s.game[p[0]] || {}; s.game[p[0]][p[1]] = value; }
+    else s.game[key] = value;
+    save(); bus('SETTINGS_UPDATED', { key: 'game.' + key });
+    return true;
+  }
+  function gameSetting(key, fallback) {
+    try { const g = state.settings.game || {}; if (key.indexOf('.') > -1) { const p = key.split('.'); return (g[p[0]] || {})[p[1]]; } return g[key]; } catch (e) { return fallback; }
+  }
 
   function markDictViewed(id) {
     if (!state.dictViewed.includes(id)) {
@@ -16781,6 +17003,7 @@ const Store = (() => {
     }));
     state = data; hasProfile = true; needsWelcome = false;
     writeProfile(state);
+    bus('BACKUP_IMPORTED', { profileId: keepId, replay: !!hasProfile });
     return { ok: true, id: keepId };
   }
   function importJson(text) { return importProfileText(text); }
@@ -16813,6 +17036,7 @@ const Store = (() => {
     });
     hasProfile = true; needsWelcome = false; pendingMigration = null;
     writeProfile(state);
+    bus('PROFILE_CREATED', { profileId: id });
     return id;
   }
   // Edit identity IN PLACE — same profile, same id, progress untouched.
@@ -16824,6 +17048,7 @@ const Store = (() => {
     if (patch.avatar !== undefined && patch.avatar) state.avatar = patch.avatar;
     if (patch.bio !== undefined) state.bio = String(patch.bio || '').slice(0, 280);
     save();                                             // preserves id, xp, progress, achievements
+    bus('PROFILE_UPDATED', { profileId: state.id });
     return true;
   }
 
@@ -16861,7 +17086,7 @@ const Store = (() => {
     dailyToday, completeDaily,
     grant, drainAchievements,
     zoneMastery, bossReady,
-    setSetting, markDictViewed, setCurrentNode,
+    setSetting, setGameSetting, gameSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
     profileMeta, createProfile, editProfile, adoptExternal, syncTab, commitMigrationChoice,
   };
@@ -16870,44 +17095,21 @@ const Store = (() => {
 ;
 /* ===== src/js/audio.js ===== */
 /* ============================================================
-   Feedback tones — tiny WebAudio blips. Created lazily on first
-   user gesture (iOS requirement); fully optional via Settings.
+   Sfx — compatibility shim. Historically a tiny standalone blip
+   synth; as of v1.1.0 all sound is owned by the Audio Director in
+   game.js. These delegators keep existing call sites working while
+   routing (or intentionally muting) them so nothing double-fires:
+   press sounds go through UI_PRESS; correct/wrong/level are driven
+   by the ANSWER_* / RANK_UP events instead. Safe if Game is absent.
    ============================================================ */
 
 const Sfx = (() => {
-  let ctx = null;
-
-  function ensure() {
-    if (!Store.state.settings.sound) return null;
-    try {
-      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume();
-      return ctx;
-    } catch (e) { return null; }
-  }
-
-  function blip(freq, time, dur, type, gain) {
-    const c = ensure();
-    if (!c) return;
-    try {
-      const o = c.createOscillator();
-      const g = c.createGain();
-      o.type = type || 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0, time);
-      g.gain.linearRampToValueAtTime(gain || 0.08, time + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-      o.connect(g).connect(c.destination);
-      o.start(time);
-      o.stop(time + dur + 0.02);
-    } catch (e) { /* sound is never worth crashing over */ }
-  }
-
+  function A() { return (typeof Game !== 'undefined' && Game.Audio) ? Game.Audio : null; }
   return {
-    tap()     { const c = ensure(); if (c) blip(880, c.currentTime, 0.05, 'sine', 0.03); },
-    correct() { const c = ensure(); if (c) { blip(660, c.currentTime, 0.09, 'sine', 0.07); blip(990, c.currentTime + 0.07, 0.14, 'sine', 0.07); } },
-    wrong()   { const c = ensure(); if (c) blip(140, c.currentTime, 0.16, 'square', 0.04); },
-    levelUp() { const c = ensure(); if (c) { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => blip(f, c.currentTime + i * 0.09, 0.18, 'triangle', 0.07)); } },
+    tap() { const a = A(); if (a) a.play('UI_PRESS'); },
+    correct() { /* handled by ANSWER_CORRECT via the Audio Director */ },
+    wrong() { /* handled by ANSWER_INCORRECT via the Audio Director */ },
+    levelUp() { /* handled by RANK_UP via the Audio Director */ },
   };
 })();
 
@@ -18362,6 +18564,551 @@ const Dict = (() => {
 })();
 
 ;
+/* ===== src/js/game.js ===== */
+/* ============================================================
+   Game-feel layer (v1.1.0) — PATCH the workshop assistant plus the
+   Animation / Audio / Haptic / Reaction / Accessibility directors.
+
+   Everything here is DECORATIVE and subscribes to GameBus events.
+   It never drives grading, navigation, or saving, and every entry
+   point is wrapped so a failure can't reach course logic. If any of
+   PATCH, audio, haptics or motion is unavailable, the course is
+   fully usable and every result stays clear in text.
+
+   Original PATCH design: a compact retro workshop robot with a
+   CRT/oscilloscope face. Built as one inline-SVG base with reusable
+   parts and a state machine — not derived from any existing mascot.
+   ============================================================ */
+
+const Game = (() => {
+  const { el } = UI;
+  const E = GameBus.EVENTS;
+  const raf = (fn) => (window.requestAnimationFrame || ((f) => setTimeout(f, 16)))(fn);
+
+  /* =====================================================================
+     ACCESSIBILITY / INTENSITY CONTROLLER
+     ===================================================================== */
+  const DEFAULTS = {
+    patch: 'balanced',        // full | balanced | minimal | hidden
+    effects: 'balanced',      // full | balanced | minimal
+    reducedMotion: 'system',  // system | on | off
+    particles: true,
+    screenShake: false,
+    haptics: true,
+    audio: { enabled: true, master: 70, ui: 70, feedback: 80, celebration: 80, patch: 70 },
+    seen: {},                 // one-time reaction flags (introSeen, ach:<id>, rank:<n>, ...)
+  };
+  function gs() {
+    const s = (Store.state && Store.state.settings && Store.state.settings.game) || {};
+    return Object.assign({}, DEFAULTS, s, { audio: Object.assign({}, DEFAULTS.audio, s.audio || {}), seen: s.seen || {} });
+  }
+  const Access = {
+    systemReduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } },
+    reducedMotion() {
+      const g = gs();
+      if (g.reducedMotion === 'on') return true;
+      if (g.reducedMotion === 'off') return false;
+      // system: honour prefers-reduced-motion AND the existing Motion toggle
+      return Access.systemReduced() || !(Store.state.settings.motion);
+    },
+    intensity() { return gs().effects; },                 // full | balanced | minimal
+    particlesOn() { const g = gs(); return g.particles && !Access.reducedMotion() && g.effects !== 'minimal'; },
+    presence() { return gs().patch; },                    // full | balanced | minimal | hidden
+    // scale a duration by intensity + reduced motion
+    scale(ms) {
+      if (Access.reducedMotion()) return Math.min(ms, 120);
+      const i = Access.intensity();
+      return i === 'minimal' ? Math.round(ms * 0.6) : i === 'full' ? Math.round(ms * 1.1) : ms;
+    },
+  };
+
+  /* =====================================================================
+     ANIMATION DIRECTOR — cancelable, route-scoped, reduced-motion aware.
+     Views never scatter their own timeouts for reactions; they go here.
+     ===================================================================== */
+  const Anim = (() => {
+    let timers = new Set();
+    let paused = false;
+    function after(ms, fn, opts) {
+      const id = setTimeout(() => { timers.delete(rec); if (!paused || (opts && opts.always)) { try { fn(); } catch (e) { /* isolate */ } } }, Access.scale(ms));
+      const rec = { id, fn };
+      timers.add(rec);
+      return () => { clearTimeout(id); timers.delete(rec); };
+    }
+    function pulse(node, cls, ms) {
+      if (!node) return () => {};
+      if (Access.reducedMotion()) { node.classList.add(cls + '-rm'); const c = after(ms || 200, () => node.classList.remove(cls + '-rm'), { always: true }); return c; }
+      node.classList.add(cls);
+      const c = after(ms || 500, () => node.classList.remove(cls), { always: true });
+      return () => { node.classList.remove(cls); c(); };
+    }
+    function cancelRoute() { for (const r of Array.from(timers)) { clearTimeout(r.id); timers.delete(r); } }
+    function setPaused(v) { paused = v; }
+    return { after, pulse, cancelRoute, setPaused, scale: Access.scale };
+  })();
+
+  /* =====================================================================
+     AUDIO DIRECTOR — one WebAudio context, original synth sound language,
+     categories + group volumes + cooldowns + gesture unlock + suspend.
+     No files, no network. Silent + harmless when unavailable.
+     ===================================================================== */
+  const Audio = (() => {
+    let ctx = null, master = null, unlocked = false, voices = 0;
+    const lastAt = {};
+    const MAXVOICES = 8;
+    const GROUP = { // category -> volume group
+      UI_PRESS: 'ui', NAVIGATION: 'ui',
+      CORRECT: 'feedback', CORRECT_AFTER_RETRY: 'feedback', INCORRECT: 'feedback', HINT_AVAILABLE: 'feedback',
+      QUIZ_PASS: 'celebration', QUIZ_PERFECT: 'celebration', QUIZ_FAIL: 'feedback',
+      LESSON_COMPLETE: 'celebration', CHALLENGE_COMPLETE: 'celebration', MISSION_COMPLETE: 'celebration',
+      ACHIEVEMENT_UNLOCK: 'celebration', RANK_UP: 'celebration', ZONE_UNLOCKED: 'celebration',
+      PROFILE_CREATED: 'patch', PROFILE_SAVED: 'ui', SAVE_FAILED: 'feedback', BACKUP_COMPLETE: 'ui',
+      PATCH_BOOT: 'patch', PATCH_ENTER: 'patch', PATCH_EXIT: 'patch',
+    };
+    const COOLDOWN = { UI_PRESS: 45, NAVIGATION: 90, INCORRECT: 120, CORRECT: 120, PROFILE_SAVED: 400 };
+
+    function tryCtx() {
+      if (ctx) return ctx;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+      } catch (e) { ctx = null; }
+      return ctx;
+    }
+    function unlock() {
+      const c = tryCtx(); if (!c) return;
+      try { if (c.state === 'suspended') c.resume(); unlocked = true; } catch (e) { /* ignore */ }
+    }
+    function groupVol(cat) {
+      const a = gs().audio;
+      if (!a.enabled) return 0;
+      const g = GROUP[cat] || 'ui';
+      return (a.master / 100) * ((a[g] != null ? a[g] : 70) / 100);
+    }
+    // one enveloped oscillator
+    function tone(t, freq, dur, type, peak) {
+      if (voices >= MAXVOICES) return;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(master);
+      voices += 1; o.onended = () => { voices -= 1; };
+      o.start(t); o.stop(t + dur + 0.02);
+    }
+    function slide(t, f0, f1, dur, type, peak) {
+      if (voices >= MAXVOICES) return;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(master); voices += 1; o.onended = () => { voices -= 1; };
+      o.start(t); o.stop(t + dur + 0.02);
+    }
+    // original sound recipes — small FM/analog blips, relays, patch clicks, clean signals
+    const REC = {
+      UI_PRESS: (t, v) => tone(t, 660, 0.04, 'sine', 0.05 * v),
+      NAVIGATION: (t, v) => { slide(t, 480, 720, 0.09, 'sine', 0.05 * v); },
+      CORRECT: (t, v) => { tone(t, 587.33, 0.08, 'sine', 0.09 * v); tone(t + 0.07, 880, 0.12, 'sine', 0.08 * v); },
+      CORRECT_AFTER_RETRY: (t, v) => { tone(t, 523.25, 0.08, 'sine', 0.08 * v); tone(t + 0.07, 698.46, 0.09, 'sine', 0.08 * v); tone(t + 0.15, 880, 0.14, 'sine', 0.08 * v); },
+      INCORRECT: (t, v) => { slide(t, 300, 190, 0.16, 'triangle', 0.05 * v); },
+      HINT_AVAILABLE: (t, v) => { tone(t, 784, 0.05, 'sine', 0.05 * v); tone(t + 0.06, 784, 0.09, 'sine', 0.05 * v); },
+      QUIZ_PASS: (t, v) => { [523.25, 659.25, 783.99].forEach((f, i) => tone(t + i * 0.08, f, 0.14, 'triangle', 0.07 * v)); },
+      QUIZ_PERFECT: (t, v) => { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(t + i * 0.075, f, 0.16, 'triangle', 0.08 * v)); tone(t + 0.34, 1318.5, 0.22, 'sine', 0.06 * v); },
+      QUIZ_FAIL: (t, v) => { tone(t, 392, 0.12, 'sine', 0.06 * v); tone(t + 0.1, 329.63, 0.16, 'sine', 0.06 * v); },
+      LESSON_COMPLETE: (t, v) => { tone(t, 659.25, 0.1, 'triangle', 0.07 * v); tone(t + 0.09, 987.77, 0.16, 'triangle', 0.07 * v); },
+      CHALLENGE_COMPLETE: (t, v) => { [587.33, 880, 1174.66].forEach((f, i) => tone(t + i * 0.07, f, 0.14, 'triangle', 0.07 * v)); },
+      MISSION_COMPLETE: (t, v) => { [523.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(t + i * 0.08, f, 0.16, 'triangle', 0.08 * v)); },
+      ACHIEVEMENT_UNLOCK: (t, v) => { slide(t, 660, 1320, 0.14, 'sine', 0.07 * v); tone(t + 0.16, 1320, 0.18, 'triangle', 0.06 * v); },
+      RANK_UP: (t, v) => { [440, 554.37, 659.25, 880].forEach((f, i) => tone(t + i * 0.09, f, 0.2, 'sawtooth', 0.05 * v)); },
+      ZONE_UNLOCKED: (t, v) => { slide(t, 400, 900, 0.2, 'sine', 0.05 * v); },
+      PROFILE_CREATED: (t, v) => { slide(t, 300, 700, 0.14, 'sine', 0.06 * v); tone(t + 0.16, 900, 0.2, 'triangle', 0.06 * v); },
+      PROFILE_SAVED: (t, v) => tone(t, 1200, 0.03, 'sine', 0.03 * v),
+      SAVE_FAILED: (t, v) => { tone(t, 220, 0.14, 'square', 0.05 * v); tone(t + 0.16, 180, 0.18, 'square', 0.05 * v); },
+      BACKUP_COMPLETE: (t, v) => { tone(t, 784, 0.05, 'sine', 0.05 * v); tone(t + 0.07, 1046.5, 0.1, 'sine', 0.05 * v); },
+      PATCH_BOOT: (t, v) => { slide(t, 200, 660, 0.22, 'triangle', 0.05 * v); },
+      PATCH_ENTER: (t, v) => tone(t, 880, 0.04, 'sine', 0.03 * v),
+      PATCH_EXIT: (t, v) => tone(t, 520, 0.04, 'sine', 0.025 * v),
+    };
+    function play(cat) {
+      try {
+        if (!unlocked) return;
+        if (document.hidden) return;
+        const v = groupVol(cat); if (v <= 0) return;
+        const rec = REC[cat]; if (!rec) return;
+        const nowMs = Date.now();
+        const cd = COOLDOWN[cat] || 0;
+        if (cd && lastAt[cat] && nowMs - lastAt[cat] < cd) return;   // cooldown + dedup
+        lastAt[cat] = nowMs;
+        const c = tryCtx(); if (!c) return;
+        if (c.state === 'suspended') { try { c.resume(); } catch (e) {} }
+        rec(c.currentTime + 0.001, v);
+      } catch (e) { /* audio never crashes the app */ }
+    }
+    function setVisibility() { if (!ctx) return; try { if (document.hidden) ctx.suspend(); else if (unlocked) ctx.resume(); } catch (e) {} }
+    return { unlock, play, setVisibility, get unlocked() { return unlocked; }, get supported() { return !!(window.AudioContext || window.webkitAudioContext); } };
+  })();
+
+  /* =====================================================================
+     HAPTIC DIRECTOR — capability-honest. navigator.vibrate only where it
+     really exists; iOS Safari has none, so we NEVER claim otherwise. A
+     future native iOS Core Haptics bridge plugs in via setAdapter().
+     ===================================================================== */
+  const Haptic = (() => {
+    let adapter = null;   // future native bridge: { supported(), play(name) }
+    const lastAt = {};
+    const PAT = {
+      'ui.light': [8], 'feedback.correct': [14], 'feedback.incorrect': [22],
+      'milestone.lesson': [12, 40, 12], 'milestone.perfect': [16, 40, 16, 40, 24],
+      'milestone.rank': [20, 60, 20], 'warning.save': [30, 40, 30],
+    };
+    const COOLDOWN = 60;
+    function browserSupported() { try { return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'; } catch (e) { return false; } }
+    function supported() { return !!(adapter ? adapter.supported && adapter.supported() : browserSupported()); }
+    function enabled() { return gs().haptics !== false; }
+    function status() { return !supported() ? 'unsupported' : (enabled() ? 'on' : 'off'); }
+    function trigger(name) {
+      try {
+        if (!enabled() || !supported() || document.hidden) return false;
+        const nowMs = Date.now();
+        if (lastAt[name] && nowMs - lastAt[name] < COOLDOWN) return false;
+        lastAt[name] = nowMs;
+        if (adapter && adapter.play) { adapter.play(name); return true; }
+        const p = PAT[name]; if (!p) return false;
+        return navigator.vibrate(p) !== false;
+      } catch (e) { return false; }   // silent, never breaks anything
+    }
+    return { trigger, supported, status, setAdapter(a) { adapter = a; } };
+  })();
+
+  /* =====================================================================
+     PATCH — original inline-SVG workshop robot + state machine.
+     ===================================================================== */
+  const Patch = (() => {
+    let dock = null, svg = null, bubble = null, mounted = false;
+    let state = 'HIDDEN', idleTimer = null, returnTimer = null, ambientTimer = null;
+
+    // state table: face + demeanour + timing
+    const FACE = {
+      BOOTING: { mouth: 'boot', eyes: 'dot', led: 'phos', cls: 'p-boot' },
+      IDLE: { mouth: 'wave', eyes: 'dot', led: 'dim', cls: '' },
+      ATTENTIVE: { mouth: 'flat', eyes: 'dot', led: 'phos', cls: 'p-attn' },
+      NAVIGATING: { mouth: 'flat', eyes: 'dot', led: 'phos', cls: 'p-nav' },
+      LISTENING: { mouth: 'wave', eyes: 'dot', led: 'phos', cls: 'p-attn' },
+      THINKING: { mouth: 'dots', eyes: 'up', led: 'amber', cls: 'p-think' },
+      APPROVING: { mouth: 'smile', eyes: 'happy', led: 'phos', cls: 'p-approve' },
+      ENCOURAGING: { mouth: 'smile', eyes: 'dot', led: 'phos', cls: 'p-approve' },
+      CONCERNED: { mouth: 'wavy', eyes: 'flat', led: 'amber', cls: 'p-concern' },
+      DIAGNOSING: { mouth: 'spike', eyes: 'up', led: 'amber', cls: 'p-think' },
+      TEACHING: { mouth: 'flat', eyes: 'dot', led: 'phos', cls: 'p-attn' },
+      SAVING: { mouth: 'flat', eyes: 'dot', led: 'phos', cls: 'p-save' },
+      STORING: { mouth: 'flat', eyes: 'dot', led: 'phos', cls: 'p-save' },
+      CELEBRATING: { mouth: 'smile', eyes: 'happy', led: 'phos', cls: 'p-celebrate' },
+      ACHIEVEMENT: { mouth: 'smile', eyes: 'happy', led: 'amber', cls: 'p-celebrate' },
+      RANK_UP: { mouth: 'smile', eyes: 'happy', led: 'amber', cls: 'p-celebrate' },
+      MISSION_COMPLETE: { mouth: 'smile', eyes: 'happy', led: 'phos', cls: 'p-celebrate' },
+      OFFLINE: { mouth: 'flat', eyes: 'dot', led: 'dim', cls: '' },
+      RECOVERING: { mouth: 'wavy', eyes: 'dot', led: 'amber', cls: 'p-save' },
+      SLEEPING: { mouth: 'flat', eyes: 'shut', led: 'dim', cls: 'p-sleep' },
+      HIDDEN: { mouth: 'wave', eyes: 'dot', led: 'dim', cls: '' },
+    };
+    const MOUTH = {
+      wave: 'M11 25 q2.5 -2.5 5 0 t5 0 t5 0', flat: 'M12 25 h13', dots: 'M13 25 h2 M18 25 h2 M23 25 h2',
+      smile: 'M13 23 q5.5 5 12 0', wavy: 'M11 25 q2.5 3 5 0 t5 0 t5 -2', spike: 'M11 25 h4 l2 -6 l2 12 l2 -6 h5',
+      boot: 'M12 25 h13',
+    };
+
+    function svgBase() {
+      const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      s.setAttribute('viewBox', '0 0 48 48');
+      s.setAttribute('class', 'patch-svg');
+      s.setAttribute('role', 'img');
+      s.setAttribute('aria-label', 'PATCH, the workshop assistant');
+      s.innerHTML = [
+        '<line class="patch-ant" x1="24" y1="9" x2="24" y2="5"/>',
+        '<circle class="patch-led" cx="24" cy="4" r="1.9"/>',
+        '<rect class="patch-body" x="6" y="9.5" width="36" height="30" rx="6"/>',
+        '<rect class="patch-screen" x="9.5" y="13" width="29" height="19" rx="3"/>',
+        '<g class="patch-face">',
+        '<g class="patch-eyes"><circle class="pe pe-l" cx="18" cy="20" r="1.7"/><circle class="pe pe-r" cx="30" cy="20" r="1.7"/></g>',
+        '<path class="patch-mouth" d="' + MOUTH.wave + '" fill="none"/>',
+        '</g>',
+        '<line class="patch-scan" x1="9.5" y1="17" x2="38.5" y2="17"/>',
+        '<rect class="patch-foot" x="12" y="39.5" width="6" height="3" rx="1"/>',
+        '<rect class="patch-foot" x="30" y="39.5" width="6" height="3" rx="1"/>',
+        '<path class="patch-cable" d="M42 33 q6 2 4 8" fill="none"/>',
+        '</g>',
+      ].join('');
+      return s;
+    }
+
+    function applyFace(st) {
+      if (!svg) return;
+      const f = FACE[st] || FACE.IDLE;
+      const mouth = svg.querySelector('.patch-mouth');
+      const eyes = svg.querySelector('.patch-eyes');
+      const led = svg.querySelector('.patch-led');
+      if (mouth) mouth.setAttribute('d', MOUTH[f.mouth] || MOUTH.wave);
+      if (eyes) eyes.setAttribute('class', 'patch-eyes eyes-' + f.eyes);
+      if (led) led.setAttribute('class', 'patch-led led-' + f.led);
+      svg.setAttribute('class', 'patch-svg ' + f.cls);
+    }
+
+    function mount() {
+      if (mounted) return;
+      dock = el('div', { class: 'patch-dock', 'aria-live': 'polite' });
+      bubble = el('div', { class: 'patch-bubble', role: 'status' });
+      svg = svgBase();
+      const avatar = el('div', { class: 'patch-avatar' }, svg);
+      dock.appendChild(bubble);
+      dock.appendChild(avatar);
+      document.body.appendChild(dock);
+      mounted = true;
+      applyPresence();
+    }
+    function applyPresence() {
+      if (!dock) return;
+      const hidden = Access.presence() === 'hidden';
+      dock.classList.toggle('hidden', hidden);
+      if (hidden) { clearTimeout(ambientTimer); ambientTimer = null; state = 'HIDDEN'; }
+    }
+
+    function say(text) {
+      if (!bubble || !text || Access.presence() === 'hidden') return;
+      bubble.textContent = text;
+      bubble.classList.add('show');
+      Anim.after(2400, () => bubble && bubble.classList.remove('show'), { always: true });
+    }
+    function hideBubble() { if (bubble) bubble.classList.remove('show'); }
+
+    // set a transient state, then return to idle; dur scaled by intensity
+    function setState(st, opts) {
+      if (Access.presence() === 'hidden') return;
+      opts = opts || {};
+      if (!FACE[st]) st = 'IDLE';
+      state = st;
+      applyFace(st);
+      if (dock) { dock.classList.add('active'); dock.classList.remove('withdrawn'); }
+      if (opts.text) say(opts.text); else hideBubble();   // never leave stale dialogue from a prior reaction
+      clearTimeout(returnTimer);
+      const dur = opts.dur || 1600;
+      if (st !== 'IDLE' && st !== 'HIDDEN') {
+        returnTimer = setTimeout(() => toIdle(), Access.scale(dur));
+      }
+      scheduleAmbient();
+    }
+    function toIdle() {
+      if (Access.presence() === 'hidden') return;
+      state = 'IDLE'; applyFace('IDLE'); hideBubble();   // clear dialogue when returning to idle / on route change
+      if (dock) dock.classList.remove('active');
+      scheduleAmbient();
+    }
+    function scheduleAmbient() {
+      clearTimeout(ambientTimer); ambientTimer = null;
+      if (document.hidden) return;
+      if (Access.reducedMotion() || Access.presence() === 'minimal' || Access.presence() === 'hidden') return;
+      // infrequent subtle blink / waveform breath while idle
+      ambientTimer = setTimeout(() => {
+        if (state === 'IDLE' && !document.hidden) {
+          const eyes = svg && svg.querySelector('.patch-eyes');
+          if (eyes) { eyes.setAttribute('class', 'patch-eyes eyes-shut'); Anim.after(150, () => eyes.setAttribute('class', 'patch-eyes eyes-dot'), { always: true }); }
+        }
+        scheduleAmbient();
+      }, 9000 + Math.floor((Date.now() % 5000)));
+    }
+    function pauseAmbient() { clearTimeout(ambientTimer); ambientTimer = null; }
+
+    return { mount, setState, toIdle, say, applyPresence, pauseAmbient, scheduleAmbient, get state() { return state; }, get mounted() { return mounted; } };
+  })();
+
+  /* =====================================================================
+     REACTION QUEUE / CELEBRATION DIRECTOR — priorities, dedup, collapse,
+     route cancellation. Common events must never build a queue.
+     ===================================================================== */
+  const Reactions = (() => {
+    let current = null;            // {priority, endsAt}
+    const lastKey = {};            // dedupe window per key
+    function busy() { return current && Date.now() < current.endsAt; }
+    // priority 0 ambient .. 5 reserved (bosses)
+    function dispatch(r) {
+      try {
+        const now = Date.now();
+        if (r.dedupeKey) { if (lastKey[r.dedupeKey] && now - lastKey[r.dedupeKey] < (r.dedupeMs || 350)) return; lastKey[r.dedupeKey] = now; }
+        if (busy() && r.priority <= current.priority && r.priority < 3) return;   // don't stack low-priority over an active one
+        current = { priority: r.priority, endsAt: now + (r.holdMs || 600) };
+        r.run();
+      } catch (e) { /* a decorative reaction can never break anything */ }
+    }
+    function cancelRoute() { current = null; Anim.cancelRoute(); Patch.toIdle(); }
+    return { dispatch, cancelRoute, busy };
+  })();
+
+  /* =====================================================================
+     PATCH DIRECTOR — maps course events to restrained reactions, honouring
+     the presence mode. This is the only place events become PATCH behaviour.
+     ===================================================================== */
+  const NAV_LINE = {
+    dashboard: 'Workshop station ready.', map: 'Scanning the zone route.', practice: 'Diagnostic bench open.',
+    glossary: 'Consulting the reference.', profile: 'Operator badge on file.', settings: 'Adjusting the bench.',
+  };
+  const CORRECT_LINES = ['Clean signal.', "That's it.", 'Correct path.', 'System stable.'];
+  const RETRY_LINES = ['That adjustment fixed it.', 'Good recovery.'];
+  const INCORRECT_LINES = ['Let us inspect that signal.', 'Check the routing.', 'One part needs adjustment.'];
+
+  function presence() { return Access.presence(); }
+  function full() { return presence() === 'full'; }
+  function atLeastBalanced() { const p = presence(); return p === 'full' || p === 'balanced'; }
+  function pick(arr, seed) { return arr[Math.abs(seed || 0) % arr.length]; }
+
+  // zone-aware demeanour foundation (short, not narrative)
+  function zoneTone() {
+    try {
+      const z = Store.zoneOfNode(Store.nextNode() || (Store.state && Store.state.currentNode) || 'l1');
+      return z ? z.num : 1;
+    } catch (e) { return 1; }
+  }
+
+  function wire() {
+    const on = GameBus.on;
+
+    on(E.PROFILE_CREATED, () => {
+      const g = gs();
+      Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
+        Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
+        Audio.play('PROFILE_CREATED');
+        Haptic.trigger('milestone.lesson');
+        Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
+      } });
+      markSeen('introSeen');
+    });
+
+    on(E.PROFILE_UPDATED, () => { if (atLeastBalanced()) Patch.setState('APPROVING', { text: 'Profile updated.', dur: 1200 }); Audio.play('PROFILE_SAVED'); });
+
+    on(E.NAVIGATION_COMPLETED, (ev) => {
+      Audio.play('NAVIGATION');
+      if (!atLeastBalanced()) return;
+      Reactions.dispatch({ priority: 1, dedupeKey: 'nav', dedupeMs: 500, holdMs: 500, run: () => {
+        Patch.setState('NAVIGATING', full() ? { text: NAV_LINE[ev.to] || '', dur: 1100 } : { dur: 900 });
+      } });
+    });
+
+    on(E.QUESTION_PRESENTED, () => { if (atLeastBalanced()) Reactions.dispatch({ priority: 1, dedupeKey: 'q', dedupeMs: 400, holdMs: 400, run: () => Patch.setState('LISTENING', { dur: 1200 }) }); });
+
+    on(E.ANSWER_CORRECT, (ev) => {
+      Audio.play('CORRECT'); Haptic.trigger('feedback.correct');
+      Reactions.dispatch({ priority: 2, holdMs: 800, run: () => Patch.setState('APPROVING', (full() || (atLeastBalanced() && ((ev.id % 3) === 0))) ? { text: pick(CORRECT_LINES, ev.id), dur: 1400 } : { dur: 1200 }) });
+    });
+    on(E.ANSWER_CORRECT_AFTER_RETRY, (ev) => {
+      Audio.play('CORRECT_AFTER_RETRY'); Haptic.trigger('feedback.correct');
+      Reactions.dispatch({ priority: 2, holdMs: 900, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: pick(RETRY_LINES, ev.id), dur: 1600 } : { dur: 1200 }) });
+    });
+    on(E.ANSWER_INCORRECT, (ev) => {
+      Audio.play('INCORRECT'); Haptic.trigger('feedback.incorrect');
+      Reactions.dispatch({ priority: 2, holdMs: 800, run: () => Patch.setState('CONCERNED', full() ? { text: pick(INCORRECT_LINES, ev.id), dur: 1400 } : { dur: 1100 }) });
+    });
+    on(E.ANSWER_REPEATED_INCORRECT, () => {
+      Audio.play('HINT_AVAILABLE');
+      Reactions.dispatch({ priority: 2, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
+    });
+
+    on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Lesson complete — filed.', 3));
+    on(E.CHALLENGE_COMPLETE, () => milestone('CHALLENGE_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Diagnostic resolved.', 3));
+    on(E.QUIZ_PERFECT, () => milestone('QUIZ_PERFECT', 'CELEBRATING', 'milestone.perfect', 'Clean 100% signal.', 3, 2200));
+    on(E.QUIZ_PASSED, () => { Audio.play('QUIZ_PASS'); Haptic.trigger('milestone.lesson'); Reactions.dispatch({ priority: 3, holdMs: 1200, run: () => Patch.setState('APPROVING', atLeastBalanced() ? { text: 'Passed. Signal is stable.', dur: 1600 } : { dur: 1200 }) }); });
+    on(E.QUIZ_FAILED, () => { Audio.play('QUIZ_FAIL'); Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Review the diagnostic, then retry.', dur: 2000 } : { dur: 1200 }) }); });
+    on(E.MISSION_COMPLETE, () => milestone('MISSION_COMPLETE', 'MISSION_COMPLETE', 'milestone.rank', 'Module connected. Mission complete.', 4, 2600));
+
+    on(E.ACHIEVEMENT_UNLOCKED, (ev) => {
+      const key = 'ach:' + (ev.achievementId || '');
+      if (wasSeen(key)) { return; }        // never replay a badge celebration
+      markSeen(key);
+      Audio.play('ACHIEVEMENT_UNLOCK'); Haptic.trigger('milestone.lesson');
+      Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => Patch.setState('ACHIEVEMENT', atLeastBalanced() ? { text: 'Badge installed.', dur: 2000 } : { dur: 1400 }) });
+    });
+    on(E.RANK_UP, (ev) => {
+      const key = 'rank:' + (ev.to || ev.level || '');
+      if (wasSeen(key)) return;
+      markSeen(key);
+      Audio.play('RANK_UP'); Haptic.trigger('milestone.rank');
+      Reactions.dispatch({ priority: 4, holdMs: 2000, run: () => Patch.setState('RANK_UP', atLeastBalanced() ? { text: 'ID plate updated.', dur: 2200 } : { dur: 1400 }) });
+    });
+    on(E.ZONE_UNLOCKED, () => { Audio.play('ZONE_UNLOCKED'); if (atLeastBalanced()) Patch.setState('ATTENTIVE', { text: 'New workspace online.', dur: 1600 }); });
+
+    on(E.LOCAL_SAVE_COMPLETE, () => { if (Patch.state === 'SAVING' || Patch.state === 'STORING') Patch.toIdle(); });
+    on(E.LOCAL_SAVE_FAILED, () => { Audio.play('SAVE_FAILED'); Haptic.trigger('warning.save'); Patch.setState('CONCERNED', { text: 'Save failed — export a backup.', dur: 2600 }); });
+    on(E.STORAGE_RECOVERED, () => { Patch.setState('RECOVERING', { text: 'Backup restored. No progress lost.', dur: 2400 }); });
+    on(E.BACKUP_EXPORTED, () => { Audio.play('BACKUP_COMPLETE'); if (atLeastBalanced()) Patch.setState('STORING', { text: 'Backup archived.', dur: 1400 }); });
+    on(E.BACKUP_IMPORTED, () => { Audio.play('BACKUP_COMPLETE'); Patch.setState('STORING', { text: 'Profile restored.', dur: 1600 }); });
+
+    on(E.SETTINGS_UPDATED, () => { Patch.applyPresence(); });
+  }
+
+  function milestone(sound, state, haptic, text, prio, holdMs) {
+    Audio.play(sound); Haptic.trigger(haptic);
+    Reactions.dispatch({ priority: prio, holdMs: holdMs || 1600, run: () => Patch.setState(state, atLeastBalanced() ? { text, dur: holdMs || 1800 } : { dur: 1200 }) });
+  }
+
+  /* ---- one-time reaction memory (persisted in the profile) ---- */
+  function wasSeen(key) { try { return !!(gs().seen[key]); } catch (e) { return false; } }
+  function markSeen(key) {
+    try {
+      const s = Store.state.settings; s.game = s.game || {}; s.game.seen = s.game.seen || {};
+      if (s.game.seen[key]) return;
+      s.game.seen[key] = 1; Store.save();
+    } catch (e) { /* ignore */ }
+  }
+
+  /* =====================================================================
+     BUTTON FEEDBACK — one delegated interaction lifecycle (click), so we
+     never double-fire from pointerdown + click. Pressed visual is pure CSS.
+     ===================================================================== */
+  function wireButtons() {
+    document.addEventListener('click', (e) => {
+      try {
+        const t = e.target && e.target.closest && e.target.closest('.btn, .opt, .card-tap, .avatar-opt, .gloss-term, .chip, .icon-btn');
+        if (!t || t.classList.contains('tab')) return;   // tabs get NAVIGATION instead
+        Audio.play('UI_PRESS');
+        Haptic.trigger('ui.light');
+      } catch (err) { /* ignore */ }
+    }, true);
+  }
+
+  /* =====================================================================
+     INIT — called once from App.boot() AFTER the shell exists.
+     ===================================================================== */
+  let started = false;
+  function init() {
+    if (started) return; started = true;
+    try {
+      Patch.mount();
+      wire();
+      wireButtons();
+      // audio unlocks on the first real user gesture (browser policy)
+      const unlock = () => { Audio.unlock(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
+      window.addEventListener('pointerdown', unlock, true);
+      window.addEventListener('keydown', unlock, true);
+      // pause decorative work when the tab is hidden
+      document.addEventListener('visibilitychange', () => { Audio.setVisibility(); Anim.setPaused(document.hidden); if (document.hidden) Patch.pauseAmbient(); else Patch.scheduleAmbient(); });
+      window.addEventListener('pagehide', () => { Anim.cancelRoute(); });
+      Patch.setState('BOOTING', { dur: 900 }); Audio.play('PATCH_BOOT');
+      Anim.after(900, () => Patch.toIdle());
+    } catch (e) { /* the game layer must never block boot */ }
+  }
+  // called by App.go on every route change: cancel stale reactions/dialogue
+  function onRoute() { try { Reactions.cancelRoute(); } catch (e) {} }
+
+  return {
+    init, onRoute, EVENTS: E,
+    Access, Anim, Audio, Haptic, Patch, Reactions,
+    settingsDefaults: DEFAULTS, gs,
+    // future native haptic bridge hook (Core Haptics adapter injected here)
+    setHapticAdapter: (a) => Haptic.setAdapter(a),
+  };
+})();
+
+;
 /* ===== src/js/views.js ===== */
 /* ============================================================
    Views — every screen + the shared question runner.
@@ -18371,6 +19118,8 @@ const Dict = (() => {
 
 const Views = (() => {
   const { el, fmt } = UI;
+  const emitG = (t, p) => { try { GameBus.emit(t, p); } catch (e) { /* decorative game layer */ } };
+  const REPEAT_THRESHOLD = 2;   // wrong attempts on one question before a diagnostic-hint nudge
 
   /* =====================================================================
      QUESTION RUNNER — one component for all 7 interaction types.
@@ -18387,14 +19136,20 @@ const Views = (() => {
     const allowReveal = opts.allowReveal !== false;
     let attempts = 0;
     let resolved = false;
+    const qctx = () => ({ questionId: q.qid, nodeId: (Store.state && Store.state.currentNode) || null, qType: q.type });
 
     const root = el('div', { class: 'col', style: 'gap:12px' });
     const feedbackSlot = el('div', { 'aria-live': 'polite' });
     const controls = el('div', { class: 'col', style: 'gap:10px' });
+    emitG('QUESTION_PRESENTED', qctx());
 
     function resolve(correct, revealed) {
       if (resolved) return;
       resolved = true;
+      if (correct) {
+        emitG('ANSWER_SUBMITTED', Object.assign(qctx(), { attempt: attempts, correct: true }));
+        emitG(attempts > 1 ? 'ANSWER_CORRECT_AFTER_RETRY' : 'ANSWER_CORRECT', Object.assign(qctx(), { attempt: attempts, previousAttempts: attempts - 1 }));
+      }
       if (opts.onResolved) opts.onResolved({ correct, firstTry: correct && attempts === 1, revealed: !!revealed, attempts });
     }
 
@@ -18409,6 +19164,9 @@ const Views = (() => {
     function wrongFlow(customMsg) {
       attempts += 1;
       Sfx.wrong();
+      emitG('ANSWER_SUBMITTED', Object.assign(qctx(), { attempt: attempts, correct: false }));
+      emitG('ANSWER_INCORRECT', Object.assign(qctx(), { attempt: attempts, previousAttempts: attempts - 1 }));
+      if (attempts >= REPEAT_THRESHOLD) emitG('ANSWER_REPEATED_INCORRECT', Object.assign(qctx(), { attempt: attempts }));
       if (opts.onWrongAttempt) opts.onWrongAttempt();
       if (attempts >= maxAttempts) {
         showFeedback('bad', 'Not this time', (customMsg ? customMsg + ' ' : '') + (q.explain ? 'Here\'s the idea: ' + q.explain : ''));
@@ -18534,6 +19292,7 @@ const Views = (() => {
       const hintSlot = el('div');
       if (q.hint) {
         controls.appendChild(el('button', { class: 'btn sm ghost', onclick: (e) => {
+          emitG('HINT_OPENED', qctx());
           hintSlot.replaceChildren(el('div', { class: 'feedback info' },
             el('div', { class: 'fb-head' }, 'Hint'),
             el('div', { html: fmt(q.hint) })));
@@ -18874,6 +19633,15 @@ const Views = (() => {
 
   /* ---- completion sheet after a node ---- */
   function completionSheet(node, result, starCount) {
+    // Decorative milestone events (progress was already saved by completeNode).
+    try {
+      const perfect = result && result.total > 0 && result.firstTry === result.total;
+      const p = { nodeId: node.id, zoneId: (Store.zoneOfNode(node.id) || {}).id };
+      if (node.kind === 'lesson') { emitG('LESSON_COMPLETE', p); emitG(perfect ? 'QUIZ_PERFECT' : 'QUIZ_PASSED', p); }
+      else if (node.kind === 'challenge') { emitG('CHALLENGE_COMPLETE', p); emitG(perfect ? 'QUIZ_PERFECT' : 'QUIZ_PASSED', p); }
+      else if (node.kind === 'project') { emitG('MISSION_COMPLETE', p); }
+      else if (node.kind === 'boss' && node.id !== 'boss7') { emitG('ZONE_UNLOCKED', p); }
+    } catch (e) { /* decorative */ }
     const nextId = Store.nextNode();
     const s = UI.sheet([
       el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
@@ -19869,23 +20637,68 @@ const Views = (() => {
         sw);
     }
 
+    function codeSizeRow() {
+      const seg = el('div', { class: 'seg' });
+      ['s', 'm', 'l'].forEach((size) => {
+        const b = el('button', { class: st.settings.codeSize === size ? 'on' : '', onclick: () => {
+          Store.setSetting('codeSize', size);
+          [...seg.children].forEach((c, i) => c.classList.toggle('on', ['s', 'm', 'l'][i] === size));
+          App.applyCodeSize();
+        } }, size.toUpperCase());
+        seg.appendChild(b);
+      });
+      return el('div', { class: 'set-row' },
+        el('div', null, el('div', { class: 'set-name' }, 'Code text size'), el('div', { class: 'set-desc' }, 'Size of code panels.')),
+        seg);
+    }
     main.appendChild(el('div', { class: 'card' },
-      toggleRow('Feedback sounds', 'Small synth blips on answers and level-ups.', 'sound'),
-      toggleRow('Motion & animation', 'Scope animation and transitions.', 'motion'),
-      (() => {
-        const seg = el('div', { class: 'seg' });
-        ['s', 'm', 'l'].forEach((size) => {
-          const b = el('button', { class: st.settings.codeSize === size ? 'on' : '', onclick: () => {
-            Store.setSetting('codeSize', size);
-            [...seg.children].forEach((c, i) => c.classList.toggle('on', ['s', 'm', 'l'][i] === size));
-            App.applyCodeSize();
-          } }, size.toUpperCase());
-          seg.appendChild(b);
-        });
-        return el('div', { class: 'set-row' },
-          el('div', null, el('div', { class: 'set-name' }, 'Code text size'), el('div', { class: 'set-desc' }, 'Size of code panels.')),
-          seg);
-      })()));
+      toggleRow('Motion & animation', 'Scope animation and screen transitions.', 'motion'),
+      codeSizeRow()));
+
+    /* ---- v1.1.0 game-feel controls ---- */
+    const G = Game.gs();
+    function segRow(name, desc, cur, opts, onPick) {
+      const seg = el('div', { class: 'seg' });
+      opts.forEach(([val, label]) => {
+        const b = el('button', { class: cur === val ? 'on' : '', 'aria-pressed': String(cur === val), onclick: () => { [...seg.children].forEach((c) => c.classList.remove('on')); b.classList.add('on'); onPick(val); } }, label);
+        seg.appendChild(b);
+      });
+      return el('div', { class: 'set-row' }, el('div', null, el('div', { class: 'set-name' }, name), el('div', { class: 'set-desc' }, desc)), seg);
+    }
+    function gToggle(name, desc, val, onToggle, disabled) {
+      const sw = el('button', { class: 'switch' + (val ? ' on' : ''), role: 'switch', 'aria-checked': String(!!val), 'aria-disabled': String(!!disabled), 'aria-label': name, onclick: () => { if (disabled) return; const nv = !sw.classList.contains('on'); sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', String(nv)); onToggle(nv); } }, el('i'));
+      if (disabled) sw.style.opacity = '0.4';
+      return el('div', { class: 'set-row' }, el('div', null, el('div', { class: 'set-name' }, name), el('div', { class: 'set-desc' }, desc)), sw);
+    }
+    function volRow(name, key, val) {
+      const out = el('span', { class: 'mono small dim', style: 'min-width:30px; text-align:right' }, String(val));
+      const range = el('input', { type: 'range', min: '0', max: '100', step: '5', value: String(val), class: 'vol', 'aria-label': name });
+      range.addEventListener('input', () => { out.textContent = range.value; });
+      range.addEventListener('change', () => { Store.setGameSetting('audio.' + key, parseInt(range.value, 10)); });
+      return el('div', { class: 'set-row' }, el('div', { style: 'min-width:0' }, el('div', { class: 'set-name' }, name)), el('div', { class: 'row', style: 'gap:8px; align-items:center' }, range, out));
+    }
+    const hStatus = Game.Haptic.status();   // on | off | unsupported
+    main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
+      el('div', { class: 'eyebrow phos', style: 'margin-bottom:4px' }, 'WORKSHOP & GAME FEEL'),
+      segRow('PATCH presence', 'How often PATCH the assistant reacts.', G.patch, [['full', 'FULL'], ['balanced', 'BAL'], ['minimal', 'MIN'], ['hidden', 'OFF']], (v) => { Store.setGameSetting('patch', v); Game.Patch.applyPresence(); }),
+      segRow('Effects intensity', 'Strength of reaction animation.', G.effects, [['full', 'FULL'], ['balanced', 'BAL'], ['minimal', 'MIN']], (v) => Store.setGameSetting('effects', v)),
+      segRow('Reduced motion (reactions)', 'AUTO follows your system + Motion switch.', G.reducedMotion, [['system', 'AUTO'], ['on', 'ON'], ['off', 'OFF']], (v) => Store.setGameSetting('reducedMotion', v)),
+      gToggle('Particles', 'Small signal particles on milestones.', G.particles, (nv) => Store.setGameSetting('particles', nv)),
+      gToggle('Screen shake', 'Off by default; reserved for future events.', G.screenShake, (nv) => Store.setGameSetting('screenShake', nv)),
+      gToggle('Haptic feedback', hStatus === 'unsupported' ? 'Unsupported on this device / browser.' : 'Short vibration on supported devices.', hStatus === 'on', (nv) => Store.setGameSetting('haptics', nv), hStatus === 'unsupported')));
+
+    main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
+      el('div', { class: 'eyebrow phos', style: 'margin-bottom:2px' }, 'GAME AUDIO'),
+      el('p', { class: 'small faint', style: 'margin-bottom:6px' }, 'Sound starts only after your first tap (browser policy) and never plays before that.'),
+      gToggle('Game audio', 'Master enable for all game sounds.', G.audio.enabled, (nv) => Store.setGameSetting('audio.enabled', nv)),
+      volRow('Master volume', 'master', G.audio.master),
+      volRow('UI sounds', 'ui', G.audio.ui),
+      volRow('Feedback sounds', 'feedback', G.audio.feedback),
+      volRow('Celebration sounds', 'celebration', G.audio.celebration),
+      volRow('PATCH sounds', 'patch', G.audio.patch),
+      el('div', { class: 'row wrap', style: 'gap:8px; margin-top:8px' },
+        el('button', { class: 'btn sm', onclick: () => { Game.Audio.unlock(); Game.Audio.play('CORRECT'); } }, 'Test sound'),
+        el('button', { class: 'btn sm ghost', onclick: () => { Store.setGameSetting('audio', Object.assign({}, Game.settingsDefaults.audio)); UI.toast('Audio reset to defaults'); App.go('settings'); } }, 'Restore audio defaults'))));
 
     // data management
     const ioArea = el('textarea', { class: 'io', placeholder: 'Your backup JSON appears here when you tap Export.', 'aria-label': 'Backup JSON' });
@@ -19899,9 +20712,10 @@ const Views = (() => {
         el('button', { class: 'btn sm', onclick: () => {
           ioArea.value = Store.exportJson();
           ioArea.select();
+          emitG('BACKUP_EXPORTED', {});
           try { navigator.clipboard && navigator.clipboard.writeText(ioArea.value); UI.toast('Backup JSON copied to clipboard'); } catch (e) { UI.toast('JSON in the text box — copy it manually'); }
         } }, 'Export backup'),
-        el('button', { class: 'btn sm', onclick: () => exportBackupFile() }, 'Download file'),
+        el('button', { class: 'btn sm', onclick: () => { emitG('BACKUP_EXPORTED', {}); exportBackupFile(); } }, 'Download file'),
         el('button', { class: 'btn sm ghost', onclick: () => importReplaceSheet() }, 'Import backup'))));
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:10px' },
@@ -19934,6 +20748,8 @@ const Views = (() => {
 const App = (() => {
   const { el } = UI;
   const root = document.getElementById('app');
+  const EV = GameBus.EVENTS;
+  function emitG(t, p) { try { GameBus.emit(t, p); } catch (e) { /* game layer is decorative */ } }
   let current = { name: 'dashboard', params: {} };
   let topbarEl = null;
   let tabbarEl = null;
@@ -20004,6 +20820,9 @@ const App = (() => {
 
   function go(name, params) {
     if (!SCREENS[name]) name = 'dashboard';
+    const from = current.name;
+    emitG(EV.NAVIGATION_SELECTED, { from, to: name });
+    try { Game.onRoute(); } catch (e) { /* decorative */ }   // cancel stale reactions/dialogue
     // cleanup old screen (scope canvas raf etc.)
     if (screenEl) {
       screenEl.querySelectorAll('.scope-wrap').forEach((sw) => { if (sw.cleanup) sw.cleanup(); });
@@ -20028,6 +20847,7 @@ const App = (() => {
     root.insertBefore(view, tabbarEl);
     renderTabbar();
     window.scrollTo({ top: 0 });
+    emitG(EV.NAVIGATION_COMPLETED, { from, to: name });
   }
 
   function openNode(id) {
@@ -20035,6 +20855,8 @@ const App = (() => {
     if (!node) { UI.toast('Content not found'); return; }
     Sfx.tap();
     Store.setCurrentNode(id);
+    const z = Store.zoneOfNode(id);
+    emitG(EV.LESSON_ENTERED, { nodeId: id, kind: node.kind, zoneId: z ? z.id : null });
     if (node.kind === 'lesson') go('lesson', { id });
     else if (node.kind === 'project') go('project', { id });
     else if (node.kind === 'boss') go('boss', { id });
@@ -20043,10 +20865,13 @@ const App = (() => {
 
   function awardXp(amount) {
     if (!amount || amount <= 0) { Store.touchStreak(); renderTopbar(); return; }
+    const before = Store.level();
     const r = Store.addXp(amount);
     renderTopbar();
+    emitG(EV.XP_GAINED, { xp: amount, total: Store.state.xp });
     if (r.leveledUp) {
       Sfx.levelUp();
+      emitG(EV.RANK_UP, { from: before, to: r.level, level: r.level, rank: Store.levelTitle() });
       UI.toast('▲ LEVEL UP — LV ' + r.level + ': ' + Store.levelTitle(), 3200);
     }
     flushAchievements();
@@ -20056,7 +20881,7 @@ const App = (() => {
     const ids = Store.drainAchievements();
     ids.forEach((id, i) => {
       const a = ACHIEVEMENTS.find((x) => x.id === id);
-      if (a) setTimeout(() => UI.toast('🏆 ' + a.name + ' — ' + a.desc, 3000), 400 + i * 3200);
+      if (a) { emitG(EV.ACHIEVEMENT_UNLOCKED, { achievementId: id, name: a.name }); setTimeout(() => UI.toast('🏆 ' + a.name + ' — ' + a.desc, 3000), 400 + i * 3200); }
     });
   }
 
@@ -20138,6 +20963,7 @@ const App = (() => {
   // everywhere, not just at boot, per the "notify the learner" requirement.
   function notifyIfRecovered() {
     if (Store.recovered) {
+      emitG(EV.STORAGE_RECOVERED, { severity: 'info' });
       UI.toast('⚠ A save looked corrupted — we restored your previous backup. No progress lost.', 5200);
       Store.clearRecovered();
     }
@@ -20145,6 +20971,8 @@ const App = (() => {
 
   function boot() {
     try {
+      emitG(EV.APPLICATION_BOOT_STARTED, {});
+      try { Game.init(); } catch (e) { /* the game-feel layer must never block boot */ }
       // tap-to-define: abbreviations in prose open their dictionary card
       document.addEventListener('click', (e) => {
         const tl = e.target.closest && e.target.closest('.term-link');
@@ -20172,11 +21000,13 @@ const App = (() => {
 
       applyCodeSize();
       applyMotion();
+      emitG(EV.OFFLINE_READY, {});
       if (Store.pendingMigration) { showMigrationChooser(); return; }   // rare: several 1.0.1 profiles
       if (Store.needsWelcome) { showWelcome(); return; }
       startAutosave();
       notifyIfRecovered();
       go('dashboard');
+      emitG(EV.APPLICATION_READY, { profileId: Store.state && Store.state.id });
     } catch (err) {
       root.innerHTML = '';
       root.appendChild(el('div', { style: 'padding:24px; font-family:monospace; color:#EAE4D4' },

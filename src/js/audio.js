@@ -1,41 +1,18 @@
 /* ============================================================
-   Feedback tones — tiny WebAudio blips. Created lazily on first
-   user gesture (iOS requirement); fully optional via Settings.
+   Sfx — compatibility shim. Historically a tiny standalone blip
+   synth; as of v1.1.0 all sound is owned by the Audio Director in
+   game.js. These delegators keep existing call sites working while
+   routing (or intentionally muting) them so nothing double-fires:
+   press sounds go through UI_PRESS; correct/wrong/level are driven
+   by the ANSWER_* / RANK_UP events instead. Safe if Game is absent.
    ============================================================ */
 
 const Sfx = (() => {
-  let ctx = null;
-
-  function ensure() {
-    if (!Store.state.settings.sound) return null;
-    try {
-      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume();
-      return ctx;
-    } catch (e) { return null; }
-  }
-
-  function blip(freq, time, dur, type, gain) {
-    const c = ensure();
-    if (!c) return;
-    try {
-      const o = c.createOscillator();
-      const g = c.createGain();
-      o.type = type || 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0, time);
-      g.gain.linearRampToValueAtTime(gain || 0.08, time + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-      o.connect(g).connect(c.destination);
-      o.start(time);
-      o.stop(time + dur + 0.02);
-    } catch (e) { /* sound is never worth crashing over */ }
-  }
-
+  function A() { return (typeof Game !== 'undefined' && Game.Audio) ? Game.Audio : null; }
   return {
-    tap()     { const c = ensure(); if (c) blip(880, c.currentTime, 0.05, 'sine', 0.03); },
-    correct() { const c = ensure(); if (c) { blip(660, c.currentTime, 0.09, 'sine', 0.07); blip(990, c.currentTime + 0.07, 0.14, 'sine', 0.07); } },
-    wrong()   { const c = ensure(); if (c) blip(140, c.currentTime, 0.16, 'square', 0.04); },
-    levelUp() { const c = ensure(); if (c) { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => blip(f, c.currentTime + i * 0.09, 0.18, 'triangle', 0.07)); } },
+    tap() { const a = A(); if (a) a.play('UI_PRESS'); },
+    correct() { /* handled by ANSWER_CORRECT via the Audio Director */ },
+    wrong() { /* handled by ANSWER_INCORRECT via the Audio Director */ },
+    levelUp() { /* handled by RANK_UP via the Audio Director */ },
   };
 })();

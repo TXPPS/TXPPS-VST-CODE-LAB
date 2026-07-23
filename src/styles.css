@@ -827,3 +827,86 @@ textarea.txt.bio { resize: vertical; min-height: 60px; font-size: 16px; }
 .pc-name { font-size: 14px; color: var(--ink); font-weight: 600; }
 .pc-sub { font-size: 11.5px; color: var(--ink-dim); font-family: var(--mono); margin-top: 2px; }
 .pc-active { color: var(--phos); font-size: 11px; margin-left: 6px; letter-spacing: 0.04em; }
+
+/* ============================================================
+   PATCH — workshop assistant (v1.1.0). Original inline-SVG robot,
+   docked at a safe screen edge; pointer-events managed so it never
+   blocks the controls beneath it. Theme-matched, reduced-motion aware.
+   ============================================================ */
+.patch-dock {
+  position: fixed; right: 10px; z-index: 45;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));   /* above the tab bar */
+  display: flex; align-items: flex-end; gap: 8px;
+  pointer-events: none;                                     /* never intercept taps on content */
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.patch-dock.hidden { display: none; }
+.patch-avatar {
+  width: 46px; height: 46px; flex: none;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+  opacity: 0.85; transition: opacity 0.25s ease, transform 0.2s ease;
+}
+.patch-dock.active .patch-avatar { opacity: 1; transform: translateY(-2px); }
+.patch-svg { width: 100%; height: 100%; display: block; }
+.patch-svg .patch-body { fill: var(--bg2); stroke: var(--line); stroke-width: 1.2; }
+.patch-svg .patch-screen { fill: #06110b; stroke: var(--phos-dim); stroke-width: 0.8; }
+.patch-svg .patch-scan { stroke: rgba(93,232,148,0.25); stroke-width: 0.6; }
+.patch-svg .patch-foot { fill: var(--bg3); }
+.patch-svg .patch-ant { stroke: var(--line); stroke-width: 1.2; }
+.patch-svg .patch-cable { stroke: var(--phos-dim); stroke-width: 1.4; }
+.patch-svg .patch-mouth { stroke: var(--phos); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: d 0.2s ease; }
+.patch-svg .patch-eyes .pe { fill: var(--phos); transition: all 0.15s ease; }
+.patch-svg .eyes-shut .pe { transform: scaleY(0.15); transform-origin: center; }
+.patch-svg .eyes-happy .pe { r: 1.4px; fill: var(--phos); }
+.patch-svg .eyes-flat .pe { transform: scaleY(0.45); transform-origin: center; }
+.patch-svg .eyes-up .pe { transform: translateY(-1px); }
+.patch-svg .patch-led { fill: var(--ink-faint); }
+.patch-svg .led-phos { fill: var(--phos); filter: drop-shadow(0 0 3px var(--phos)); }
+.patch-svg .led-amber { fill: var(--amber); filter: drop-shadow(0 0 3px var(--amber)); }
+.patch-svg .led-dim { fill: var(--phos-dim); }
+
+/* PATCH speech bubble — opens leftward, auto-dismisses, never blocks taps */
+.patch-bubble {
+  max-width: 190px; pointer-events: none;
+  background: var(--bg3); border: 1px solid var(--phos-dim); border-radius: 10px;
+  color: var(--ink); font-size: 12px; line-height: 1.35; padding: 7px 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(6px) scale(0.96); transform-origin: bottom right;
+  transition: opacity 0.18s ease, transform 0.18s ease; margin-bottom: 4px;
+}
+.patch-bubble.show { opacity: 1; transform: translateY(0) scale(1); }
+
+/* state entrance/idle micro-animations (transform/opacity only) */
+@keyframes patchApprove { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
+@keyframes patchConcern { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-1.5px); } 75% { transform: translateX(1.5px); } }
+@keyframes patchCelebrate { 0%,100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-5px) scale(1.05); } 60% { transform: translateY(0) scale(1); } }
+@keyframes patchBoot { from { opacity: 0; transform: translateY(6px); } to { opacity: 0.85; transform: translateY(0); } }
+@keyframes patchSaveBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+.patch-svg.p-approve { animation: patchApprove 0.5s ease; }
+.patch-svg.p-concern { animation: patchConcern 0.4s ease; }
+.patch-svg.p-celebrate { animation: patchCelebrate 0.7s ease; }
+.patch-svg.p-boot { animation: patchBoot 0.5s ease; }
+.patch-svg.p-save { animation: patchSaveBlink 0.6s ease; }
+.patch-svg.p-nav .patch-screen, .patch-svg.p-attn .patch-screen { stroke: var(--phos); }
+.patch-svg.p-think .patch-scan { stroke: var(--amber); }
+
+/* Reduced motion: no PATCH movement — state still reads via face + LED + bubble */
+.reduce-motion .patch-svg { animation: none !important; }
+.reduce-motion .patch-avatar { transition: none; }
+@media (prefers-reduced-motion: reduce) { .patch-svg { animation: none !important; } }
+
+/* landscape: keep PATCH clear of the shorter viewport */
+@media (max-height: 480px) { .patch-dock { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } .patch-avatar { width: 40px; height: 40px; } .patch-bubble { max-width: 150px; } }
+/* very narrow phones */
+@media (max-width: 340px) { .patch-bubble { max-width: 150px; } }
+
+/* v1.1.0 settings — volume sliders + tighter segmented controls */
+input[type="range"].vol {
+  -webkit-appearance: none; appearance: none; width: 116px; height: 4px;
+  background: var(--bg3); border-radius: 3px; outline-offset: 4px;
+}
+input[type="range"].vol::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--phos); border: none; cursor: pointer; }
+input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--phos); border: none; cursor: pointer; }
+.set-row .seg { flex: none; }
+.set-row .seg button { padding: 0 9px; font-size: 10px; min-width: 40px; }
+@media (max-width: 360px) { .set-row .seg button { padding: 0 6px; min-width: 34px; font-size: 9.5px; } }

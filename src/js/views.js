@@ -6,6 +6,8 @@
 
 const Views = (() => {
   const { el, fmt } = UI;
+  const emitG = (t, p) => { try { GameBus.emit(t, p); } catch (e) { /* decorative game layer */ } };
+  const REPEAT_THRESHOLD = 2;   // wrong attempts on one question before a diagnostic-hint nudge
 
   /* =====================================================================
      QUESTION RUNNER — one component for all 7 interaction types.
@@ -22,14 +24,20 @@ const Views = (() => {
     const allowReveal = opts.allowReveal !== false;
     let attempts = 0;
     let resolved = false;
+    const qctx = () => ({ questionId: q.qid, nodeId: (Store.state && Store.state.currentNode) || null, qType: q.type });
 
     const root = el('div', { class: 'col', style: 'gap:12px' });
     const feedbackSlot = el('div', { 'aria-live': 'polite' });
     const controls = el('div', { class: 'col', style: 'gap:10px' });
+    emitG('QUESTION_PRESENTED', qctx());
 
     function resolve(correct, revealed) {
       if (resolved) return;
       resolved = true;
+      if (correct) {
+        emitG('ANSWER_SUBMITTED', Object.assign(qctx(), { attempt: attempts, correct: true }));
+        emitG(attempts > 1 ? 'ANSWER_CORRECT_AFTER_RETRY' : 'ANSWER_CORRECT', Object.assign(qctx(), { attempt: attempts, previousAttempts: attempts - 1 }));
+      }
       if (opts.onResolved) opts.onResolved({ correct, firstTry: correct && attempts === 1, revealed: !!revealed, attempts });
     }
 
@@ -44,6 +52,9 @@ const Views = (() => {
     function wrongFlow(customMsg) {
       attempts += 1;
       Sfx.wrong();
+      emitG('ANSWER_SUBMITTED', Object.assign(qctx(), { attempt: attempts, correct: false }));
+      emitG('ANSWER_INCORRECT', Object.assign(qctx(), { attempt: attempts, previousAttempts: attempts - 1 }));
+      if (attempts >= REPEAT_THRESHOLD) emitG('ANSWER_REPEATED_INCORRECT', Object.assign(qctx(), { attempt: attempts }));
       if (opts.onWrongAttempt) opts.onWrongAttempt();
       if (attempts >= maxAttempts) {
         showFeedback('bad', 'Not this time', (customMsg ? customMsg + ' ' : '') + (q.explain ? 'Here\'s the idea: ' + q.explain : ''));
@@ -169,6 +180,7 @@ const Views = (() => {
       const hintSlot = el('div');
       if (q.hint) {
         controls.appendChild(el('button', { class: 'btn sm ghost', onclick: (e) => {
+          emitG('HINT_OPENED', qctx());
           hintSlot.replaceChildren(el('div', { class: 'feedback info' },
             el('div', { class: 'fb-head' }, 'Hint'),
             el('div', { html: fmt(q.hint) })));
@@ -509,6 +521,15 @@ const Views = (() => {
 
   /* ---- completion sheet after a node ---- */
   function completionSheet(node, result, starCount) {
+    // Decorative milestone events (progress was already saved by completeNode).
+    try {
+      const perfect = result && result.total > 0 && result.firstTry === result.total;
+      const p = { nodeId: node.id, zoneId: (Store.zoneOfNode(node.id) || {}).id };
+      if (node.kind === 'lesson') { emitG('LESSON_COMPLETE', p); emitG(perfect ? 'QUIZ_PERFECT' : 'QUIZ_PASSED', p); }
+      else if (node.kind === 'challenge') { emitG('CHALLENGE_COMPLETE', p); emitG(perfect ? 'QUIZ_PERFECT' : 'QUIZ_PASSED', p); }
+      else if (node.kind === 'project') { emitG('MISSION_COMPLETE', p); }
+      else if (node.kind === 'boss' && node.id !== 'boss7') { emitG('ZONE_UNLOCKED', p); }
+    } catch (e) { /* decorative */ }
     const nextId = Store.nextNode();
     const s = UI.sheet([
       el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
@@ -1504,23 +1525,68 @@ const Views = (() => {
         sw);
     }
 
+    function codeSizeRow() {
+      const seg = el('div', { class: 'seg' });
+      ['s', 'm', 'l'].forEach((size) => {
+        const b = el('button', { class: st.settings.codeSize === size ? 'on' : '', onclick: () => {
+          Store.setSetting('codeSize', size);
+          [...seg.children].forEach((c, i) => c.classList.toggle('on', ['s', 'm', 'l'][i] === size));
+          App.applyCodeSize();
+        } }, size.toUpperCase());
+        seg.appendChild(b);
+      });
+      return el('div', { class: 'set-row' },
+        el('div', null, el('div', { class: 'set-name' }, 'Code text size'), el('div', { class: 'set-desc' }, 'Size of code panels.')),
+        seg);
+    }
     main.appendChild(el('div', { class: 'card' },
-      toggleRow('Feedback sounds', 'Small synth blips on answers and level-ups.', 'sound'),
-      toggleRow('Motion & animation', 'Scope animation and transitions.', 'motion'),
-      (() => {
-        const seg = el('div', { class: 'seg' });
-        ['s', 'm', 'l'].forEach((size) => {
-          const b = el('button', { class: st.settings.codeSize === size ? 'on' : '', onclick: () => {
-            Store.setSetting('codeSize', size);
-            [...seg.children].forEach((c, i) => c.classList.toggle('on', ['s', 'm', 'l'][i] === size));
-            App.applyCodeSize();
-          } }, size.toUpperCase());
-          seg.appendChild(b);
-        });
-        return el('div', { class: 'set-row' },
-          el('div', null, el('div', { class: 'set-name' }, 'Code text size'), el('div', { class: 'set-desc' }, 'Size of code panels.')),
-          seg);
-      })()));
+      toggleRow('Motion & animation', 'Scope animation and screen transitions.', 'motion'),
+      codeSizeRow()));
+
+    /* ---- v1.1.0 game-feel controls ---- */
+    const G = Game.gs();
+    function segRow(name, desc, cur, opts, onPick) {
+      const seg = el('div', { class: 'seg' });
+      opts.forEach(([val, label]) => {
+        const b = el('button', { class: cur === val ? 'on' : '', 'aria-pressed': String(cur === val), onclick: () => { [...seg.children].forEach((c) => c.classList.remove('on')); b.classList.add('on'); onPick(val); } }, label);
+        seg.appendChild(b);
+      });
+      return el('div', { class: 'set-row' }, el('div', null, el('div', { class: 'set-name' }, name), el('div', { class: 'set-desc' }, desc)), seg);
+    }
+    function gToggle(name, desc, val, onToggle, disabled) {
+      const sw = el('button', { class: 'switch' + (val ? ' on' : ''), role: 'switch', 'aria-checked': String(!!val), 'aria-disabled': String(!!disabled), 'aria-label': name, onclick: () => { if (disabled) return; const nv = !sw.classList.contains('on'); sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', String(nv)); onToggle(nv); } }, el('i'));
+      if (disabled) sw.style.opacity = '0.4';
+      return el('div', { class: 'set-row' }, el('div', null, el('div', { class: 'set-name' }, name), el('div', { class: 'set-desc' }, desc)), sw);
+    }
+    function volRow(name, key, val) {
+      const out = el('span', { class: 'mono small dim', style: 'min-width:30px; text-align:right' }, String(val));
+      const range = el('input', { type: 'range', min: '0', max: '100', step: '5', value: String(val), class: 'vol', 'aria-label': name });
+      range.addEventListener('input', () => { out.textContent = range.value; });
+      range.addEventListener('change', () => { Store.setGameSetting('audio.' + key, parseInt(range.value, 10)); });
+      return el('div', { class: 'set-row' }, el('div', { style: 'min-width:0' }, el('div', { class: 'set-name' }, name)), el('div', { class: 'row', style: 'gap:8px; align-items:center' }, range, out));
+    }
+    const hStatus = Game.Haptic.status();   // on | off | unsupported
+    main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
+      el('div', { class: 'eyebrow phos', style: 'margin-bottom:4px' }, 'WORKSHOP & GAME FEEL'),
+      segRow('PATCH presence', 'How often PATCH the assistant reacts.', G.patch, [['full', 'FULL'], ['balanced', 'BAL'], ['minimal', 'MIN'], ['hidden', 'OFF']], (v) => { Store.setGameSetting('patch', v); Game.Patch.applyPresence(); }),
+      segRow('Effects intensity', 'Strength of reaction animation.', G.effects, [['full', 'FULL'], ['balanced', 'BAL'], ['minimal', 'MIN']], (v) => Store.setGameSetting('effects', v)),
+      segRow('Reduced motion (reactions)', 'AUTO follows your system + Motion switch.', G.reducedMotion, [['system', 'AUTO'], ['on', 'ON'], ['off', 'OFF']], (v) => Store.setGameSetting('reducedMotion', v)),
+      gToggle('Particles', 'Small signal particles on milestones.', G.particles, (nv) => Store.setGameSetting('particles', nv)),
+      gToggle('Screen shake', 'Off by default; reserved for future events.', G.screenShake, (nv) => Store.setGameSetting('screenShake', nv)),
+      gToggle('Haptic feedback', hStatus === 'unsupported' ? 'Unsupported on this device / browser.' : 'Short vibration on supported devices.', hStatus === 'on', (nv) => Store.setGameSetting('haptics', nv), hStatus === 'unsupported')));
+
+    main.appendChild(el('div', { class: 'card col', style: 'gap:4px' },
+      el('div', { class: 'eyebrow phos', style: 'margin-bottom:2px' }, 'GAME AUDIO'),
+      el('p', { class: 'small faint', style: 'margin-bottom:6px' }, 'Sound starts only after your first tap (browser policy) and never plays before that.'),
+      gToggle('Game audio', 'Master enable for all game sounds.', G.audio.enabled, (nv) => Store.setGameSetting('audio.enabled', nv)),
+      volRow('Master volume', 'master', G.audio.master),
+      volRow('UI sounds', 'ui', G.audio.ui),
+      volRow('Feedback sounds', 'feedback', G.audio.feedback),
+      volRow('Celebration sounds', 'celebration', G.audio.celebration),
+      volRow('PATCH sounds', 'patch', G.audio.patch),
+      el('div', { class: 'row wrap', style: 'gap:8px; margin-top:8px' },
+        el('button', { class: 'btn sm', onclick: () => { Game.Audio.unlock(); Game.Audio.play('CORRECT'); } }, 'Test sound'),
+        el('button', { class: 'btn sm ghost', onclick: () => { Store.setGameSetting('audio', Object.assign({}, Game.settingsDefaults.audio)); UI.toast('Audio reset to defaults'); App.go('settings'); } }, 'Restore audio defaults'))));
 
     // data management
     const ioArea = el('textarea', { class: 'io', placeholder: 'Your backup JSON appears here when you tap Export.', 'aria-label': 'Backup JSON' });
@@ -1534,9 +1600,10 @@ const Views = (() => {
         el('button', { class: 'btn sm', onclick: () => {
           ioArea.value = Store.exportJson();
           ioArea.select();
+          emitG('BACKUP_EXPORTED', {});
           try { navigator.clipboard && navigator.clipboard.writeText(ioArea.value); UI.toast('Backup JSON copied to clipboard'); } catch (e) { UI.toast('JSON in the text box — copy it manually'); }
         } }, 'Export backup'),
-        el('button', { class: 'btn sm', onclick: () => exportBackupFile() }, 'Download file'),
+        el('button', { class: 'btn sm', onclick: () => { emitG('BACKUP_EXPORTED', {}); exportBackupFile(); } }, 'Download file'),
         el('button', { class: 'btn sm ghost', onclick: () => importReplaceSheet() }, 'Import backup'))));
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:10px' },

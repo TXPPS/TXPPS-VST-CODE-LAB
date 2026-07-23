@@ -31,6 +31,22 @@ save — a pre-1.0.1 single save, or a 1.0.1 profile / multi-profile
 registry — is migrated into the one profile with no progress lost, backing up
 prior data before any cleanup.
 
+**Version 1.1.0 — PATCH: Living Workshop Assistant** adds a game-feel layer on
+top of the finished course, without touching any curriculum, grading,
+progression, or save behaviour. Course logic emits semantic events on a typed
+Game Event Bus; a set of isolated directors (PATCH, Animation, Audio, Haptic,
+Reaction, Accessibility) turn those into restrained reactions — an original
+inline-SVG workshop robot with a CRT/oscilloscope face and a state machine,
+short synthesized sounds (no files, no network), capability-honest haptics
+(browser vibration where it exists, a pluggable adapter for a future native
+iOS bridge), and answer/navigation/milestone feedback. Everything is
+independently adjustable (PATCH presence Full/Balanced/Minimal/Hidden, effects
+intensity, reduced motion, particles, per-category audio volumes, haptics) and
+degrades safely: a failure in any decorative subsystem can never reach grading,
+navigation, or saving, and every result stays clear in text with PATCH hidden
+and audio off. Boss/graduation events are reserved as hooks only — not
+implemented in this pass.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -77,6 +93,10 @@ src/
     data_zone6_*.js          Zone 6 lessons & challenges (same shapes)
     data_zone7_*.js          Zone 7 lessons, tickets & the 11-product line
     data_glossary*.js        Signal Dictionary mini-lesson entries (parts a–i)
+    game_bus.js              typed Game Event Bus — course logic emits semantic
+                             events; the reaction layer subscribes (isolated)
+    game.js                  PATCH the workshop assistant + Animation / Audio /
+                             Haptic / Reaction / Accessibility directors (v1.1.0)
     engine.js                pure challenge evaluation (no DOM): fill/mcq/order/
                              bugspot/match validation, seeded shuffles, daily pick
     store.js                 single-profile state + progress; versioned checksummed
