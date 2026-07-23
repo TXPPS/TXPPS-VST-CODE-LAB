@@ -912,6 +912,10 @@ input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-ra
 .set-row .seg { flex: none; }
 .set-row .seg button { padding: 0 9px; font-size: 10px; min-width: 40px; }
 @media (max-width: 360px) { .set-row .seg button { padding: 0 6px; min-width: 34px; font-size: 9.5px; } }
+
+/* lift PATCH clear of a lesson/challenge sticky action bar so it never sits over the Check/Continue button */
+.has-actionbar .patch-dock { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+@media (max-height: 480px) { .has-actionbar .patch-dock { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
 </style>
 <div id="app" class="app">
   <noscript><div style="padding:2rem;font-family:monospace;color:#EAE4D4;background:#0A0C0F">TXPPS VST CODE LAB requires JavaScript.</div></noscript>
@@ -18853,7 +18857,9 @@ const Game = (() => {
       if (mouth) mouth.setAttribute('d', MOUTH[f.mouth] || MOUTH.wave);
       if (eyes) eyes.setAttribute('class', 'patch-eyes eyes-' + f.eyes);
       if (led) led.setAttribute('class', 'patch-led led-' + f.led);
-      svg.setAttribute('class', 'patch-svg ' + f.cls);
+      // Under reduced motion, drop the p-* entrance/idle animation class entirely
+      // (state still reads via face shape + LED); CSS alone can't see this setting.
+      svg.setAttribute('class', 'patch-svg ' + (Access.reducedMotion() ? '' : f.cls));
     }
 
     function mount() {
@@ -18974,14 +18980,18 @@ const Game = (() => {
     const on = GameBus.on;
 
     on(E.PROFILE_CREATED, () => {
-      const g = gs();
-      Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
-        Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
-        Audio.play('PROFILE_CREATED');
-        Haptic.trigger('milestone.lesson');
-        Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
-      } });
       markSeen('introSeen');
+      // createProfile emits synchronously and the welcome flow immediately reboots to
+      // Home (a route change cancels in-flight reactions). Defer the intro so it lands
+      // on the freshly-rendered dashboard instead of being torn down in the same tick.
+      setTimeout(() => {
+        Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
+          Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
+          Audio.play('PROFILE_CREATED');
+          Haptic.trigger('milestone.lesson');
+          Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
+        } });
+      }, 550);
     });
 
     on(E.PROFILE_UPDATED, () => { if (atLeastBalanced()) Patch.setState('APPROVING', { text: 'Profile updated.', dur: 1200 }); Audio.play('PROFILE_SAVED'); });
@@ -19010,7 +19020,9 @@ const Game = (() => {
     });
     on(E.ANSWER_REPEATED_INCORRECT, () => {
       Audio.play('HINT_AVAILABLE');
-      Reactions.dispatch({ priority: 2, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
+      // priority 3 so the diagnostic-hint nudge preempts the priority-2 ANSWER_INCORRECT
+      // reaction that is emitted immediately before it in the same tick.
+      Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
     });
 
     on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Lesson complete — filed.', 3));
@@ -20846,6 +20858,8 @@ const App = (() => {
     screenEl = view;
     root.insertBefore(view, tabbarEl);
     renderTabbar();
+    // lift PATCH clear of a screen's sticky Check/Continue action bar
+    document.body.classList.toggle('has-actionbar', ['lesson', 'challenge', 'project', 'boss'].includes(name));
     window.scrollTo({ top: 0 });
     emitG(EV.NAVIGATION_COMPLETED, { from, to: name });
   }

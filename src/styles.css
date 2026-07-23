@@ -910,3 +910,7 @@ input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-ra
 .set-row .seg { flex: none; }
 .set-row .seg button { padding: 0 9px; font-size: 10px; min-width: 40px; }
 @media (max-width: 360px) { .set-row .seg button { padding: 0 6px; min-width: 34px; font-size: 9.5px; } }
+
+/* lift PATCH clear of a lesson/challenge sticky action bar so it never sits over the Check/Continue button */
+.has-actionbar .patch-dock { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+@media (max-height: 480px) { .has-actionbar .patch-dock { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }

@@ -104,6 +104,8 @@ const App = (() => {
     screenEl = view;
     root.insertBefore(view, tabbarEl);
     renderTabbar();
+    // lift PATCH clear of a screen's sticky Check/Continue action bar
+    document.body.classList.toggle('has-actionbar', ['lesson', 'challenge', 'project', 'boss'].includes(name));
     window.scrollTo({ top: 0 });
     emitG(EV.NAVIGATION_COMPLETED, { from, to: name });
   }

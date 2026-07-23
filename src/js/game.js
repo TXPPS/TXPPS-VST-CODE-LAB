@@ -286,7 +286,9 @@ const Game = (() => {
       if (mouth) mouth.setAttribute('d', MOUTH[f.mouth] || MOUTH.wave);
       if (eyes) eyes.setAttribute('class', 'patch-eyes eyes-' + f.eyes);
       if (led) led.setAttribute('class', 'patch-led led-' + f.led);
-      svg.setAttribute('class', 'patch-svg ' + f.cls);
+      // Under reduced motion, drop the p-* entrance/idle animation class entirely
+      // (state still reads via face shape + LED); CSS alone can't see this setting.
+      svg.setAttribute('class', 'patch-svg ' + (Access.reducedMotion() ? '' : f.cls));
     }
 
     function mount() {
@@ -407,14 +409,18 @@ const Game = (() => {
     const on = GameBus.on;
 
     on(E.PROFILE_CREATED, () => {
-      const g = gs();
-      Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
-        Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
-        Audio.play('PROFILE_CREATED');
-        Haptic.trigger('milestone.lesson');
-        Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
-      } });
       markSeen('introSeen');
+      // createProfile emits synchronously and the welcome flow immediately reboots to
+      // Home (a route change cancels in-flight reactions). Defer the intro so it lands
+      // on the freshly-rendered dashboard instead of being torn down in the same tick.
+      setTimeout(() => {
+        Reactions.dispatch({ priority: 4, holdMs: 1800, run: () => {
+          Patch.setState('BOOTING', { text: 'Workshop profile registered.', dur: 2200 });
+          Audio.play('PROFILE_CREATED');
+          Haptic.trigger('milestone.lesson');
+          Anim.after(700, () => Patch.setState('APPROVING', { text: 'Welcome to the lab.', dur: 1600 }));
+        } });
+      }, 550);
     });
 
     on(E.PROFILE_UPDATED, () => { if (atLeastBalanced()) Patch.setState('APPROVING', { text: 'Profile updated.', dur: 1200 }); Audio.play('PROFILE_SAVED'); });
@@ -443,7 +449,9 @@ const Game = (() => {
     });
     on(E.ANSWER_REPEATED_INCORRECT, () => {
       Audio.play('HINT_AVAILABLE');
-      Reactions.dispatch({ priority: 2, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
+      // priority 3 so the diagnostic-hint nudge preempts the priority-2 ANSWER_INCORRECT
+      // reaction that is emitted immediately before it in the same tick.
+      Reactions.dispatch({ priority: 3, holdMs: 1400, run: () => Patch.setState('DIAGNOSING', atLeastBalanced() ? { text: 'Need a diagnostic hint?', dur: 2000 } : { dur: 1200 }) });
     });
 
     on(E.LESSON_COMPLETE, () => milestone('LESSON_COMPLETE', 'CELEBRATING', 'milestone.lesson', 'Lesson complete — filed.', 3));
