@@ -17,6 +17,16 @@ TXPPS Signature commercial-VST3 capstone, ending at the Release Candidate
 final boss and permanent Graduate status). This is Version 1.0 of the
 TXPPS VST CODE LAB curriculum.
 
+**Version 1.0.1 — Local Profiles** adds an offline profile system (no
+account, no password, no network). On first launch a friendly welcome
+screen collects a display name, username, optional bio and avatar and
+creates a local profile automatically; after that the profile loads on its
+own every visit. Multiple learners can share a device — create, switch,
+rename and delete profiles, each with completely independent progress —
+and any profile can be exported to or imported from a human-readable JSON
+file. Every existing single-save learner is migrated into a profile with
+no progress lost.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -28,8 +38,13 @@ Real Plugin, 🎹 Studio Analogy, ⚠ Common Beginner Mistake, and 💡 Remember
 
 The build output `dist/index.html` is a self-contained HTML fragment (inline CSS + JS,
 no dependencies, no network calls) designed to be published as a Claude Artifact page —
-it also works wrapped in any plain HTML document. Progress persists in `localStorage`
-(with a defensive in-memory fallback and JSON export/import when storage is blocked).
+it also works wrapped in any plain HTML document. Each profile persists in `localStorage`
+as a single versioned, checksummed save object, written with a current + previous
+double buffer so a corrupted save is detected on load and the previous one is restored
+automatically. Autosave fires on every completion, achievement, profile edit and
+settings change, on a 30-second heartbeat, and when the tab is hidden or closed. A
+defensive in-memory fallback keeps everything working (for the session) when storage is
+blocked, and every profile can be exported to / imported from JSON.
 
 ## Honesty by design
 
@@ -59,7 +74,9 @@ src/
     data_glossary*.js        Signal Dictionary mini-lesson entries (parts a–i)
     engine.js                pure challenge evaluation (no DOM): fill/mcq/order/
                              bugspot/match validation, seeded shuffles, daily pick
-    store.js                 progress state + safe persistence (localStorage w/ fallback)
+    store.js                 profile state + progress; versioned checksummed saves,
+                             current+backup double buffer, corruption recovery,
+                             legacy migration, and multi-profile CRUD / import / export
     audio.js                 optional WebAudio feedback blips
     ui.js                    DOM helpers, C++ highlighter, shared widgets
     viz.js                   data-driven SVG lesson diagrams (palette-matched)

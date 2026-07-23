@@ -5,9 +5,130 @@
    ============================================================ */
 
 const Store = (() => {
-  const KEY = 'txpps_vst_code_lab_v1';
-  let memoryFallback = null;
+  const LEGACY_KEY = 'txpps_vst_code_lab_v1';   // the pre-1.0.1 single save
+  const INDEX_KEY = 'txpps_profiles_v1';        // registry of local profiles
+  const SAVE_V = 2;
+  const pKey = (id) => 'txpps_profile_' + id;   // a profile's current save
+  const bKey = (id) => 'txpps_profile_' + id + '_bak'; // its previous save (backup)
+
+  // Curated offline avatar set — emoji only, no uploads, no network.
+  const AVATARS = ['🎹', '🎛️', '🎚️', '🎧', '🎸', '🎺', '🥁', '🎤', '🔊', '⚡', '🌊', '🔥', '🌀', '💾', '📼', '🎶'];
+
   let storageOk = true;
+  let memory = {};        // key -> json string, used when localStorage is blocked
+  let activeId = null;
+  let needsWelcome = false;
+  let recoveredFlag = false;
+  let state;              // active profile: flat identity + progress + settings
+
+  function nowIso() { try { return new Date().toISOString(); } catch (e) { return ''; } }
+
+  // FNV-1a 32-bit — a tiny dependency-free integrity checksum for corruption detection.
+  function hash(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16);
+  }
+  function newId() { return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  function cleanName(s) { return String(s == null ? '' : s).replace(/[\x00-\x1f]/g, '').trim().slice(0, 40); }
+  function cleanUser(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24); }
+
+  function identityDefaults() {
+    return { displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '', createdAt: nowIso(), lastPlayed: nowIso() };
+  }
+
+  /* ---- low-level storage, with an in-memory fallback when blocked ---- */
+  function lsGet(key) { try { return window.localStorage.getItem(key); } catch (e) { storageOk = false; return (key in memory) ? memory[key] : null; } }
+  function lsSet(key, val) { try { window.localStorage.setItem(key, val); storageOk = true; return true; } catch (e) { storageOk = false; memory[key] = val; return false; } }
+  function lsDel(key) { try { window.localStorage.removeItem(key); } catch (e) { /* ignore */ } delete memory[key]; }
+
+  /* ---- versioned save envelope + checksum ---- */
+  function pack(data) { const body = JSON.stringify(data); return JSON.stringify({ schema: 'txpps.profile', v: SAVE_V, sum: hash(body), data: data }); }
+  function unpack(raw) {
+    if (!raw) return null;
+    let env; try { env = JSON.parse(raw); } catch (e) { return null; }
+    if (!env || typeof env !== 'object' || env.schema !== 'txpps.profile' || !env.data || typeof env.data !== 'object') return null;
+    if (env.sum !== undefined && hash(JSON.stringify(env.data)) !== env.sum) return null; // corrupt
+    return env.data;
+  }
+
+  /* ---- atomic double-buffered write: current save + previous backup ---- */
+  function writeProfile(id, data) {
+    const raw = pack(data);
+    const cur = lsGet(pKey(id));
+    if (cur && unpack(cur)) lsSet(bKey(id), cur);  // only ever promote a *valid* prior save to backup
+    lsSet(pKey(id), raw);                           // setItem is all-or-nothing per key — never a partial overwrite
+  }
+  function readProfile(id) {
+    const data = unpack(lsGet(pKey(id)));
+    if (data) return { data, recovered: false };
+    const bak = unpack(lsGet(bKey(id)));            // current missing/corrupt -> restore the backup
+    if (bak) { lsSet(pKey(id), pack(bak)); return { data: bak, recovered: true }; }
+    return { data: null, recovered: false };
+  }
+
+  /* ---- profile index (which profiles exist, which is active) ---- */
+  function readIndex() {
+    const raw = lsGet(INDEX_KEY);
+    if (!raw) return null;
+    let idx; try { idx = JSON.parse(raw); } catch (e) { return null; }
+    if (!idx || idx.schema !== 'txpps.index' || !Array.isArray(idx.ids)) return null;
+    return idx;
+  }
+  function writeIndex(idx) { lsSet(INDEX_KEY, JSON.stringify(idx)); }
+
+  function readLegacy() {
+    const raw = lsGet(LEGACY_KEY);
+    if (!raw) return null;
+    try { const o = JSON.parse(raw); return (o && typeof o === 'object') ? o : null; } catch (e) { return null; }
+  }
+
+  function freshState() { return Object.assign(defaults(), identityDefaults(), { v: SAVE_V, id: null, currentNode: null }); }
+
+  // Merge & clean identity fields on top of the existing progress sanitizer.
+  function sanitizeFull(raw) {
+    const s = sanitize(raw);
+    const idn = identityDefaults();
+    s.displayName = cleanName(raw && raw.displayName) || idn.displayName;
+    s.username = cleanUser(raw && raw.username) || idn.username;
+    s.avatar = (raw && typeof raw.avatar === 'string' && raw.avatar) ? raw.avatar : idn.avatar;
+    s.bio = (raw && typeof raw.bio === 'string') ? raw.bio.slice(0, 280) : '';
+    s.createdAt = (raw && typeof raw.createdAt === 'string' && raw.createdAt) ? raw.createdAt : idn.createdAt;
+    s.lastPlayed = (raw && typeof raw.lastPlayed === 'string' && raw.lastPlayed) ? raw.lastPlayed : idn.lastPlayed;
+    s.currentNode = (raw && typeof raw.currentNode === 'string') ? raw.currentNode : null;
+    s.id = (raw && raw.id) || activeId || null;
+    s.v = SAVE_V;
+    return s;
+  }
+
+  // One-time migration: an existing single-save learner becomes a local profile
+  // with every field of progress preserved and a default identity attached.
+  function migrate() {
+    let idx = readIndex();
+    if (idx && idx.ids.length) {
+      if (!idx.ids.includes(idx.activeId)) idx.activeId = idx.ids[0];
+      return idx;
+    }
+    const legacy = readLegacy();
+    if (legacy) {
+      const id = newId();
+      const data = Object.assign(freshState(), sanitize(legacy), {
+        id, displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '',
+        createdAt: (typeof legacy.createdAt === 'string' && legacy.createdAt) ? legacy.createdAt : nowIso(),
+        lastPlayed: nowIso(), v: SAVE_V,
+      });
+      writeProfile(id, data);
+      // Retire the old single-save key ONLY once the new profile is confirmed
+      // readable — so a failed write can never lose the legacy progress, and a
+      // lingering legacy save can't "zombie-migrate" after every profile is deleted.
+      if (readProfile(id).data) lsDel(LEGACY_KEY);
+      idx = { schema: 'txpps.index', v: 1, activeId: id, ids: [id], migratedFromLegacy: true };
+      writeIndex(idx);
+      return idx;
+    }
+    return null;
+  }
 
   function defaults() {
     return {
@@ -24,28 +145,6 @@ const Store = (() => {
       dictViewed: [],
       createdAt: new Date().toISOString(),
     };
-  }
-
-  /* ---- safe persistence ---- */
-  function rawLoad() {
-    try {
-      const s = window.localStorage.getItem(KEY);
-      return s ? JSON.parse(s) : null;
-    } catch (e) {
-      storageOk = false;
-      return memoryFallback ? JSON.parse(memoryFallback) : null;
-    }
-  }
-
-  function rawSave(obj) {
-    const json = JSON.stringify(obj);
-    try {
-      window.localStorage.setItem(KEY, json);
-      storageOk = true;
-    } catch (e) {
-      storageOk = false;
-      memoryFallback = json;
-    }
   }
 
   // Merge loaded data over defaults so missing/renamed fields never crash.
@@ -101,9 +200,29 @@ const Store = (() => {
     return s;
   }
 
-  let state = sanitize(rawLoad());
+  (function initState() {
+    const idx = migrate();
+    if (idx) {
+      activeId = idx.activeId;
+      let r = readProfile(activeId);
+      if (!r.data) {                       // active profile unreadable — try any other, else fall through to welcome
+        const alt = idx.ids.find((pid) => readProfile(pid).data);
+        if (alt) { activeId = alt; idx.activeId = alt; writeIndex(idx); r = readProfile(alt); }
+      }
+      if (r.data) { state = sanitizeFull(r.data); recoveredFlag = r.recovered; }
+      else { state = freshState(); activeId = null; needsWelcome = true; }
+    } else {
+      state = freshState();                // truly first launch — no profile, no legacy save
+      needsWelcome = true;
+    }
+  })();
 
-  function save() { rawSave(state); }
+  function save() {
+    if (!activeId) return;                 // welcome pending — nothing to persist yet
+    state.lastPlayed = nowIso();
+    state.id = activeId;
+    writeProfile(activeId, state);
+  }
 
   /* ---- date helpers ---- */
   function todayStr() {
@@ -343,29 +462,159 @@ const Store = (() => {
     }
   }
 
-  function exportJson() { return JSON.stringify(state, null, 2); }
-
-  function importJson(text) {
-    let obj;
-    try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: 'That isn\'t valid JSON — paste the exact text from Export Progress.' }; }
-    if (!obj || typeof obj !== 'object' || typeof obj.xp !== 'number') {
-      return { ok: false, error: 'That JSON doesn\'t look like TXPPS progress data (missing xp field).' };
-    }
-    state = sanitize(obj);
+  function setCurrentNode(id) {
+    if (!state || state.currentNode === id) return;
+    state.currentNode = id;
     save();
-    return { ok: true };
   }
 
+  /* ---- portable, human-readable export / import ---- */
+  function buildExport(data) {
+    return {
+      schema: 'txpps.profile.export', v: SAVE_V, app: 'TXPPS VST CODE LAB', exportedAt: nowIso(),
+      profile: { displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, createdAt: data.createdAt },
+      progress: {
+        xp: data.xp, nodes: data.nodes, achievements: data.achievements, weak: data.weak,
+        streak: data.streak, daily: data.daily, dailyDone: data.dailyDone,
+        practiceCleared: data.practiceCleared, dictViewed: data.dictViewed, currentNode: data.currentNode,
+      },
+      settings: data.settings,
+    };
+  }
+  function exportProfile(id) {
+    const src = (id === activeId) ? state : (readProfile(id).data);
+    if (!src) return '';
+    return JSON.stringify(buildExport(sanitizeFull(src)), null, 2);
+  }
+  function exportJson() { return exportProfile(activeId); }
+
+  function coerceImport(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    if (obj.schema === 'txpps.profile.export' && obj.progress && typeof obj.progress === 'object') {
+      return Object.assign({}, obj.progress, obj.settings ? { settings: obj.settings } : {}, obj.profile || {});
+    }
+    if (obj.schema === 'txpps.profile' && obj.data && typeof obj.data === 'object') return obj.data;
+    if (typeof obj.xp === 'number') return obj;  // legacy flat save
+    return null;
+  }
+  function importProfileText(text) {
+    let obj;
+    try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: 'That isn\'t valid JSON — paste the exact text you exported.' }; }
+    const flat = coerceImport(obj);
+    if (!flat) return { ok: false, error: 'That JSON doesn\'t look like a TXPPS profile (no progress found).' };
+    const id = createProfile({
+      displayName: flat.displayName || 'Imported learner',
+      username: flat.username || ('learner' + newId().slice(-4)),
+      avatar: flat.avatar || AVATARS[0], bio: flat.bio || '',
+    });
+    const merged = sanitizeFull(Object.assign({}, flat, {
+      id, displayName: state.displayName, username: state.username, avatar: state.avatar, bio: state.bio,
+      createdAt: (typeof flat.createdAt === 'string' && flat.createdAt) ? flat.createdAt : state.createdAt,
+      lastPlayed: nowIso(),
+    }));
+    state = merged; save();
+    return { ok: true, id };
+  }
+  function importJson(text) { return importProfileText(text); }
+
   function reset() {
-    state = defaults();
-    try { window.localStorage.removeItem(KEY); } catch (e) { /* fallback mode */ }
-    memoryFallback = null;
+    if (!activeId) { state = freshState(); return; }
+    const keep = { displayName: state.displayName, username: state.username, avatar: state.avatar, bio: state.bio, createdAt: state.createdAt };
+    state = Object.assign(freshState(), keep, { id: activeId, lastPlayed: nowIso() });
     save();
+  }
+
+  /* ---- profile registry operations ---- */
+  function profileMeta(id) {
+    const src = (id === activeId) ? state : (readProfile(id).data);
+    if (!src) return null;
+    const s = (id === activeId) ? state : sanitizeFull(src);
+    const order = liveOrder();
+    const done = order.filter((x) => s.nodes[x] && s.nodes[x].done).length;
+    let lv = 1; for (let i = 0; i < LEVELS.length; i++) if (s.xp >= LEVELS[i]) lv = i + 1;
+    return {
+      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio,
+      xp: s.xp, level: lv, rank: LEVEL_TITLES[Math.min(lv - 1, LEVEL_TITLES.length - 1)],
+      completion: order.length ? Math.round((done / order.length) * 100) : 0, doneCount: done, total: order.length,
+      graduate: !!(s.nodes['boss7'] && s.nodes['boss7'].done),
+      achievements: Array.isArray(s.achievements) ? s.achievements.length : 0,
+      createdAt: s.createdAt, lastPlayed: s.lastPlayed, active: id === activeId,
+    };
+  }
+  function listProfiles() {
+    const idx = readIndex();
+    if (!idx) return activeId ? [profileMeta(activeId)].filter(Boolean) : [];
+    return idx.ids.map(profileMeta).filter(Boolean);
+  }
+  function createProfile(identity) {
+    if (activeId) save();
+    const id = newId();
+    state = Object.assign(freshState(), {
+      id,
+      displayName: cleanName(identity && identity.displayName) || 'Producer',
+      username: cleanUser(identity && identity.username) || ('user' + id.slice(-4)),
+      avatar: (identity && identity.avatar) || AVATARS[0],
+      bio: String((identity && identity.bio) || '').slice(0, 280),
+      createdAt: nowIso(), lastPlayed: nowIso(),
+    });
+    activeId = id;
+    writeProfile(id, state);
+    const idx = readIndex() || { schema: 'txpps.index', v: 1, activeId: id, ids: [] };
+    if (!idx.ids.includes(id)) idx.ids.push(id);
+    idx.activeId = id;
+    writeIndex(idx);
+    needsWelcome = false;
+    return id;
+  }
+  function switchProfile(id) {
+    if (id === activeId) return true;
+    const idx = readIndex();
+    if (!idx || !idx.ids.includes(id)) return false;
+    if (activeId) save();
+    const r = readProfile(id);
+    if (!r.data) return false;
+    activeId = id; state = sanitizeFull(r.data); recoveredFlag = r.recovered;
+    idx.activeId = id; writeIndex(idx); needsWelcome = false;
+    return true;
+  }
+  function editProfile(id, patch) {
+    patch = patch || {};
+    const apply = (d) => {
+      if (patch.displayName !== undefined) d.displayName = cleanName(patch.displayName) || d.displayName;
+      if (patch.username !== undefined) d.username = cleanUser(patch.username) || d.username;
+      if (patch.avatar !== undefined && patch.avatar) d.avatar = patch.avatar;
+      if (patch.bio !== undefined) d.bio = String(patch.bio || '').slice(0, 280);
+      return d;
+    };
+    if (id === activeId) { apply(state); save(); return true; }
+    const r = readProfile(id);
+    if (!r.data) return false;
+    const d = apply(sanitizeFull(r.data)); d.id = id;
+    writeProfile(id, d);
+    return true;
+  }
+  function deleteProfile(id) {
+    const idx = readIndex();
+    if (!idx || !idx.ids.includes(id)) return { ok: false };
+    idx.ids = idx.ids.filter((x) => x !== id);
+    lsDel(pKey(id)); lsDel(bKey(id));
+    let switchedTo = null;
+    if (id === activeId) {
+      if (idx.ids.length) { activeId = idx.ids[0]; const r = readProfile(activeId); state = r.data ? sanitizeFull(r.data) : freshState(); idx.activeId = activeId; switchedTo = activeId; }
+      else { activeId = null; idx.activeId = null; state = freshState(); needsWelcome = true; }
+    }
+    writeIndex(idx);
+    return { ok: true, switchedTo, needsWelcome };
   }
 
   return {
     get state() { return state; },
     get storageOk() { return storageOk; },
+    get needsWelcome() { return needsWelcome; },
+    get activeId() { return activeId; },
+    get recovered() { return recoveredFlag; },
+    clearRecovered() { recoveredFlag = false; },
+    AVATARS,
     save, todayStr, touchStreak,
     level, levelTitle, levelProgress, addXp,
     nodeState, isDone, isUnlocked, nextNode, liveOrder, zoneOfNode, completeNode, setProjectStep, starsFor,
@@ -373,6 +622,8 @@ const Store = (() => {
     dailyToday, completeDaily,
     grant, drainAchievements,
     zoneMastery, bossReady,
-    setSetting, markDictViewed, exportJson, importJson, reset,
+    setSetting, markDictViewed, setCurrentNode,
+    exportJson, importJson, exportProfile, importProfileText, reset,
+    listProfiles, profileMeta, createProfile, switchProfile, editProfile, deleteProfile,
   };
 })();

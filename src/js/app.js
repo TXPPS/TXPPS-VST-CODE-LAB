@@ -106,6 +106,7 @@ const App = (() => {
     const node = Engine.NODES[id];
     if (!node) { UI.toast('Content not found'); return; }
     Sfx.tap();
+    Store.setCurrentNode(id);
     if (node.kind === 'lesson') go('lesson', { id });
     else if (node.kind === 'project') go('project', { id });
     else if (node.kind === 'boss') go('boss', { id });
@@ -141,6 +142,37 @@ const App = (() => {
     document.body.classList.toggle('reduce-motion', !Store.state.settings.motion);
   }
 
+  // Autosave heartbeat (belt-and-suspenders — every mutation already saves).
+  let autosaveTimer = null;
+  function startAutosave() {
+    if (autosaveTimer) return;
+    autosaveTimer = setInterval(() => { try { Store.save(); } catch (e) { /* keep running */ } }, 30000);
+  }
+
+  // First-launch identity screen — shown full-screen, without the app chrome.
+  function showWelcome(mode) {
+    if (screenEl) { screenEl.remove(); screenEl = null; }
+    if (topbarEl) { topbarEl.remove(); topbarEl = null; }
+    if (tabbarEl) { tabbarEl.remove(); tabbarEl = null; }
+    document.querySelectorAll('.sheet-veil').forEach((v) => v.remove());
+    const view = Views.welcome({
+      mode: mode || 'first',
+      onDone: () => { startAutosave(); reboot(); },
+      onCancel: () => { reboot(); },
+    });
+    root.appendChild(view);
+    window.scrollTo({ top: 0 });
+  }
+
+  // Re-apply the active profile's settings and return to the dashboard
+  // (used after switching, creating, importing, or resetting a profile).
+  function reboot() {
+    applyCodeSize();
+    applyMotion();
+    go('dashboard');
+    flushAchievements();
+  }
+
   function boot() {
     try {
       // tap-to-define: abbreviations in prose open their dictionary card
@@ -153,8 +185,15 @@ const App = (() => {
         const tl = e.target.closest && e.target.closest('.term-link');
         if (tl) { e.preventDefault(); Dict.open(tl.dataset.term); }
       });
+      // capture progress the moment the tab is hidden or closed
+      window.addEventListener('pagehide', () => { try { Store.save(); } catch (e) { /* ignore */ } });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { try { Store.save(); } catch (e) { /* ignore */ } } });
+
       applyCodeSize();
       applyMotion();
+      if (Store.needsWelcome) { showWelcome('first'); return; }
+      startAutosave();
+      if (Store.recovered) { UI.toast('⚠ Your latest save looked corrupted — we restored your previous backup. No progress lost.', 5200); Store.clearRecovered(); }
       go('dashboard');
     } catch (err) {
       root.innerHTML = '';
@@ -166,7 +205,7 @@ const App = (() => {
   }
 
   // public API (Views call these)
-  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, boot };
+  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, reboot, boot };
 })();
 
 App.boot();

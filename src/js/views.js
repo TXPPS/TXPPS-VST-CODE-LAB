@@ -1231,22 +1231,236 @@ const Views = (() => {
   /* =====================================================================
      PROFILE & PROGRESS
      ===================================================================== */
+  /* =====================================================================
+     PROFILES — welcome, reusable form, and the expanded profile page
+     ===================================================================== */
+  function avatarBadge(emoji, cls) {
+    return el('div', { class: 'avatar-badge ' + (cls || ''), 'aria-hidden': 'true' }, emoji || '🎹');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function fmtWhen(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const diff = Date.now() - d.getTime();
+    const day = 86400000;
+    if (diff < 0) return 'just now';
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+    if (diff < day) return Math.floor(diff / 3600000) + 'h ago';
+    if (diff < 2 * day) return 'yesterday';
+    if (diff < 7 * day) return Math.floor(diff / day) + ' days ago';
+    return fmtDate(iso);
+  }
+
+  // Reusable identity form → { node, read() }. read() validates and returns
+  // {displayName, username, bio, avatar}, or null after showing an inline error.
+  function profileFormFields(initial) {
+    initial = initial || {};
+    const nameIn = el('input', { class: 'txt', type: 'text', maxlength: '40', placeholder: 'e.g. Hunter', value: initial.displayName || '', 'aria-label': 'Display name', autocomplete: 'off', autocapitalize: 'words' });
+    const userIn = el('input', { class: 'txt', type: 'text', maxlength: '24', placeholder: 'e.g. hunter_beats', value: initial.username || '', 'aria-label': 'Username', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false' });
+    const bioIn = el('textarea', { class: 'txt bio', maxlength: '280', rows: '3', placeholder: 'Optional — what do you make? (synthwave, hip-hop, film scores…)', 'aria-label': 'Bio' });
+    bioIn.value = initial.bio || '';
+    let userEdited = !!initial.username;
+    userIn.addEventListener('input', () => { userEdited = true; });
+    nameIn.addEventListener('input', () => {
+      if (!userEdited) userIn.value = nameIn.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24);
+    });
+    let chosen = initial.avatar || Store.AVATARS[0];
+    const grid = el('div', { class: 'avatar-grid' });
+    Store.AVATARS.forEach((a) => {
+      const b = el('button', { class: 'avatar-opt' + (a === chosen ? ' on' : ''), type: 'button', 'aria-label': 'Choose avatar ' + a, onclick: () => {
+        chosen = a; Sfx.tap();
+        [...grid.children].forEach((c) => c.classList.remove('on'));
+        b.classList.add('on');
+      } }, a);
+      grid.appendChild(b);
+    });
+    const err = el('div', { class: 'form-err', role: 'alert' });
+    const node = el('div', { class: 'col', style: 'gap:14px' },
+      el('label', { class: 'field' }, el('span', { class: 'field-label' }, 'Display name'), nameIn),
+      el('label', { class: 'field' }, el('span', { class: 'field-label' }, 'Username'), userIn),
+      el('label', { class: 'field' }, el('span', { class: 'field-label' }, 'Bio (optional)'), bioIn),
+      el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Pick an avatar'), grid),
+      err);
+    function read() {
+      const displayName = nameIn.value.trim();
+      const username = userIn.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+      if (!displayName) { err.textContent = 'A display name helps — even just a first name.'; nameIn.focus(); return null; }
+      if (!username) { err.textContent = 'Pick a username — letters, numbers and underscores.'; userIn.focus(); return null; }
+      err.textContent = '';
+      return { displayName, username, bio: bioIn.value.trim(), avatar: chosen };
+    }
+    return { node, read };
+  }
+
+  function welcome(opts) {
+    opts = opts || {};
+    const adding = opts.mode === 'add';
+    const form = profileFormFields();
+    const wrap = el('div', { class: 'welcome-wrap' },
+      el('div', { class: 'welcome-card card raised col', style: 'gap:16px' },
+        el('div', { class: 'brand welcome-brand' }, el('span', { class: 'led' }), el('span', null, 'TXPPS '), el('b', null, 'VST CODE LAB')),
+        el('div', { class: 'col', style: 'gap:4px' },
+          el('div', { class: 'eyebrow phos' }, adding ? 'NEW LOCAL PROFILE' : 'WELCOME TO THE LAB'),
+          el('h1', { class: 'h-display' }, adding ? 'Create a profile' : 'Set up your profile'),
+          el('p', { class: 'small dim' }, adding
+            ? 'A second learner on this device? Give them their own profile — separate progress, same offline app.'
+            : 'This lives only on this device — no account, no password, nothing sent anywhere. Your progress saves here automatically as you learn.')),
+        form.node,
+        el('button', { class: 'btn primary block', onclick: () => {
+          const v = form.read();
+          if (!v) return;
+          Sfx.tap();
+          Store.createProfile(v);
+          if (opts.onDone) opts.onDone(v);
+        } }, adding ? 'Create profile' : 'Start learning'),
+        adding
+          ? el('button', { class: 'btn ghost block', onclick: () => { if (opts.onCancel) opts.onCancel(); } }, 'Cancel')
+          : el('p', { class: 'small faint center' }, 'You can rename yourself, change avatars, or add more profiles anytime.')));
+    return wrap;
+  }
+
+  function renameProfileSheet(id, after) {
+    const meta = Store.profileMeta(id);
+    const form = profileFormFields(meta || {});
+    const s = UI.sheet([
+      el('div', { class: 'eyebrow phos' }, 'EDIT PROFILE'),
+      el('p', { class: 'small faint' }, 'Progress is untouched — this only changes how the profile looks.'),
+      form.node,
+      el('div', { class: 'row' },
+        el('button', { class: 'btn ghost', style: 'flex:1', onclick: () => s.close() }, 'Cancel'),
+        el('button', { class: 'btn primary', style: 'flex:1', onclick: () => {
+          const v = form.read(); if (!v) return;
+          Store.editProfile(id, v);
+          s.close();
+          UI.toast('Profile updated');
+          if (after) after();
+        } }, 'Save')),
+    ]);
+    return s;
+  }
+
+  function exportProfileFile(id) {
+    const json = Store.exportProfile(id);
+    if (!json) { UI.toast('Nothing to export'); return; }
+    const meta = Store.profileMeta(id);
+    try {
+      const blob = new Blob([json], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'txpps-profile-' + (meta ? meta.username : 'export') + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      UI.toast('Profile exported to a file');
+    } catch (e) {
+      try { if (navigator.clipboard) navigator.clipboard.writeText(json); UI.toast('Profile JSON copied to clipboard'); } catch (e2) { UI.toast('Export blocked here — copy from Settings instead'); }
+    }
+  }
+
+  function importProfileSheet(after) {
+    const ta = el('textarea', { class: 'io', placeholder: 'Paste exported profile JSON here…', 'aria-label': 'Profile JSON' });
+    const file = el('input', { type: 'file', accept: 'application/json,.json', style: 'display:none' });
+    file.addEventListener('change', () => {
+      const f = file.files && file.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => { ta.value = String(rd.result || ''); };
+      rd.readAsText(f);
+    });
+    const s = UI.sheet([
+      el('div', { class: 'eyebrow phos' }, 'IMPORT PROFILE'),
+      el('p', { class: 'small dim' }, 'Load a profile you exported before. It becomes a new local profile — nothing you already have is overwritten.'),
+      el('button', { class: 'btn sm', onclick: () => file.click() }, 'Choose a file…'),
+      ta,
+      el('div', { class: 'row' },
+        el('button', { class: 'btn ghost', style: 'flex:1', onclick: () => s.close() }, 'Cancel'),
+        el('button', { class: 'btn primary', style: 'flex:1', onclick: () => {
+          if (!ta.value.trim()) { UI.toast('Paste JSON or choose a file first'); return; }
+          const r = Store.importProfileText(ta.value);
+          if (r.ok) { s.close(); if (after) after(); App.reboot(); UI.toast('Profile imported'); }
+          else UI.toast(r.error);
+        } }, 'Import')),
+    ]);
+    return s;
+  }
+
+  function switchProfileSheet() {
+    const rows = el('div', { class: 'col', style: 'gap:10px' });
+    let s;
+    function confirmDelete(p) {
+      UI.confirmSheet('Delete ' + p.displayName + '?',
+        'This permanently erases this profile and its progress on this device (' + p.completion + '% complete). This cannot be undone — Export it first if you might want it back.',
+        'Delete profile', () => {
+          const r = Store.deleteProfile(p.id);
+          UI.toast('Profile deleted');
+          if (r.needsWelcome) { s.close(); App.showWelcome(); return; }
+          if (r.switchedTo) App.reboot();
+          rebuild();
+        }, true);
+    }
+    function rebuild() {
+      rows.replaceChildren();
+      Store.listProfiles().forEach((p) => {
+        rows.appendChild(el('div', { class: 'profile-card' + (p.active ? ' active' : '') },
+          el('div', { class: 'row', style: 'gap:10px; align-items:center' },
+            avatarBadge(p.avatar, 'sm'),
+            el('div', { style: 'min-width:0; flex:1' },
+              el('div', { class: 'pc-name' }, p.displayName, p.graduate ? el('span', { class: 'amber', style: 'margin-left:4px' }, '★') : null, p.active ? el('span', { class: 'pc-active' }, '● active') : null),
+              el('div', { class: 'pc-sub' }, '@' + p.username + ' · LV ' + p.level + ' · ' + p.completion + '% · ' + fmtWhen(p.lastPlayed)))),
+          el('div', { class: 'row wrap', style: 'gap:6px; margin-top:8px' },
+            p.active ? null : el('button', { class: 'btn sm primary', onclick: () => { Store.switchProfile(p.id); s.close(); App.reboot(); UI.toast('Switched to ' + p.displayName); } }, 'Switch to'),
+            el('button', { class: 'btn sm ghost', onclick: () => renameProfileSheet(p.id, rebuild) }, 'Rename'),
+            el('button', { class: 'btn sm ghost', onclick: () => exportProfileFile(p.id) }, 'Export'),
+            el('button', { class: 'btn sm danger', onclick: () => confirmDelete(p) }, 'Delete'))));
+      });
+    }
+    rebuild();
+    s = UI.sheet([
+      el('div', { class: 'eyebrow phos' }, 'LOCAL PROFILES'),
+      el('p', { class: 'small dim' }, 'Each profile keeps its own progress on this device. Everything stays offline.'),
+      rows,
+      el('div', { class: 'col gap-s', style: 'margin-top:6px' },
+        el('button', { class: 'btn block', onclick: () => { s.close(); App.showWelcome('add'); } }, '＋ Create new profile'),
+        el('button', { class: 'btn ghost block', onclick: () => importProfileSheet() }, 'Import profile from a file')),
+    ]);
+    return s;
+  }
+
   function profile() {
     const st = Store.state;
     const lv = Store.level();
-    const mastery = Store.zoneMastery();
     const order = Store.liveOrder();
     const doneCount = order.filter(Store.isDone).length;
+    const pct = order.length ? Math.round((doneCount / order.length) * 100) : 0;
+    const next = Store.nextNode();
+    const curId = next || st.currentNode || order[0];
+    const curNode = curId ? Engine.NODES[curId] : null;
+    const curZone = curId ? Store.zoneOfNode(curId) : null;
+    const grad = Store.isDone('boss7');
+    const dictPct = DICT.length ? Math.round(((st.dictViewed || []).length / DICT.length) * 100) : 0;
     const main = el('div', { class: 'main' });
 
-    main.appendChild(el('div', { class: 'col gap-s' },
-      el('div', { class: 'row between' },
-        el('div', null,
-          el('div', { class: 'eyebrow phos' }, Store.isDone('boss7') ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
-          el('h1', { class: 'h-display' }, 'LV ' + lv + ' — ' + Store.levelTitle())),
-        el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear')))));
+    // hero
+    main.appendChild(el('div', { class: 'card profile-hero col', style: 'gap:12px' },
+      el('div', { class: 'row', style: 'gap:14px; align-items:center' },
+        avatarBadge(st.avatar, 'lg'),
+        el('div', { style: 'min-width:0; flex:1' },
+          el('div', { class: 'eyebrow ' + (grad ? 'amber' : 'phos') }, grad ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
+          el('h1', { class: 'h-display', style: 'margin-top:2px' }, st.displayName || 'Producer'),
+          el('div', { class: 'small dim' }, '@' + (st.username || 'producer') + ' · LV ' + lv + ' — ' + Store.levelTitle())),
+        el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear'))),
+      st.bio ? el('p', { class: 'small', style: 'color:var(--ink-dim)' }, st.bio) : null,
+      el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('button', { class: 'btn sm', onclick: () => renameProfileSheet(Store.activeId, () => App.go('profile')) }, 'Edit profile'),
+        el('button', { class: 'btn sm ghost', onclick: () => switchProfileSheet() }, 'Switch profile'))));
 
-    if (Store.isDone('boss7')) {
+    if (grad) {
       main.appendChild(el('div', { class: 'card', style: 'border-color:var(--amber); background:linear-gradient(180deg, rgba(240,180,80,0.07), var(--bg1))' },
         el('div', { class: 'eyebrow amber' }, '★ TXPPS VST CODE LAB — GRADUATE'),
         el('p', { class: 'small dim mt-s' }, 'Every zone cleared, every product shipped, the Release Candidate signed. This status is permanent — like the skills.')));
@@ -1255,8 +1469,20 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'statgrid' },
       el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, st.xp.toLocaleString()), el('div', { class: 'k' }, 'Total XP')),
       el('div', { class: 'stat amber' }, el('div', { class: 'v tnum' }, String(st.streak.count || 0)), el('div', { class: 'k' }, 'Day streak')),
-      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, doneCount + '/' + order.length), el('div', { class: 'k' }, 'Nodes cleared')),
-      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, mastery.pct + '%'), el('div', { class: 'k' }, 'Zone 1 mastery'))));
+      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, pct + '%'), el('div', { class: 'k' }, 'Complete')),
+      el('div', { class: 'stat' }, el('div', { class: 'v tnum' }, doneCount + '/' + order.length), el('div', { class: 'k' }, 'Nodes cleared'))));
+
+    // snapshot
+    const snapRow = (k, v) => el('div', { class: 'row between snap-row' }, el('span', { class: 'small faint' }, k), el('span', { class: 'small', style: 'text-align:right' }, v));
+    main.appendChild(el('div', { class: 'card col', style: 'gap:0' },
+      el('div', { class: 'eyebrow', style: 'margin-bottom:6px' }, 'SNAPSHOT'),
+      snapRow('Rank', 'LV ' + lv + ' — ' + Store.levelTitle()),
+      snapRow('Graduate status', grad ? '★ Graduate' : 'In progress'),
+      snapRow('Current zone', curZone ? ('Zone ' + curZone.num + ' — ' + curZone.title) : '—'),
+      snapRow('Current lesson', grad ? 'Curriculum complete' : (curNode ? curNode.title : '—')),
+      snapRow('Dictionary', dictPct + '% explored'),
+      snapRow('Last played', fmtWhen(st.lastPlayed)),
+      snapRow('Profile created', fmtDate(st.createdAt))));
 
     // achievements
     main.appendChild(el('div', { class: 'card' },
@@ -1326,21 +1552,21 @@ const Views = (() => {
     // data
     const ioArea = el('textarea', { class: 'io', placeholder: 'Exported JSON appears here. To import: paste JSON here, then tap Import.', 'aria-label': 'Progress JSON' });
     main.appendChild(el('div', { class: 'card col', style: 'gap:10px' },
-      el('div', { class: 'eyebrow' }, 'PROGRESS DATA'),
+      el('div', { class: 'eyebrow' }, 'PROFILE DATA'),
       el('p', { class: 'small faint' }, Store.storageOk
-        ? 'Progress saves automatically to this browser\'s local storage.'
-        : '⚠ Local storage is blocked in this browser — export JSON to keep your progress.'),
+        ? 'This profile saves automatically to local storage on this device. Export a copy to back it up or move it to another device. Import loads a file as a new local profile — manage them all from your Profile page.'
+        : '⚠ Local storage is blocked in this browser — export your profile to keep it, since it can\'t be saved here.'),
       ioArea,
       el('div', { class: 'row wrap' },
         el('button', { class: 'btn sm', onclick: () => {
           ioArea.value = Store.exportJson();
           ioArea.select();
-          try { navigator.clipboard && navigator.clipboard.writeText(ioArea.value); UI.toast('Progress JSON copied to clipboard'); } catch (e) { UI.toast('JSON in the text box — copy it manually'); }
+          try { navigator.clipboard && navigator.clipboard.writeText(ioArea.value); UI.toast('Profile JSON copied to clipboard'); } catch (e) { UI.toast('JSON in the text box — copy it manually'); }
         } }, 'Export'),
         el('button', { class: 'btn sm', onclick: () => {
           if (!ioArea.value.trim()) { UI.toast('Paste exported JSON into the box first'); return; }
           const r = Store.importJson(ioArea.value);
-          if (r.ok) { UI.toast('Progress imported'); App.go('dashboard'); }
+          if (r.ok) { UI.toast('Profile imported as a new profile'); App.reboot(); }
           else UI.toast(r.error);
         } }, 'Import'),
         el('button', { class: 'btn sm', onclick: () => {
@@ -1357,10 +1583,10 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'card col', style: 'gap:10px' },
       el('div', { class: 'eyebrow red' }, 'DANGER ZONE'),
       el('button', { class: 'btn danger block', onclick: () => {
-        UI.confirmSheet('RESET ALL PROGRESS?', 'XP, stars, streak, achievements and the practice queue will be wiped. This cannot be undone (export first if unsure).', 'Wipe everything', () => {
+        UI.confirmSheet('RESET THIS PROFILE\'S PROGRESS?', 'XP, stars, streak, achievements and the practice queue will be wiped for this profile. Your name and avatar stay. This cannot be undone — export first if unsure. (To remove a whole profile, use Profile → Switch profile → Delete.)', 'Wipe progress', () => {
           Store.reset();
           UI.toast('Progress reset');
-          App.go('dashboard');
+          App.reboot();
         }, true);
       } }, 'Reset progress')));
 
@@ -1371,5 +1597,5 @@ const Views = (() => {
     return main;
   }
 
-  return { dashboard, map, lesson, challenge, project, boss, practice, practiceRun, daily, glossary, profile, settings, questionView, sequenceRunner, nodeKindLabel, conceptLabel };
+  return { dashboard, map, lesson, challenge, project, boss, practice, practiceRun, daily, glossary, profile, settings, welcome, questionView, sequenceRunner, nodeKindLabel, conceptLabel };
 })();
