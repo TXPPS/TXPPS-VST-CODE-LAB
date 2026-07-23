@@ -48,6 +48,44 @@ const BossKit = (() => {
     },
   };
 
+  /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
+     phase thresholds. For a 6-stage boss it yields exactly boss1's 4/2/-1. ---- */
+  function autoPhases(maxHp) {
+    const a = Math.max(1, Math.round(maxHp * 2 / 3));
+    const b = Math.max(0, Math.round(maxHp * 1 / 3));
+    return [
+      { id: 'onset', until: a, title: 'PHASE 1 — ONSET', behavior: 'Development phase one — faults appear.' },
+      { id: 'rising', until: b, title: 'PHASE 2 — RISING', behavior: 'Development phase two — instability climbs.' },
+      { id: 'critical', until: -1, title: 'PHASE 3 — CRITICAL', behavior: 'Development phase three — finish the stabilisation.' },
+    ];
+  }
+
+  /* ---- v1.3.0: QA-only DEVELOPMENT definitions for Zones 2–7. These run on the
+     REAL BossKit using the zone's curriculum boss node (nodeRef) for deterministic
+     prompts. They use DISTINCT ids (dev_bossN), so BossKit.has('bossN') stays false
+     and the learner boss2–7 legacy encounters are completely untouched. They are
+     `development: true` and never launchable by normal learners. ---- */
+  (function registerDevelopmentBosses() {
+    for (let z = 2; z <= 7; z++) {
+      const nodeId = 'boss' + z;
+      let stages = 6, passNeed = 4;
+      try {
+        const n = (typeof Engine !== 'undefined' && Engine.NODES) ? Engine.NODES[nodeId] : null;
+        if (n && Array.isArray(n.stages) && n.stages.length) { stages = n.stages.length; passNeed = n.passNeed || 4; }
+      } catch (e) { /* fall back to 6/4 */ }
+      DEFS['dev_boss' + z] = {
+        id: 'dev_boss' + z, zoneId: 'z' + z, nodeRef: nodeId, development: true,
+        name: 'DEVELOPMENT ENCOUNTER — ZONE ' + z,
+        subtitle: 'zone-' + z + '-development-boss (framework test)',
+        description: 'Structural development encounter for Zone ' + z + '. It runs on the real BossKit with deterministic curriculum-derived prompts to exercise intro, phase changes, victory, defeat, retry and exit. This is not finished content and awards nothing.',
+        phases: autoPhases(stages),
+        presentation: { integrityLabel: 'SIGNAL INTEGRITY', hpLabel: 'INSTABILITY', defeatLineLabel: 'STABILISE THRESHOLD' },
+        accessibility: { textOnly: 'Development encounter for framework testing. Answer curriculum-derived prompts; each correct prompt lowers instability, each miss costs an integrity cell. QA only — nothing is saved.' },
+        _passNeedHint: passNeed,
+      };
+    }
+  })();
+
   const STATES = ['LOCKED', 'READY', 'INTRO', 'QUESTION', 'RESOLVING_CORRECT', 'RESOLVING_INCORRECT', 'PHASE_TRANSITION', 'VICTORY', 'DEFEAT', 'PAUSED', 'COMPLETE'];
   // Deterministic transition table: state -> the states it may move to.
   const T = {
@@ -192,5 +230,8 @@ const BossKit = (() => {
     try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: st.attempts | 0, victories: (st.victories | 0) + 1 }); } catch (e) { /* decorative */ }
   }
 
-  return { has, def, createSession, stats, recordAttempt, recordVictory, STATES, TRANSITIONS: T };
+  function isDevelopment(id) { return !!(DEFS[id] && DEFS[id].development); }
+  function listDefs() { return Object.keys(DEFS); }
+
+  return { has, def, createSession, stats, recordAttempt, recordVictory, STATES, TRANSITIONS: T, isDevelopment, listDefs, autoPhases };
 })();

@@ -79,6 +79,25 @@ learner progress. A clearly-labelled **TXPPS QA** test profile (built from
 validated fixtures, with the real profile stashed and restorable) supports
 deliberate persistent testing. See **Honest security limitations** below.
 
+**Version 1.3.0 — Boss Campaign Framework** promotes the Zone 1 BossKit into
+a reusable, seven-zone campaign. One registry (`boss_campaign.js`) defines all
+seven bosses and one service (`boss_campaign_service.js`) owns lookup,
+sequencing, availability, campaign progress, idempotent victory observation and
+safe session persistence — deferring to `AccessPolicy`, `ProgressionPolicy` and
+`RewardPolicy` with no scattered QA checks. Zone 1 stays the **production**
+reference encounter for real learners. Zones 2–7 register **development**
+encounters (`dev_boss2`…`dev_boss7`) that run the *real* BossKit on deterministic
+curriculum-derived prompts but are **QA-only** — clearly labelled "DEVELOPMENT
+ENCOUNTER — QA ONLY", launchable from the expanded Owner QA **Boss Campaign**
+panel, and never presented to learners (who keep fighting the untouched legacy
+Zone 2–7 bosses). The encounter shell is now shared: intro (concepts, PATCH
+briefing, keyboard/screen-reader friendly), the HP/integrity HUD with live text
+labels, phase transitions, an enhanced victory summary (accuracy, concepts
+demonstrated, rewards granted **or** suppressed-in-QA, next unlock) and defeat
+flow (review/retry), plus a validated, production-only session resume. Rewards
+stay authoritative and idempotent; QA simulations and development encounters
+never touch real progression.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -201,7 +220,13 @@ src/
     boss.js                  BossKit — data-driven boss encounter framework:
                              definitions reference curriculum nodes; a pure
                              deterministic session mirrors runner results as
-                             HP / integrity / phases (v1.2.0, Zone 1 slice)
+                             HP / integrity / phases (v1.2.0 Zone 1 slice; v1.3.0
+                             adds auto-phases + QA-only dev_boss2–7 definitions)
+    boss_campaign.js         one registry of all seven zone bosses — production
+                             (Zone 1) vs development (Zones 2–7), fields, order (v1.3.0)
+    boss_campaign_service.js campaign authority: lookup, sequencing, availability,
+                             progress, idempotent victory, safe session persistence;
+                             defers to Access/Progression/Reward policies (v1.3.0)
     engine.js                pure challenge evaluation (no DOM): fill/mcq/order/
                              bugspot/match validation, seeded shuffles, daily pick
     store.js                 single-profile state + progress; versioned checksummed

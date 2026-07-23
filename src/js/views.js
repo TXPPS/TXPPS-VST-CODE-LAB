@@ -447,9 +447,12 @@ const Views = (() => {
     const n = cfg.questions.length;
     const share = cfg.baseXp / n;
     let idx = cfg.stepStart || 0;
-    let firstTryCount = 0;
-    let correctCount = 0;
-    let earned = 0;
+    // v1.3.0: optional resume (boss session recovery). Default {} → byte-identical
+    // to a fresh run (counters start at 0); only a restored session passes values.
+    const resume = cfg.resume || {};
+    let firstTryCount = resume.firstTryCount | 0;
+    let correctCount = resume.correctCount | 0;
+    let earned = resume.earned || 0;
     let finished = false;   // one-shot: a held/repeated Finish can never award twice
     const stageResults = [];
 
@@ -997,19 +1000,43 @@ const Views = (() => {
      sequence runner still owns grading, retries, XP and completion; the
      session state machine only mirrors those resolutions as HP/phases.
      ===================================================================== */
-  function bossEncounter(main, node, ready) {
-    const d = BossKit.def(node.id);
-    const passNeed = node.passNeed || 4;
-    const cleared = Store.isDone(node.id);
+  // v1.3.0: distinct concepts covered by a boss node's stages (for intro/summary).
+  function bossConcepts(node) {
+    try { return [...new Set((node.stages || []).map((q) => q.concept).filter(Boolean))].map(conceptLabel).filter(Boolean); }
+    catch (e) { return []; }
+  }
 
-    // one-time unlock event (decorative)
-    if (!cleared && !Store.gameSetting('seen.bossUnlocked_' + node.id)) {
+  // The reusable campaign encounter shell. opts:
+  //   { node, defId, ready, qa, development }
+  // Production Zone 1 (defId 'boss1') is byte-identical to v1.2.0 in normal mode;
+  // development encounters (defId 'dev_bossN') run the same shell, QA-only, with a
+  // persistent DEVELOPMENT banner and every permanent write skipped.
+  function bossEncounter(main, opts) {
+    const node = opts.node;
+    const defId = opts.defId || node.id;
+    const development = !!opts.development;
+    const qa = !!opts.qa || qaSimActive();
+    const campaignId = node.id;                          // registry id === boss node id
+    const d = BossKit.def(defId);
+    const passNeed = node.passNeed || 4;
+    const cleared = development ? false : Store.isDone(node.id);
+
+    // one-time unlock event (production learner only)
+    if (!development && !cleared && !Store.gameSetting('seen.bossUnlocked_' + node.id)) {
       Store.setGameSetting('seen.bossUnlocked_' + node.id, 1);
       emitG('BOSS_UNLOCKED', { bossId: node.id, zoneId: d.zoneId });
     }
 
-    const session = BossKit.createSession(node.id);
+    const session = BossKit.createSession(defId);
     if (!session) { main.appendChild(el('div', { class: 'card' }, el('p', { class: 'small dim' }, 'Encounter data unavailable — using standard mode.'))); return; }
+
+    // v1.3.0: resume a valid production session (never in QA / development).
+    const saved = (!development && !qa) ? BossCampaignService.restoreCampaignSession(defId) : null;
+    const canResume = !!(saved && saved.questionIndex > 0 && saved.questionIndex < session.snapshot.total && saved.incorrectCount < session.snapshot.maxIntegrity);
+    // encounter-side mirror of the runner's counters (for session save + resume math)
+    const enc = { correct: 0, firstTry: 0, incorrect: 0, earned: 0 };
+    const shareXp = (cleared ? 0 : XP_RULES.boss) / Math.max(1, node.stages.length);
+    const concepts = bossConcepts(node);
 
     /* ---- HUD ---- */
     const hpSegs = [], integrityPips = [];
@@ -1057,85 +1084,167 @@ const Views = (() => {
       hud.classList.toggle('danger', snap.playerIntegrity === 1);
     }
 
-    /* ---- defeat / outcome sheets ---- */
+    const devBanner = () => development
+      ? el('div', { class: 'dev-banner', role: 'note' }, 'DEVELOPMENT ENCOUNTER — QA ONLY · nothing is saved')
+      : null;
+    const simulated = () => development || qa;
+
+    /* ---- shared defeat flow ---- */
     function defeatSheet(correct, total, early) {
       UI.sheet([
         el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
           el('div', { class: 'eyebrow red', style: 'justify-content:center' }, early ? 'SIGNAL INTEGRITY LOST' : 'SESSION FAILED'),
           el('div', { class: 'h-display' }, correct + ' / ' + total + ' stages repaired'),
           el('p', { class: 'small dim' }, early
-            ? 'Three failed stages — the corruption held this time. No damage done: your progress is untouched, and the plugin remembers nothing. Sharpen the weak concepts and run the session again.'
-            : 'You need ' + passNeed + '. The plugin is still broken — but now you know exactly which concepts to sharpen. No XP banked this run: clear the session to collect it.')),
-        el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review weak concepts'),
-        el('button', { class: 'btn block', onclick: () => { App.go('boss', { id: node.id }); session.restartEvent(); } }, 'Run the session again'),
-        el('button', { class: 'btn ghost block', onclick: () => App.go('map') }, 'Back to map'),
+            ? 'Integrity ran out this run. No damage done: your progress is untouched and nothing was recorded. Sharpen the weak concepts and run it again.'
+            : 'You need ' + passNeed + '. Nothing was banked this run — clear the session to collect it. Your existing XP and completed lessons are safe.'),
+          concepts.length ? el('p', { class: 'small faint' }, 'Concepts to review: ' + concepts.join(', ')) : null,
+          simulated() ? el('div', { class: 'qa-note', role: 'note' }, 'QA / development — no real progress changed.') : null),
+        el('button', { class: 'btn amber block', onclick: () => App.go('practice') }, 'Review lessons'),
+        el('button', { class: 'btn block', onclick: () => { retry(); } }, 'Retry'),
+        qa ? el('button', { class: 'btn ghost block', onclick: () => { endSession(); try { QaAccess.disableQa(); } catch (e) {} App.go('map'); } }, 'QA reset (exit QA)') : null,
+        el('button', { class: 'btn ghost block', onclick: () => { exitEncounter(); App.go('map'); } }, 'Back to map'),
       ], { sticky: true });
     }
 
+    /* ---- shared victory flow ---- */
+    function victorySheet(result, starCount) {
+      const nextId = simulated() ? null : Store.nextNode();
+      const acc = result.total ? Math.round((result.correct / result.total) * 100) : 0;
+      UI.sheet([
+        el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
+          el('div', { class: 'eyebrow phos', style: 'justify-content:center' }, development ? 'DEVELOPMENT ENCOUNTER CLEARED' : 'ZONE CLEARED'),
+          el('div', { class: 'h-display' }, node.title),
+          starCount != null ? el('div', { style: 'font-size:26px; letter-spacing:6px' }, UI.stars(starCount)) : null,
+          el('div', { class: 'xp-pop', style: 'font-size:24px' }, '+' + result.earned + ' XP'),
+          el('div', { class: 'small dim' }, result.correct + ' of ' + result.total + ' stages · ' + result.firstTry + ' first try · ' + acc + '% accuracy'),
+          concepts.length ? el('p', { class: 'small faint' }, 'Concepts demonstrated: ' + concepts.join(', ')) : null,
+          el('div', { class: simulated() ? 'qa-note' : 'small phos', role: 'note' }, simulated()
+            ? 'QA / development — result simulated. No XP, stars, or completion recorded.'
+            : ('Rewards granted: +' + result.earned + ' XP, mastery stars, and Zone ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' cleared.')),
+          (!simulated() && nextId) ? el('div', { class: 'small faint' }, 'Unlocked next: ' + (Engine.NODES[nextId] ? Engine.NODES[nextId].title : '')) : null),
+        el('div', { class: 'col gap-s' },
+          (!simulated() && nextId) ? el('button', { class: 'btn primary block', onclick: () => { exitEncounter(); App.openNode(nextId); } }, 'Continue: ' + (Engine.NODES[nextId] ? Engine.NODES[nextId].title : '')) : null,
+          el('button', { class: 'btn block', onclick: () => { retry(); } }, 'Retry for practice'),
+          el('button', { class: 'btn ghost block', onclick: () => { exitEncounter(); App.go('map'); } }, 'Return to map')),
+      ], { sticky: true });
+    }
+
+    /* ---- session lifecycle helpers ---- */
+    let onVis = null;
+    function detachVis() { if (onVis) { document.removeEventListener('visibilitychange', onVis); onVis = null; } }
+    function saveSession(qIndex) {
+      if (development || qa) return;
+      BossCampaignService.saveCampaignSession({ defId, nodeId: node.id, questionIndex: qIndex, correctCount: enc.correct, firstTryCount: enc.firstTry, incorrectCount: enc.incorrect, earned: Math.round(enc.earned) });
+    }
+    function endSession() { detachVis(); if (!development && !qa) BossCampaignService.clearCampaignSession(); }
+    function exitEncounter() { endSession(); emitG('BOSS_ENCOUNTER_EXITED', { bossId: campaignId, development: development }); }
+    function retry() {
+      endSession();
+      emitG('BOSS_RETRY_STARTED', { bossId: campaignId, development: development });
+      App.go('boss', development ? { id: node.id, campaign: defId } : { id: node.id });
+      try { session.restartEvent(); } catch (e) { /* decorative */ }
+    }
+
     /* ---- intro (READY state) ---- */
-    const intro = el('div', { class: 'col', style: 'gap:14px' },
-      el('div', { class: 'boss-banner col', style: 'gap:10px' },
-        el('div', { class: 'eyebrow red' }, '☠ ZONE ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' BOSS' + (cleared ? ' · CLEARED — REPLAY' : '')),
-        el('h1', { class: 'h-display' }, node.title),
-        el('p', { class: 'small', style: 'color:var(--ink-dim)' }, d.description),
-        el('p', { class: 'small faint' }, d.accessibility.textOnly),
-        el('div', { class: 'row wrap mt-s' },
-          el('span', { class: 'chip' }, session.snapshot.maxHp + ' stages'),
-          el('span', { class: 'chip' }, '1 retry per stage'),
-          el('span', { class: 'chip' }, 'repair ' + passNeed + '+ to win'),
-          el('span', { class: 'chip' }, session.snapshot.maxIntegrity + ' integrity cells'),
-          el('span', { class: 'chip' }, '+' + XP_RULES.boss + ' XP max')),
-        el('button', { class: 'btn danger block', style: 'margin-top:6px', onclick: start }, 'Enter the session')));
+    emitG('BOSS_INTRO_STARTED', { bossId: campaignId, zoneId: d.zoneId, development: development });
+    const zoneNum = (Store.zoneOfNode(node.id) || {}).num || 1;
+    const introCard = el('div', { class: 'boss-banner col', style: 'gap:10px' },
+      el('div', { class: 'eyebrow red' }, (development ? '⚙ ZONE ' + zoneNum + ' — DEVELOPMENT BOSS' : '☠ ZONE ' + zoneNum + ' BOSS' + (cleared ? ' · CLEARED — REPLAY' : ''))),
+      el('h1', { class: 'h-display' }, development ? d.name : node.title),
+      el('p', { class: 'small', style: 'color:var(--ink-dim)' }, d.description),
+      el('p', { class: 'small faint' }, d.accessibility.textOnly),
+      concepts.length ? el('p', { class: 'small faint' }, 'Concepts tested: ' + concepts.join(', ')) : null,
+      el('p', { class: 'small faint' }, 'PATCH: ' + (development ? 'Framework check — I am driving diagnostics only.' : 'Diagnostics ready. Read each signal; I am with you.')),
+      el('div', { class: 'row wrap mt-s' },
+        el('span', { class: 'chip' }, session.snapshot.maxHp + ' stages'),
+        el('span', { class: 'chip' }, '1 retry per stage'),
+        el('span', { class: 'chip' }, 'repair ' + passNeed + '+ to win'),
+        el('span', { class: 'chip' }, session.snapshot.maxIntegrity + ' integrity cells'),
+        development ? el('span', { class: 'chip' }, 'no rewards') : el('span', { class: 'chip' }, '+' + XP_RULES.boss + ' XP max')),
+      canResume ? el('button', { class: 'btn primary block', style: 'margin-top:6px', onclick: () => start(saved) }, 'Resume (stage ' + (saved.questionIndex + 1) + ' of ' + session.snapshot.total + ')') : null,
+      el('button', { class: 'btn danger block', style: 'margin-top:6px', onclick: () => start(null) }, canResume ? 'Start over' : (development ? 'Enter development encounter' : 'Enter the session')),
+      el('button', { class: 'btn ghost block', onclick: () => { exitEncounter(); App.go('map'); } }, 'Return to map'));
+    const intro = el('div', { class: 'col', style: 'gap:14px' }, devBanner(), introCard);
     main.appendChild(intro);
 
     let started = false;
-    function start() {
+    function start(resumeRec) {
       if (started) return;
       started = true;
       session.enter();                     // READY -> INTRO (BOSS_ENTERED + BOSS_INTRO)
       session.start();                     // INTRO -> QUESTION (BOSS_STARTED)
-      BossKit.recordAttempt(node.id);
-      const alreadyDone = cleared;
+      if (!development) BossKit.recordAttempt(node.id);
+      emitG('BOSS_ENCOUNTER_STARTED', { bossId: campaignId, zoneId: d.zoneId, development: development });
+      emitG('BOSS_PHASE_STARTED', { bossId: campaignId, phaseIndex: 0, phaseId: d.phases[0].id });
 
-      // presentational pause when the tab is hidden mid-fight; self-removes
-      // once the encounter leaves the document (route change) or ends.
-      const onVis = () => {
-        if (!document.contains(hud)) { document.removeEventListener('visibilitychange', onVis); return; }
+      let stepStart = 0, resumeCounts = null;
+      if (resumeRec) {
+        // fast-forward the real session to the saved state with the bus quiet, so
+        // resuming does not replay a burst of PATCH / audio / haptic reactions.
+        // try/finally guarantees the bus is re-enabled even if a replay step throws.
+        try { GameBus.setEnabled(false); } catch (e) {}
+        try {
+          for (let i = 0; i < (resumeRec.correctCount | 0); i++) { session.resolve({ correct: true, firstTry: true }); session.advance(); }
+          for (let i = 0; i < (resumeRec.incorrectCount | 0); i++) { session.resolve({ correct: false }); session.advance(); }
+        } finally { try { GameBus.setEnabled(true); } catch (e) {} }
+        enc.correct = resumeRec.correctCount | 0; enc.firstTry = resumeRec.firstTryCount | 0; enc.incorrect = resumeRec.incorrectCount | 0; enc.earned = resumeRec.earned || 0;
+        stepStart = resumeRec.questionIndex | 0;
+        resumeCounts = { correctCount: enc.correct, firstTryCount: enc.firstTry, earned: enc.earned };
+      }
+
+      onVis = () => {
+        if (!document.contains(hud)) { detachVis(); return; }
         if (document.hidden) session.pause(); else session.resume();
       };
       document.addEventListener('visibilitychange', onVis);
 
       const fight = el('div', { class: 'col', style: 'gap:12px' });
+      const db = devBanner(); if (db) fight.appendChild(db);
       fight.appendChild(hud);
+      refreshHud(session.snapshot);
       fight.appendChild(el('div', { class: 'card' }, sequenceRunner({
-        eyebrow: 'BOSS FIGHT',
+        eyebrow: development ? 'DEVELOPMENT ENCOUNTER' : 'BOSS FIGHT',
         bossMode: true,
         questions: node.stages.map((q) => ({ q })),
-        baseXp: alreadyDone ? 0 : XP_RULES.boss,
+        baseXp: cleared ? 0 : XP_RULES.boss,
         nodeId: node.id,
+        stepStart: stepStart,
+        resume: resumeCounts,
         onQuestionResolved: (item, res) => {
+          // mirror the runner's counters for session save + resume math
+          if (res.correct) { enc.correct += 1; if (res.firstTry) enc.firstTry += 1; enc.earned += res.firstTry ? shareXp : shareXp / 2; }
+          else enc.incorrect += 1;
+          const before = session.snapshot.phaseIndex;
           const r = session.resolve(res);
           if (!r) return;
           refreshHud(session.snapshot);
+          if (r.phaseChanged) emitG('BOSS_PHASE_STARTED', { bossId: campaignId, phaseIndex: session.snapshot.phaseIndex, phaseId: r.phase.id, previous: before });
           if (r.defeatImminent) {          // passing is now impossible — end the run
             const out = session.advance();
-            if (out === 'DEFEAT') { document.removeEventListener('visibilitychange', onVis); defeatSheet(session.snapshot.correctCount, session.snapshot.total, true); }
+            if (out === 'DEFEAT') { endSession(); BossCampaignService.recordCampaignDefeat(campaignId, { qa: simulated() }); defeatSheet(session.snapshot.correctCount, session.snapshot.total, true); }
           }
         },
-        onStep: (idx) => { if (idx < node.stages.length) session.advance(); },   // -> next QUESTION
+        onStep: (idx) => { if (idx < node.stages.length) { session.advance(); saveSession(idx); } },
         onFinish: (result) => {
-          document.removeEventListener('visibilitychange', onVis);
+          detachVis();
           const outcome = session.advance();                 // terminal state + events
           const passed = result.correct >= passNeed;          // authoritative (identical math)
           if (passed) {
-            if (result.earned > 0) App.awardXp(result.earned);
-            Store.completeNode(node.id, result.firstTry, result.total);
-            App.flushAchievements();
-            BossKit.recordVictory(node.id);
+            if (!development) {                                // real rewards only for production
+              if (result.earned > 0) App.awardXp(result.earned);
+              Store.completeNode(node.id, result.firstTry, result.total);
+              App.flushAchievements();
+              BossKit.recordVictory(node.id);
+            }
             session.acknowledge();
-            completionSheet(node, result, Store.starsFor(result.firstTry, result.total));
+            endSession();
+            BossCampaignService.recordCampaignVictory(campaignId, { qa: simulated() });
+            victorySheet(result, development ? null : Store.starsFor(result.firstTry, result.total));
           } else if (outcome === 'DEFEAT' || !passed) {
             session.acknowledge();
+            endSession();
+            BossCampaignService.recordCampaignDefeat(campaignId, { qa: simulated() });
             defeatSheet(result.correct, result.total, false);
           }
         },
@@ -1155,6 +1264,14 @@ const Views = (() => {
       el('button', { class: 'back-btn', onclick: () => App.go('map') }, UI.icon('back'), ' RETREAT')));
 
     const qaBypass = (typeof AccessPolicy !== 'undefined') && AccessPolicy.qaOverride();
+
+    // v1.3.0: a campaign-launched DEVELOPMENT encounter (QA only). Renders the
+    // shared BossKit shell for dev_bossN; the learner boss node is never affected.
+    if (params.campaign && typeof BossKit !== 'undefined' && BossKit.has(params.campaign) && BossKit.isDevelopment(params.campaign) && qaBypass) {
+      bossEncounter(main, { node: node, defId: params.campaign, ready: ready, qa: true, development: true });
+      return main;
+    }
+
     if (!ready.ready && !Store.isDone(node.id) && !qaBypass) {
       main.appendChild(el('div', { class: 'boss-banner col', style: 'gap:10px' },
         el('div', { class: 'eyebrow red' }, '☠ BOSS — LOCKED'),
@@ -1170,9 +1287,9 @@ const Views = (() => {
       return main;
     }
 
-    // v1.2.0: bosses with a BossKit definition get the encounter presentation
-    // (Zone 1 vertical slice). All other bosses keep the legacy flow untouched.
-    if (BossKit.has(node.id)) { bossEncounter(main, node, ready); return main; }
+    // v1.2.0/1.3.0: bosses with a production BossKit definition (Zone 1) get the
+    // campaign encounter shell. All other bosses keep the legacy flow untouched.
+    if (BossKit.has(node.id)) { bossEncounter(main, { node: node, defId: node.id, ready: ready }); return main; }
 
     let started = false;
     const intro = el('div', { class: 'col', style: 'gap:14px' },
@@ -1805,12 +1922,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.2.1'));
+      el('span', { class: 'mono small phos' }, 'v1.3.0'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.1 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, the first boss encounter live in Zone 1, and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.0 — a single local learner profile stored on this device, PATCH the workshop assistant, the production Zone 1 boss encounter, a seven-zone boss-campaign framework (Zones 2–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.

@@ -80,6 +80,20 @@ const GameBus = (() => {
     QA_SIMULATION_ENDED: 'QA_SIMULATION_ENDED',
     QA_PROFILE_CREATED: 'QA_PROFILE_CREATED',
     QA_PROFILE_RESET: 'QA_PROFILE_RESET',
+    // ---- boss campaign layer (v1.3.0). Campaign-level events; the per-encounter
+    //      BOSS_ENTERED / BOSS_STARTED / BOSS_DEFEATED / BOSS_GAME_OVER /
+    //      BOSS_RESTARTED / BOSS_PHASE_CHANGED above still fire from BossKit and
+    //      are NOT duplicated here. Payloads never carry secrets or private data. ----
+    BOSS_CAMPAIGN_OPENED: 'BOSS_CAMPAIGN_OPENED',
+    BOSS_INTRO_STARTED: 'BOSS_INTRO_STARTED',
+    BOSS_ENCOUNTER_STARTED: 'BOSS_ENCOUNTER_STARTED',
+    BOSS_PHASE_STARTED: 'BOSS_PHASE_STARTED',
+    BOSS_PHASE_COMPLETED: 'BOSS_PHASE_COMPLETED',
+    BOSS_VICTORY_RECORDED: 'BOSS_VICTORY_RECORDED',
+    BOSS_DEFEAT_RECORDED: 'BOSS_DEFEAT_RECORDED',
+    BOSS_RETRY_STARTED: 'BOSS_RETRY_STARTED',
+    BOSS_ENCOUNTER_EXITED: 'BOSS_ENCOUNTER_EXITED',
+    BOSS_CAMPAIGN_COMPLETED: 'BOSS_CAMPAIGN_COMPLETED',
   };
 
   // Reserved for the future zone-completion / graduation pass. Declared so

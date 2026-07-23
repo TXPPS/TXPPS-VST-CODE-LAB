@@ -364,6 +364,9 @@ h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
 .prose { font-size: 15px; line-height: 1.62; max-width: 62ch; }
 .prose strong { color: var(--ink); }
 .prose code { font-family: var(--mono); font-size: 0.9em; color: var(--phos); background: rgba(93,232,148,0.08); padding: 1px 5px; border-radius: 3px; }
+/* long inline-code tokens (e.g. activeVoices.push_back(std::move(voice))) must
+   wrap rather than force horizontal overflow on narrow phones */
+.opt code, .prose code, .feedback code, .callout code, .stem code { overflow-wrap: anywhere; word-break: break-word; }
 .callout {
   border-left: 3px solid var(--phos); border-radius: 0 var(--rad-sm) var(--rad-sm) 0;
   background: var(--bg2); padding: 11px 13px; font-size: 14px; line-height: 1.55;
@@ -1012,3 +1015,11 @@ body.qa-active .topbar { top: calc(32px + env(safe-area-inset-top, 0px)); }
 .qa-version-row:focus-visible { outline: 2px solid var(--phos-dim); outline-offset: 2px; }
 /* QA profile badge (on the profile page) */
 .qa-profile-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--amber); border: 1px solid var(--amber); border-radius: 6px; padding: 2px 7px; }
+
+/* ===================== v1.3.0 — boss campaign ===================== */
+/* development-encounter banner (QA-only bosses) — text, not colour alone */
+.dev-banner {
+  border: 1px dashed var(--amber); background: var(--amber-glow); color: #F6DCA0;
+  border-radius: 8px; padding: 7px 10px; font-family: var(--mono);
+  font-size: 11px; letter-spacing: 0.05em; text-align: center;
+}

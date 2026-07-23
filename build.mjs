@@ -49,6 +49,8 @@ const JS_ORDER = [
   'dict.js',
   'game.js',
   'boss.js',
+  'boss_campaign.js',
+  'boss_campaign_service.js',
   'qa_fixtures.js',
   'qa_inspector.js',
   'views.js',

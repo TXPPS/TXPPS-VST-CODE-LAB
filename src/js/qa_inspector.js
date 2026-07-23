@@ -140,6 +140,7 @@ const QaUi = (() => {
         el('button', { class: 'btn sm', onclick: () => { safe(() => QaAccess.enableQa()); refresh(); toast('QA mode enabled.'); } }, 'Enable QA Mode'),
         el('button', { class: 'btn sm ghost', onclick: () => { safe(() => QaAccess.disableQa()); refresh(); toast('QA mode disabled.'); } }, 'Disable QA Mode'),
         el('button', { class: 'btn sm', onclick: () => openInspector() }, 'Open Curriculum Inspector'),
+        el('button', { class: 'btn sm', onclick: () => openCampaign() }, 'Boss Campaign'),
         el('button', { class: 'btn sm ghost', onclick: () => openHapticPanel() }, 'Haptic diagnostics'),
         el('button', { class: 'btn sm ghost', onclick: () => openPatchPanel() }, 'PATCH state preview')));
 
@@ -290,54 +291,104 @@ const QaUi = (() => {
     const panel = mountPanel(content, { label: 'Prerequisites' });
   }
 
-  /* ---------- Boss simulation (drives the REAL BossKit) ---------- */
-  function bossSim(bossId) {
-    if (typeof BossKit === 'undefined' || !BossKit.has(bossId)) {
-      const lc = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
-        el('div', { class: 'row between' }, el('div', { class: 'eyebrow red' }, 'LEGACY BOSS'), el('button', { class: 'btn sm ghost', onclick: () => lpanel.close() }, 'Close')),
-        el('p', { class: 'small dim' }, nodeTitle(bossId) + ' uses the legacy boss flow (no BossKit state machine yet). Open it under QA access to inspect its screens.'),
-        el('button', { class: 'btn primary block', onclick: () => { safe(() => QaAccess.enableQa()); lpanel.close(); App.openNode(bossId); } }, 'Open (QA)'));
-      const lpanel = mountPanel(lc, { label: 'Legacy boss' });
-      return;
-    }
-    let session = BossKit.createSession(bossId);
+  /* ---------- Boss campaign — all seven bosses ---------- */
+  function statusBadge(status) {
+    const cls = status === 'production' ? 'done' : (status === 'development' ? 'unlocked' : 'locked');
+    return el('span', { class: 'qa-badge ' + cls }, String(status || '?').toUpperCase());
+  }
+  function openCampaign() {
+    safe(() => BossCampaignService.openCampaign('qa'));
+    const bosses = safe(() => BossCampaignService.listBosses()) || [];
+    const cards = bosses.map((b) => {
+      const av = safe(() => BossCampaignService.getBossAvailability(b.id)) || {};
+      const sess = safe(() => BossCampaignService.restoreCampaignSession(b.definitionId));
+      const info = el('div', { class: 'mono small faint' },
+        'zone ' + b.zoneNum + ' · ' + b.definitionId
+        + ' · learner: ' + (av.learner ? 'yes' : 'no')
+        + ' · real done: ' + (av.completed ? 'yes' : 'no')
+        + ' · QA: ' + (av.qa ? 'launchable' : 'enable QA')
+        + ' · session: ' + (sess ? ('stage ' + (sess.questionIndex + 1)) : 'none'));
+      return el('div', { class: 'qa-node', role: 'listitem' },
+        el('div', { class: 'row between', style: 'align-items:flex-start; gap:8px' },
+          el('div', { style: 'min-width:0' },
+            el('div', { class: 'small', style: 'font-weight:600' }, b.title),
+            el('div', { class: 'mono small faint' }, b.id)),
+          statusBadge(b.status)),
+        b.status === 'development' ? el('div', { class: 'dev-banner', role: 'note' }, 'DEVELOPMENT ENCOUNTER — QA ONLY') : null,
+        info,
+        el('div', { class: 'row wrap', style: 'gap:6px; margin-top:6px' },
+          el('button', { class: 'btn sm', onclick: () => bossConsole(b) }, 'Console'),
+          el('button', { class: 'btn sm amber', onclick: () => { safe(() => QaAccess.enableQa()); panel.close(); launchEncounter(b); } }, 'Launch (QA)')));
+    });
+    const content = el('div', { class: 'qa-scroll col', style: 'gap:10px', role: 'list', 'aria-label': 'Boss campaign' },
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'BOSS CAMPAIGN'), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      el('p', { class: 'small faint' }, 'All seven zone bosses. Zone 1 is the production encounter; Zones 2–7 are development encounters (QA only) that run the real BossKit. Console drives the state machine deterministically; Launch opens the real encounter under QA. Nothing here records rewards.'),
+      ...cards);
+    const panel = mountPanel(content, { label: 'Boss campaign' });
+  }
+
+  function launchEncounter(b) {
+    if (b.status === 'development') App.go('boss', { id: b.nodeId, campaign: b.definitionId });
+    else App.openNode(b.nodeId);
+  }
+
+  // Per-boss console — feeds deterministic commands into the REAL BossKit session.
+  function bossConsole(b) {
+    const defId = b.definitionId;
+    const development = b.status === 'development';
+    if (typeof BossKit === 'undefined' || !BossKit.has(defId)) { toast('No BossKit definition for ' + defId); return; }
+    const phases = (safe(() => BossKit.def(defId).phases)) || [];
+    let session = BossKit.createSession(defId);
+    if (!session) { toast('Encounter data unavailable for ' + defId); return; }
+    const base = session.snapshot;   // static maxHp/maxIntegrity/defeatLine/total/passNeed
     const snap = el('pre', { class: 'qa-snap mono small', 'aria-live': 'polite' }, '');
-    function show() {
+    const show = () => {
       const s = session.snapshot;
-      snap.textContent = 'state: ' + session.state + '\nphase: ' + (s.phase ? s.phase.id : '-') + '\nboss HP: ' + s.bossHp + '/' + s.maxHp + '  (repair line ' + s.defeatLine + ')\nintegrity: ' + s.playerIntegrity + '/' + s.maxIntegrity + '\ncorrect: ' + s.correctCount + '  wrong: ' + s.incorrectCount + '  q: ' + s.questionIndex + '/' + s.total;
-    }
-    function reset() { session = BossKit.createSession(bossId); show(); }
-    function step(res) { if (session.state === 'READY') { session.enter(); session.start(); } session.resolve(res); session.advance(); show(); }
-    function drive(corrects, wrongs) {
+      snap.textContent = 'state: ' + session.state + '\nphase: ' + (s.phase ? s.phase.id : '-') + '\n' + s.maxHp + ' stages · repair line ' + s.defeatLine + ' · pass ' + s.passNeed
+        + '\nboss HP: ' + s.bossHp + '/' + s.maxHp + '\nintegrity: ' + s.playerIntegrity + '/' + s.maxIntegrity
+        + '\ncorrect: ' + s.correctCount + '  wrong: ' + s.incorrectCount + '  q: ' + s.questionIndex + '/' + s.total;
+    };
+    const terminal = () => ['VICTORY', 'DEFEAT', 'COMPLETE'].includes(session.state);
+    const reset = () => { session = BossKit.createSession(defId); show(); };
+    const ensure = () => { if (session.state === 'READY') { session.enter(); session.start(); } };
+    const step = (res) => { ensure(); session.resolve(res); session.advance(); show(); };
+    const drive = (cor, wr) => {
       reset(); session.enter(); session.start();
-      let c = corrects, w = wrongs;
-      while ((c > 0 || w > 0) && session.state !== 'VICTORY' && session.state !== 'DEFEAT' && session.state !== 'COMPLETE') {
-        const correct = c > 0; if (correct) c--; else w--;
-        session.resolve({ correct: correct, firstTry: true });
-        session.advance();
-      }
+      let c = cor, w = wr;
+      while ((c > 0 || w > 0) && !terminal()) { const correct = c > 0; if (correct) c--; else w--; session.resolve({ correct: correct, firstTry: true }); session.advance(); }
       show();
-    }
-    const b = (label, fn, cls) => el('button', { class: 'btn sm ' + (cls || 'ghost'), onclick: () => { fn(); } }, label);
+    };
+    const corToPhase = (p) => (p <= 0 ? 0 : Math.max(0, base.maxHp - (phases[p - 1] ? phases[p - 1].until : 0)));
+    const b1 = (label, fn, cls) => el('button', { class: 'btn sm ' + (cls || 'ghost'), onclick: () => fn() }, label);
     const content = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
-      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'BOSS SIM — ' + bossId), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
-      el('p', { class: 'small faint' }, 'Feeds deterministic commands into the real BossKit state machine. Semantic BOSS_* events fire, so PATCH / audio / haptics react. No rewards are recorded.'),
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'CONSOLE — ' + b.id), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      development ? el('div', { class: 'dev-banner', role: 'note' }, 'DEVELOPMENT ENCOUNTER — QA ONLY') : null,
+      el('p', { class: 'small faint' }, 'Drives the real BossKit for ' + defId + '. Semantic BOSS_* events fire (PATCH / audio / haptics react). No rewards recorded.'),
       snap,
-      el('div', { class: 'row wrap', style: 'gap:6px' },
-        b('Intro', () => { reset(); session.enter(); show(); }),
-        b('Start', () => { if (session.state === 'INTRO') { session.start(); show(); } }),
-        b('Correct hit', () => step({ correct: true, firstTry: true })),
-        b('Wrong hit', () => step({ correct: false })),
-        b('→ Phase 2', () => drive(2, 0)),
-        b('→ Phase 3', () => drive(4, 0)),
-        b('Low integrity', () => drive(0, 2)),
-        b('Victory', () => drive(4, 0), 'amber'),
-        b('Defeat', () => drive(0, 3), 'amber'),
-        b('Reset', () => reset())),
-      el('p', { class: 'small faint' }, 'To inspect the victory / defeat presentation sheets, use "Open (QA)" and play the encounter — nothing is saved.'),
-      el('button', { class: 'btn sm block', onclick: () => { safe(() => QaAccess.enableQa()); panel.close(); App.openNode(bossId); } }, 'Open the real encounter (QA)'));
+      el('div', { class: 'qa-grid' },
+        b1('Launch Intro', () => { reset(); session.enter(); show(); }),
+        b1('Start Encounter', () => { if (session.state === 'INTRO') { session.start(); show(); } else { ensure(); show(); } }),
+        b1('Jump Phase 1', () => drive(corToPhase(0), 0)),
+        b1('Jump Phase 2', () => drive(corToPhase(1), 0)),
+        b1('Jump Phase 3', () => drive(corToPhase(2), 0)),
+        b1('Set Low Boss HP', () => drive(base.passNeed, 0)),
+        b1('Set Low Integrity', () => drive(0, Math.max(0, base.maxIntegrity - 1))),
+        b1('Simulate Correct', () => step({ correct: true, firstTry: true })),
+        b1('Simulate Wrong', () => step({ correct: false })),
+        b1('Trigger Victory', () => drive(base.total, 0), 'amber'),
+        b1('Trigger Defeat', () => drive(0, base.maxIntegrity), 'amber'),
+        b1('Retry', () => { reset(); safe(() => session.restartEvent && session.restartEvent()); }),
+        b1('Reset', () => reset())),
+      el('button', { class: 'btn sm block', onclick: () => { safe(() => QaAccess.enableQa()); panel.close(); launchEncounter(b); } }, 'Launch real encounter (QA)'));
     reset();
-    const panel = mountPanel(content, { label: 'Boss simulation', onClose: () => safe(() => Game.Reactions && Game.Reactions.cancelRoute()) });
+    const panel = mountPanel(content, { label: 'Boss console', onClose: () => safe(() => Game.Reactions && Game.Reactions.cancelRoute()) });
+  }
+
+  // Back-compat: the inspector's per-node "Simulate" opens the campaign console.
+  function bossSim(bossId) {
+    const b = safe(() => BossCampaignService.getBossById(bossId));
+    if (b) return bossConsole(b);
+    toast('No campaign entry for ' + bossId);
   }
 
   /* ---------- PATCH state preview (real state machine) ---------- */
