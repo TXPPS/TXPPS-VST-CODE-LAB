@@ -7,7 +7,7 @@ DICT.push(
     id: 'valuetree', t: 'ValueTree', c: 'JUCE',
     plain: 'JUCE\'s saveable data structure: a named tree of properties and children. APVTS keeps your parameter state in one, and it serializes to XML — which is how sessions and presets travel.',
     why: 'Every getStateInformation you write copies a ValueTree out; every setStateInformation replaces one. Understanding the tree means state code stops being boilerplate.',
-    studio: 'The session\'s recall sheet: a structured page of every setting, copyable, storable, and re-loadable.',
+    studio: 'The session\'s recall sheet: a structured page of every setting you can copy out, store, and load back in.',
     uses: ['APVTS state', 'Session save/restore', 'Preset files'],
     mistake: 'Assigning to apvts.state directly. Use replaceState() — it swaps the tree while keeping parameters, atomics and editors coherent.',
     remember: 'The ValueTree is your plugin\'s recall sheet — copy it out to save, replace it to restore.',
@@ -19,7 +19,7 @@ DICT.push(
   {
     id: 'slider-attachment', t: 'SliderAttachment', full: 'AudioProcessorValueTreeState::SliderAttachment', c: 'JUCE',
     plain: 'A small object that binds one slider to one parameter, both ways: drag the slider and the parameter updates (host sees it); automation moves the parameter and the slider follows.',
-    why: 'Without it you\'d hand-wire callbacks and silently lose automation, gestures and state sync. With it, one constructor call buys the whole professional pipeline.',
+    why: 'Without it you\'d hand-wire callbacks and silently lose automation, gestures and state sync. With it, one constructor call wires up all three.',
     studio: 'A two-way patch cable between a panel knob and the automation bus.',
     uses: ['Every slider↔parameter link', 'ButtonAttachment / ComboBoxAttachment siblings'],
     viz: { t: 'paramflow' },

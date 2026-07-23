@@ -110,7 +110,7 @@ const ZONE5_CHALLENGES = [
         accept: ['return', 'break', 'return;', 'break;'],
         placeholder: 'statement',
         hint: 'Leave the loop — the gig is filled.',
-        explain: 'Without it, every free card claims the same note: one press, a full-pool unison blast at +18 dB. One note-on, one voice — enforced by one keyword.',
+        explain: 'Without it, every free card claims the same note: one press, the whole pool blasting that one note in unison at +18 dB. One note-on, one voice — enforced by one keyword.',
       },
     ],
   },

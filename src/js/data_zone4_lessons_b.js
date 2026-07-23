@@ -167,7 +167,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'its output stage clamps in d15 — after staging correctly first' },
-      { name: 'Clippers & limiters', use: 'a "ceiling" knob in dBFS is jlimit\'s bound, productized' },
+      { name: 'Clippers & limiters', use: 'a "ceiling" knob in dBFS is jlimit\'s bound, dressed up as a feature' },
     ],
     analogyPanel: 'Clipping is a doorframe too low for the mix: every peak taller than the frame doesn\'t duck — it gets its head flattened. The flattened heads are the crunch.',
     beginnerMistake: 'Believing floats clip at 1.0 *inside* the plugin. They don\'t — which is why a trim AFTER an over-hot plugin can rescue the level, as long as nothing in between already clamped it.',
@@ -195,7 +195,7 @@ ZONE4_LESSONS.push(
         codeTitle: 'two voices, staged safely',
         breakdown: [
           ['osc1 + osc2', 'the entire art of mixing — worst-case peak here: 2.0'],
-          ['* 0.5f', 'the bus trim: two sources → half is the guaranteed-safe factor'],
+          ['* 0.5f', 'the bus trim: two sources → half is the factor that\'s always safe'],
           ['own phase each', 'independent voices = independent bookmarks (phase, phase2)'],
           ['* env * gain', 'shape and level exactly as before — the sum slots into the chain'],
         ],
@@ -203,7 +203,7 @@ ZONE4_LESSONS.push(
       },
       {
         h: 'Why real mixes survive',
-        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistics is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — constructive interference, arriving on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
+        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistic is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — constructive interference, arriving on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
       },
     ],
     checks: [
@@ -499,7 +499,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'd15 installs this exact tremolo in the output stage' },
-      { name: 'Every mod matrix', use: 'source / destination / amount columns — this lesson\'s three words, productized' },
+      { name: 'Every mod matrix', use: 'source / destination / amount columns — this lesson\'s three words, given a front panel' },
     ],
     analogyPanel: 'An LFO is a session robot whose only job is turning one knob back and forth, forever, in perfect time. Rate is its wrist speed, depth its twist, destination the knob you point it at.',
     beginnerMistake: 'Confusing LFOs with envelopes. Both are control signals — but an envelope is a one-shot shape per note; an LFO loops regardless of notes. Vibrato that restarts per key is an LFO with retrigger — still a loop, phase-reset at note-on.',
@@ -580,7 +580,7 @@ ZONE4_LESSONS.push(
       'First Signal v3: oscillator → envelope → LFO → smoothed gain → clamp → every channel.',
       'The voice is four multiplies: raw × env × trem × g — each one a lesson.',
       'Clamp last: math after the guard is unguarded.',
-      'Block-stable work outside the loop; per-sample work inside.',
+      'Work that holds steady across a block goes outside the loop; per-sample work inside.',
       'Mono, naive shapes, no filter: the roadmap, not bugs.',
     ],
     inside: [

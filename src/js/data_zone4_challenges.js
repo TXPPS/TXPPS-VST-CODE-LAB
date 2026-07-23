@@ -9,7 +9,7 @@ const ZONE4_CHALLENGES = [
   {
     id: 'dr1', kind: 'challenge', ctype: 'reading', title: 'Read: The Sine Voice', short: 'Trace the code',
     concepts: ['oscillators'],
-    intro: 'First Signal\'s v2 processBlock, unabridged. Read it like a modular patch: what generates, what advances, what merely copies.',
+    intro: 'Here\'s First Signal\'s v2 processBlock, every line of it. Read it like a modular patch: what generates, what advances, what merely copies.',
     questions: [
       {
         type: 'match', concept: 'oscillators',
@@ -43,7 +43,7 @@ const ZONE4_CHALLENGES = [
         prompt: 'Match each signal to its truth.',
         left: ['adsr.getNextSample()', 'std::sin(lfoPhase)', 'raw * env * trem', 'depth'],
         right: ['one-shot shape — driven by note-on/off', 'loops forever — a control wave', 'audio × two invisible hands', 'how far the LFO turns the knob'],
-        explain: 'Envelope: triggered, plays A-D-S-R once. LFO: free-running loop. Both meet the audio the same way — by multiplication.',
+        explain: 'The envelope is triggered, playing A-D-S-R once. The LFO free-runs in a loop. Both reach the audio the same way — by multiplication.',
       },
       {
         type: 'mcq', concept: 'modulation',
@@ -102,7 +102,7 @@ const ZONE4_CHALLENGES = [
         mistakes: [
           { match: '^2(\\.0f?)?$', msg: 'That doubles the crash — ×2 turns a worst case of 2.0 into 4.0. The trim *divides* by the source count: 0.5.' },
         ],
-        explain: '2.0 × 0.5 = 1.0 exactly: the 1/N guarantee. Real mixes often run hotter on the statistics of peaks not aligning — but the guarantee is where you start.',
+        explain: '2.0 × 0.5 = 1.0 exactly: the 1/N guarantee. Real mixes usually run hotter than that, since two peaks rarely hit their loudest at the same instant — but the guarantee is where you start.',
       },
       {
         type: 'fill', concept: 'levels',
@@ -140,7 +140,7 @@ const ZONE4_CHALLENGES = [
         accept: ['getNextSample'],
         placeholder: 'method',
         hint: 'One micro-step of A-D-S-R per call.',
-        explain: 'getNextSample() advances the envelope one sample and returns 0..1 — the moving gain knob, multiplied into the voice. Per SAMPLE, inside the loop: shapes have corners otherwise.',
+        explain: 'getNextSample() advances the envelope one sample and returns 0..1 — the moving gain knob, multiplied into the voice. Call it per sample, inside the loop — otherwise the shape grows corners.',
       },
     ],
   },
@@ -307,11 +307,11 @@ const ZONE4_CHALLENGES = [
             { t: 'double phase; (no initializer)', why: 'Uninitialized memory as your first sample: a click, or worse, garbage. = 0.0 starts at the zero crossing, silently.' },
           ],
           answer: 0,
-          explain: 'Members, per-instance, double, initialized to 0.0: the bookmark starts at the zero crossing and never lies. Zone 1\'s precision lesson, deployed.',
+          explain: 'Real members, one per instance, kept as double and started at 0.0 — the bookmark opens at the zero crossing and never lies. Zone 1\'s precision lesson, put to work.',
         },
       },
       {
-        note: 'Step 2 — Pitch changes must recompute the step. Complete the increment setter.',
+        note: 'Step 2 — When the pitch changes, the step has to change with it. Complete the increment setter.',
         q: {
           type: 'fill', concept: 'oscillators',
           prompt: 'The formula that turns Hertz into a per-sample step.',

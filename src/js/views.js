@@ -579,8 +579,8 @@ const Views = (() => {
       ));
     } else {
       grid.appendChild(el('div', { class: 'card raised span2' },
-        el('div', { class: 'eyebrow phos' }, 'ALL CURRENT ZONES COMPLETE'),
-        el('div', { class: 'h-sub mt-s' }, 'You\'ve cleared everything currently built. Sharpen mastery in Practice Mode, or replay any node from the map. The next zone arrives in a future update.')));
+        el('div', { class: 'eyebrow phos' }, 'CURRICULUM COMPLETE'),
+        el('div', { class: 'h-sub mt-s' }, 'Seven zones cleared and the whole product line shipped — you\'ve finished the curriculum. Keep your edge sharp in Practice Mode, or drop back into any node from the map.')));
     }
 
     // daily challenge
@@ -682,7 +682,7 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'eyebrow phos' }, 'CURRICULUM MAP'),
       el('h1', { class: 'h-display' }, 'Seven zones to shipping plugins'),
-      el('p', { class: 'small dim' }, 'Zone 1 is fully playable now. Later zones show their planned curriculum and unlock in future updates.')));
+      el('p', { class: 'small dim' }, 'All seven zones are open — from your first line of C++ to shipping a commercial plugin. Work straight through, or drop back into any station to sharpen it.')));
 
     ZONES.forEach((z) => {
       const live = z.status === 'live';
@@ -1366,7 +1366,7 @@ const Views = (() => {
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. Zone 1 (C++ Signal Path) is fully playable; Zones 2–7 are mapped and arrive in future updates.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.0.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
     return main;
   }

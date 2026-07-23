@@ -101,7 +101,7 @@ const ZONE7_CHALLENGES = [
         accept: ['60.0', '60', '60.0f', '60.f'],
         placeholder: 'numerator',
         hint: 'Beats per minute → seconds per beat.',
-        explain: '60 ÷ BPM: at 120 BPM a beat is half a second. Multiply by the note-value ratio (0.75 for dotted eighth of a beat… of a quarter — define your table!), then × sampleRate for the read-head distance (f1).',
+        explain: '60 ÷ BPM: at 120 BPM a beat is half a second. Multiply by the note-value ratio (0.75 for dotted eighth of a beat… of a quarter — define your table!), then × sampleRate to get how far back to place the read head (f1).',
       },
       {
         type: 'mcq', concept: 'product-eng',
@@ -113,7 +113,7 @@ const ZONE7_CHALLENGES = [
           { t: 'Ask the user to reload', why: 'Plugins are guests that adapt (r13) — a reload dialog for a tempo change would be a one-star review generator.' },
         ],
         answer: 0,
-        explain: 'Sync is a live conversion, not a load-time constant: new BPM → new delaySamples → glided move. Every zone\'s discipline shows up in a two-line feature.',
+        explain: 'Sync isn\'t a number you set once at load — it\'s a live conversion: new BPM → new delaySamples → glided move. Every zone\'s discipline shows up in a two-line feature.',
       },
     ],
   },
@@ -285,7 +285,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 3,
-        explain: 'DBG builds a heap String and prints — per SAMPLE, on the audio thread: allocation (r5) plus I/O, 44,100 times a second. Debug-only doesn\'t mean harmless: it hides races by shifting timing and makes Debug untestable. Audio-thread visibility = values into atomics/FIFOs; the UI narrates (r10).',
+        explain: 'DBG builds a heap String and prints — per SAMPLE, on the audio thread: allocation (r5) plus I/O, 44,100 times a second. Debug-only doesn\'t mean harmless: it hides races by shifting timing and makes Debug untestable. If you need to see a value from the audio thread, push it into an atomic or FIFO and let the UI narrate it (r10).',
         fix: 'Delete it — meter via a std::atomic the UI reads',
       },
       {
@@ -311,7 +311,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 2,
-        explain: 'The clamp exists — with the wrong ceiling: 1.2 permits gain-greater-than-one regeneration, and each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
+        explain: 'The clamp exists — with the wrong ceiling: 1.2 lets each repeat come back louder than it went in, so each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
         fix: 'feedback = juce::jlimit (0.0f, 0.95f, fb);',
       },
       {

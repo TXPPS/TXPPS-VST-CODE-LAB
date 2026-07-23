@@ -235,7 +235,7 @@ const ZONE4_LESSONS = [
     sections: [
       {
         h: 'Height, multiplier, scale',
-        body: '**Amplitude** is the wave\'s height — how far samples swing from zero. **Gain** is a multiplier applied to it. **Decibels** are the logarithmic ruler ears prefer: gain = 10^(dB/20), so −6 dB ≈ ×0.5 and +6 dB ≈ ×2. All Zone 1 knowledge — now with a synthesis-shaped consequence:',
+        body: '**Amplitude** is the wave\'s height — how far samples swing from zero. **Gain** is a multiplier applied to it. **Decibels** are the logarithmic ruler ears prefer: gain = 10^(dB/20), so −6 dB ≈ ×0.5 and +6 dB ≈ ×2. All Zone 1 knowledge — now with a consequence that only shows up once you\'re the one making sound:',
         viz: { t: 'compare2', mode: 'amp' },
       },
       {
@@ -385,7 +385,7 @@ const ZONE4_LESSONS = [
     sections: [
       {
         h: 'The voice, assembled',
-        body: 'A tone-generating processBlock: compute each sample from the phase, write it to **every** channel, advance, wrap. Note what changed from the gain plugin: we *ignore* the input and **write** the buffer instead of scaling it.',
+        body: 'Here\'s a processBlock that generates a tone: compute each sample from the phase, write it to **every** channel, advance, wrap. Notice what changed from the gain plugin: we *ignore* the input and **write** the buffer instead of scaling it.',
         code: 'void FirstSignalProcessor::processBlock(\n        juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)\n{\n    juce::ScopedNoDenormals noDenormals;\n\n    for (int i = 0; i < buffer.getNumSamples(); ++i)\n    {\n        float s = (float) std::sin(phase) * 0.25f;\n\n        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n            buffer.getWritePointer(ch)[i] = s;\n\n        phase += phaseIncrement;\n        if (phase >= juce::MathConstants<double>::twoPi)\n            phase -= juce::MathConstants<double>::twoPi;\n    }\n}',
         codeTitle: 'First Signal v2 — it makes sound',
         breakdown: [

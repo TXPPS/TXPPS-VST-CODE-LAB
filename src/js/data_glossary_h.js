@@ -5,7 +5,7 @@
 DICT.push(
   {
     id: 'ring-buffer', t: 'ring buffer (FIFO)', c: 'ARCHITECTURE',
-    plain: 'A pre-allocated, fixed-size buffer treated as a circle: one thread writes at the head, another reads at the tail, and two atomic positions keep them coordinated. First-In-First-Out (FIFO) — a stream crosses the thread boundary and nobody ever waits.',
+    plain: 'A buffer of a fixed size, set aside once up front and treated as a circle: one thread writes at the head, another reads at the tail, and two atomic positions keep them coordinated. First-In-First-Out (FIFO) — a stream crosses the thread boundary and nobody ever waits.',
     why: 'It\'s THE lock-free vehicle for streams: meter data, visualizer samples, MIDI events to the UI. The audio thread pushes without blocking; the reader drains at its leisure; a full ring triggers a chosen policy (drop, overwrite) — never a stall.',
     studio: 'The kitchen pass in a restaurant: cooks put plates up, servers take them away, and neither ever stops the other. If the pass fills, the policy decides — but nobody stands still holding a plate.',
     uses: ['Meter/visualizer data audio→UI', 'MIDI event streams', 'Any producer/consumer pair'],
@@ -113,7 +113,7 @@ DICT.push(
   },
   {
     id: 'plugin-validation', t: 'plugin validation', c: 'PLUGIN DEV',
-    plain: 'Automated entrance exams that torture a plugin with legal-but-extreme host behavior: pluginval (open source — VST3 and AU) and auval (Apple\'s, run by Logic before trusting any AU). Odd lifecycle orders, 0-sample blocks, rapid rate changes, state chaos.',
+    plain: 'Automated entrance exams that torture a plugin with host behavior that\'s extreme but perfectly legal: pluginval (open source — VST3 and AU) and auval (Apple\'s, run by Logic before trusting any AU). Odd lifecycle orders, 0-sample blocks, rapid rate changes, state chaos.',
     why: 'Everything a validator does, some real host somewhere does eventually — validation concentrates a year of edge cases into a minute you can debug locally. Crash Monday in the validator, not Friday on a customer\'s stage.',
     studio: 'Venue security testing your rig harder than any audience will: cables yanked, power cycled, inputs slammed — because "it worked at rehearsal" is not a plan for 50,000 people.',
     uses: ['Pre-release gates (strictness 10)', 'auval for Logic/GarageBand', 'CI runs on every build'],

@@ -11,7 +11,7 @@ ZONE7_CHALLENGES.push(
   {
     id: 'p20', kind: 'project', title: 'Product 1: TXPPS Gain', short: 'Product build',
     concepts: ['product-eng'],
-    brief: 'PRODUCT BRIEF — TXPPS Gain 1.0. A gain utility so polished it earns rack space: dB-calibrated knob, click-free automation, true bypass, output meter, full preset/session recall. Nothing here is new — that\'s the point. This build proves your Zones 1–6 foundations ship.',
+    brief: 'PRODUCT BRIEF — TXPPS Gain 1.0. A gain utility so polished it earns rack space: dB-calibrated knob, automation with no clicks or pops, true bypass, output meter, full preset/session recall. Nothing here is new — that\'s the point. This build proves your Zones 1–6 foundations ship.',
     steps: [
       {
         note: 'PLANNING — Map the architecture before a line is written. Every block is a zone you own.',
@@ -20,7 +20,7 @@ ZONE7_CHALLENGES.push(
           prompt: 'Match each component to its job in TXPPS Gain.',
           left: ['APVTS + AudioParameterFloat', 'SmoothedValue<float>', 'the cached atomic parameter pointer', 'get/setStateInformation'],
           right: ['the knob\'s brain: host automation + editor binding (Zone 3)', 'the glide that kills zipper (d13)', 'the race-free bridge into the callback (r3)', 'session recall, defensive and versioned (r9)'],
-          explain: 'Four components, four zones, one product plan. Professional builds start by naming which solved problem each requirement maps to.',
+          explain: 'Four components, four zones, one product plan. The pros always start here — by naming which solved problem each requirement maps to.',
         },
       },
       {
@@ -701,7 +701,7 @@ ZONE7_CHALLENGES.push(
   {
     id: 'p30', kind: 'project', title: 'CAPSTONE: TXPPS Signature', short: 'Commercial VST3',
     concepts: ['product-eng'],
-    brief: 'SPECIFICATION — TXPPS SIGNATURE 2.0, commercial VST3. ENGINE: the 8-voice poly core + saturation stage + motion delay + master section. UI MOCKUP: three panels (VOICE / MOTION / MASTER), meter bridge, preset browser. ENGINEERING REQS: lock-free throughout, version-safe state, worst-case CPU ≤ 40% at 64/44.1k. QA REQS: pluginval strictness 10, golden renders, old-session suite, automation stress. You are the engineer of record. Hints are over.',
+    brief: 'SPECIFICATION — TXPPS SIGNATURE 2.0, commercial VST3. ENGINE: the 8-voice poly core + saturation stage + motion delay + master section. UI MOCKUP: three panels (VOICE / MOTION / MASTER), meter bridge, preset browser. ENGINEERING REQS: lock-free throughout, state that still loads in the next version, worst-case CPU ≤ 40% at 64/44.1k. QA REQS: pluginval strictness 10, golden renders, old-session suite, automation stress. You are the engineer of record. Hints are over.',
     steps: [
       {
         note: 'ARCHITECTURE — Order the build. (No guidance. You have shipped ten products.)',
@@ -747,7 +747,7 @@ ZONE7_CHALLENGES.push(
           accept: ['2'],
           placeholder: 'version',
           hint: '',
-          explain: 'Stamped state makes migration surgical: era 1 saves convert once, era 2 saves pass untouched. r9\'s machinery carrying a real meaning-change across a major version — the hardest state problem, handled in two lines.',
+          explain: 'Stamped state makes migration surgical: era 1 saves convert once, era 2 saves pass untouched. r9\'s machinery carrying a real change of meaning across a major version — the hardest state problem, handled in two lines.',
         },
       },
       {

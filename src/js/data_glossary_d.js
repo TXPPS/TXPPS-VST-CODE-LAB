@@ -21,7 +21,7 @@ DICT.push(
   {
     id: 'unique-ptr', t: 'std::unique_ptr', full: 'unique (sole-ownership) smart pointer', c: 'C++',
     plain: 'A pointer that owns one heap object and deletes it automatically when the pointer dies. Copying is a compile error — exactly one owner can exist. Created with std::make_unique.',
-    why: 'The default owning type of modern plugin code: your processor owns its DSP modules, editor and voices through unique_ptr, and delete disappears from your vocabulary.',
+    why: 'In modern plugin code this is your default owner: your processor owns its DSP modules, editor and voices through unique_ptr, and delete disappears from your vocabulary.',
     studio: 'A flight case with one name on it: hold the case, own the gear. Hand it over (move) and the responsibility goes with it.',
     uses: ['Voice pools', 'DSP module ownership', 'Owning wavetables & buffers'],
     viz: { t: 'owners', mode: 'unique' },
@@ -49,7 +49,7 @@ DICT.push(
   {
     id: 'race-condition', t: 'race condition', c: 'AUDIO CODE',
     plain: 'Two threads touching the same data with no coordination — the result depends on which thread wins the microsecond. Races produce corruption rarely, randomly, and differently on every machine.',
-    why: 'Every plugin knob is UI-thread data the audio thread needs — an un-coordinated share is a race. "Works on my machine" plus a race equals "glitches on stage."',
+    why: 'Every plugin knob is UI-thread data the audio thread needs — an uncoordinated share is a race. "Works on my machine" plus a race equals "glitches on stage."',
     studio: 'Two engineers grabbing the same fader at the same instant, no talkback. Whoever wins the grab decides the mix — differently every take.',
     uses: ['Knob values', 'Meter data', 'Preset swaps under playback'],
     viz: { t: 'lanes' },
@@ -77,7 +77,7 @@ DICT.push(
   {
     id: 'atomic', t: 'std::atomic', c: 'AUDIO CODE',
     plain: 'A variable whose reads and writes are indivisible: no thread can ever see a half-written value. One thread store()s, another load()s — safely, and lock-free on every desktop platform you\'ll ship to (check is_always_lock_free).',
-    why: 'The standard bridge for knob values crossing from UI to audio. Every APVTS parameter reaches your DSP as an atomic — bounded, lock-free, deadline-safe.',
+    why: 'This is how a knob value crosses from the UI over to the audio thread. Every APVTS parameter reaches your DSP as an atomic — bounded, lock-free, and safe for the deadline.',
     studio: 'A relay baton: the handoff is one indivisible gesture — you hold it or you don\'t, never half.',
     uses: ['Parameter bridges', 'Meter levels out', 'FIFO positions'],
     viz: { t: 'lanes', atomic: true },

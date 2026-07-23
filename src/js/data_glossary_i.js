@@ -7,7 +7,7 @@ DICT.push(
   {
     id: 'delay-line', t: 'delay line', c: 'EFFECTS',
     plain: 'A pre-allocated circular buffer with two moving positions: a write head recording the incoming audio, and a read head trailing it by the delay time in samples (seconds × rate). Both wrap at the end — a tape loop made of memory.',
-    why: 'It\'s the engine inside delay, chorus, flanger and reverb — and a bounds-discipline exam: the read head\'s wrap math (C++ % keeps the dividend\'s sign!) is a classic crash site.',
+    why: 'It\'s the engine inside delay, chorus, flanger and reverb — and a test of your bounds discipline: the read head\'s wrap math (C++ % keeps the dividend\'s sign!) is a classic crash site.',
     studio: 'A tape echo: one loop of tape passing a record head, then a playback head. The gap between heads is the delay time; the splice is the wrap.',
     uses: ['Delay & echo', 'Chorus/flanger (modulated, short)', 'Reverb networks'],
     viz: { t: 'delayviz' },
@@ -61,7 +61,7 @@ DICT.push(
   {
     id: 'drive', t: 'drive', c: 'EFFECTS',
     plain: 'Gain applied INTO a waveshaping curve: more drive pushes more of the signal into the bend, creating more harmonics. Honest designs pair it with output compensation so the knob changes TONE at constant loudness.',
-    why: '"More, not just louder" is an engineering spec: uncompensated drive bribes the ear with level, and every A/B lies. Compensation is the oldest honesty tool in audio.',
+    why: '"More, not just louder" is the whole point: uncompensated drive bribes the ear with level, and every A/B lies. Compensation is the oldest honesty tool in audio.',
     studio: 'The input gain on a preamp pushed hot on purpose, with the channel fader pulled down to match: the crunch changes, the loudness doesn\'t.',
     uses: ['Distortion amount', 'Saturation depth', 'Any shaped input stage'],
     mistake: 'Applying compensation BEFORE the shaper — it un-drives the distortion instead of trimming its loudness. Multiplication commutes; stages don\'t (d15\'s law).',

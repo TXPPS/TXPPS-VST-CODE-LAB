@@ -9,7 +9,7 @@ DICT.push(
   {
     id: 'thread', t: 'thread', c: 'AUDIO CODE',
     plain: 'One independent lane of running code. A program can run several threads at once — and a plugin always does: at minimum, one drawing the interface and one processing audio.',
-    why: 'The audio thread and UI thread touch the same knobs at the same time. Coordinating them safely is a defining skill of plugin development (Zone 6).',
+    why: 'The audio thread and UI thread touch the same knobs at the same time. Coordinating them safely, so neither trips the other, is one of the real skills of plugin work (Zone 6).',
     studio: 'Two engineers working the same session at once — one on the desk, one on the patch bay. Great, until they grab the same cable.',
     uses: ['Audio processing', 'UI drawing', 'Sample loading in background'],
     mistake: 'Sharing plain variables between threads and hoping. Zone 2\'s std::atomic and Zone 6\'s lock-free patterns are the real tools.',
@@ -21,7 +21,7 @@ DICT.push(
   {
     id: 'audio-thread', t: 'audio thread', c: 'AUDIO CODE',
     plain: 'The high-priority thread where the host calls your processBlock. It has a hard deadline: deliver the next block in a few milliseconds, every time, or the audio glitches.',
-    why: 'Everything real-time-safe programming is about happens here: no allocation, no file access, no locks, no logging — nothing with unpredictable timing.',
+    why: 'Every rule of real-time-safe programming lives here: no allocation, no file access, no locks, no logging — nothing with unpredictable timing.',
     studio: 'The live performer: the show clock never stops, and nobody hands the performer paperwork mid-song.',
     uses: ['processBlock', 'All your DSP', 'MIDI event handling'],
     viz: { t: 'chain', nodes: ['DAW asks', 'processBlock()', 'audio out'], accent: 1, caption: 'a hard deadline, hundreds of times per second' },
@@ -47,7 +47,7 @@ DICT.push(
   {
     id: 'real-time-audio', t: 'real-time audio', c: 'AUDIO CODE',
     plain: 'Audio produced live, block by block, against a deadline — as opposed to rendering a file offline. Miss one deadline and the listener hears a glitch.',
-    why: 'Real-time safety is the discipline that separates plugins that glitch from plugins that ship: bounded work only, on the audio thread, every block.',
+    why: 'Get real-time safety right and a plugin never glitches; get it wrong and it does. The rule is simple: bounded work only, on the audio thread, every block.',
     studio: 'Live performance vs. studio overdubs: on stage there are no second takes.',
     uses: ['All plugin DSP', 'Why callbacks have rules', 'Buffer size tradeoffs'],
     mistake: 'Testing only in ideal conditions. Real-time bugs appear under load — many tracks, small buffers, slow disks.',
@@ -455,7 +455,7 @@ DICT.push(
   {
     id: 'polyphony', t: 'polyphony', c: 'SYNTHS',
     plain: 'Playing multiple notes at once. A polyphonic synth keeps a pool of voices and assigns incoming notes to free ones; monophonic synths have exactly one voice.',
-    why: 'Voice pools, note-to-voice assignment, and what to do when the pool runs dry (voice stealing) — the core engineering of Zone 5\'s synth work.',
+    why: 'Voice pools, handing each incoming note to a free voice, and what to do when the pool runs dry (voice stealing) — the heart of Zone 5\'s synth work.',
     studio: 'Chords vs. bass lines: whether the instrument can say more than one thing at once.',
     uses: ['Chord playing', 'Voice pool sizing', 'CPU budgeting per voice'],
     mistake: 'Unbounded polyphony "so notes never cut" — each voice costs CPU; every real synth caps the pool.',
@@ -467,7 +467,7 @@ DICT.push(
   {
     id: 'voice-stealing', t: 'voice stealing', c: 'SYNTHS',
     plain: 'What a synth does when all voices are busy and a new note arrives: it steals one — usually the oldest or quietest — fades it fast, and reassigns it to the new note.',
-    why: 'Without stealing, the 9th note on an 8-voice synth is silently dropped. With clumsy stealing, tails cut with clicks. Graceful stealing is an audible quality mark.',
+    why: 'Without stealing, the 9th note on an 8-voice synth is silently dropped. With clumsy stealing, tails cut with clicks. Steal gracefully and no one in the room even notices.',
     studio: 'Playing a 9-note chord on an 8-voice classic: one earlier note quietly bows out.',
     uses: ['Note priority rules', 'Fast-release fades', 'Sustain pedal interactions'],
     viz: { t: 'voices', steal: true },

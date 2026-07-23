@@ -769,7 +769,7 @@ const ZONES = [
   {
     id: 'z1', num: 1, title: 'C++ SIGNAL PATH', status: 'live',
     tagline: 'The C++ core every plugin is built on',
-    desc: 'Variables, functions, control flow, containers, pointers, classes and compiler errors — taught through gain stages, buffers and oscillators.',
+    desc: 'Variables, functions, control flow, containers, pointers, classes and compiler errors — all learned by building gain stages, buffers and oscillators.',
     nodeOrder: [
       'l1', 'l2', 'l3', 'c1', 'l4', 'l5', 'e1', 'l6', 'o1', 'c2',
       'l7', 'b1', 'c3', 'l8', 'l9', 'b2', 'e2', 'p1', 'l10', 'o2',
@@ -779,7 +779,7 @@ const ZONES = [
   {
     id: 'z2', num: 2, title: 'MODERN C++ FOR AUDIO', status: 'live',
     tagline: 'Professional C++ techniques used in real VST plugins',
-    desc: 'Ownership, RAII, smart pointers, move semantics, atomics and lock-free thinking — modern C++ taught entirely through plugin development.',
+    desc: 'Ownership, RAII, smart pointers, move semantics, atomics and lock-free thinking — modern C++, learned entirely by building plugins.',
     nodeOrder: [
       'm1', 'm2', 'm3', 'mo1', 'm4', 'mc1', 'me1', 'm5', 'm6', 'mb1',
       'mc2', 'm7', 'mb2', 'p3', 'm8', 'mc3', 'm9', 'me2', 'm10', 'mb3',
@@ -823,7 +823,7 @@ const ZONES = [
   {
     id: 'z6', num: 6, title: 'PROFESSIONAL PLUGIN ENGINEERING', status: 'live',
     tagline: 'From working prototype to shippable product',
-    desc: 'What keeps plugins stable inside real DAWs: the real-time deadline, thread safety and lock-free design, allocation rules, denormals, version-safe state, automation, profiling, testing, validation, crash forensics — and the shipping checklist that makes 1.0 mean something.',
+    desc: 'What keeps plugins stable inside real DAWs: the real-time deadline, thread safety and lock-free design, allocation rules, denormals, state that still loads in the next version, automation, profiling, testing, validation, crash forensics — and the shipping checklist that makes 1.0 mean something.',
     nodeOrder: [
       'r1', 'r2', 'rr1', 'r3', 'rc1', 'r4', 'rb1', 'p16', 'r5', 'rb2',
       'r6', 'rc2', 'r7', 'rr2', 'r8', 'rb4', 'r9', 'rc3', 'p17',
@@ -971,7 +971,7 @@ const ZONE1_LESSONS = [
           { t: '`char`', why: 'A char holds a small integer/character. Audio samples need fractional values.' },
         ],
         answer: 0,
-        explain: 'Audio samples are fractional values, normally in the -1.0 to +1.0 range, and `float` is the standard sample type in JUCE and most plugin APIs.',
+        explain: 'Audio samples are fractional values, normally between -1.0 and +1.0 — and `float` is the sample type you\'ll see all over JUCE and most plugin APIs.',
       },
       {
         type: 'fill', concept: 'types',
@@ -997,7 +997,7 @@ const ZONE1_LESSONS = [
           { t: 'It fails to compile', why: 'It compiles fine — that\'s what makes this bug so sneaky.' },
         ],
         answer: 0,
-        explain: 'int / int is integer division: the fractional part is discarded, so 3 / 2 is 1. To keep the .5, at least one side must be floating point: `beats / 2.0f`.',
+        explain: 'Two whole numbers divide as whole numbers — the remainder just gets thrown away, so 3 / 2 is 1. Want to keep the .5? Make at least one side a float: `beats / 2.0f`.',
       },
     ],
     recap: [
@@ -1056,7 +1056,7 @@ const ZONE1_LESSONS = [
           { t: 'It automatically converts the value to float', why: 'const never changes a variable\'s type — only whether it can be written to.' },
         ],
         answer: 0,
-        explain: 'const is a compile-time contract: any attempt to modify the value is a build error. Bugs the compiler catches are bugs you never have to debug in a DAW.',
+        explain: 'const is a promise the compiler enforces: try to change the value and the build simply fails. Bugs the compiler catches are bugs you never have to debug in a DAW.',
       },
       {
         type: 'fill', concept: 'const',
@@ -1077,14 +1077,14 @@ const ZONE1_LESSONS = [
           { t: '`bool table` — convert it first', why: 'A wavetable can\'t meaningfully become a bool — this loses all the data.' },
         ],
         answer: 0,
-        explain: 'Const reference is the standard for read-only access to anything non-trivial: no copy is made, and the compiler guarantees the function can\'t modify the caller\'s object.',
+        explain: 'Const reference is the standard way to read a big object: no copy is made, and the compiler guarantees the function can\'t modify the caller\'s object.',
       },
     ],
     recap: [
-      '`const` = compile-time lock: modification becomes a build error.',
-      '`constexpr` = fixed at compile time.',
+      '`const` is a compile-time lock — try to modify it and the build fails.',
+      '`constexpr` goes further — the value is fixed at compile time.',
       'Pass large read-only objects by `const&` to skip the copy.',
-      'Default to const; remove it only where mutation is intended.',
+      'Default to const; drop it only where you actually mean to change the value.',
     ],
     inside: [
       { name: 'Synth', use: 'twoPi and tuning constants inside every oscillator' },
@@ -1158,7 +1158,7 @@ const ZONE1_LESSONS = [
       },
     ],
     recap: [
-      'Signature = return type, name, parameter list.',
+      'A signature is three parts: the return type, the name, and the parameter list.',
       'Arguments are copied into parameters; `return` sends one value back.',
       '`void` functions act instead of answering.',
       'Don\'t discard a return value you needed.',
@@ -1315,7 +1315,7 @@ const ZONE1_LESSONS = [
       },
     ],
     recap: [
-      'switch = a rotary mode selector for integer-like values.',
+      'A rotary mode selector for integer-like values — that\'s all a switch is.',
       'Every case needs `break` unless fallthrough is deliberate.',
       'default catches unknown values.',
       'enum class (Zone 2) makes selectors type-safe.',
@@ -1395,7 +1395,7 @@ const ZONE1_LESSONS = [
           { t: 'No loop — process the whole block in one statement', why: 'Some vectorized helpers exist (you\'ll meet juce::FloatVectorOperations later), but the fundamental model is the per-sample loop.' },
         ],
         answer: 0,
-        explain: 'Known iteration count = `for` loop. It puts the start, end and step on one line where a reader (and reviewer) can verify the bounds at a glance.',
+        explain: 'When you know the count up front, reach for a `for` loop. It puts the start, end and step on one line, so a reader — or a reviewer — can check the bounds at a glance.',
       },
     ],
     recap: [
@@ -1431,7 +1431,7 @@ ZONE1_LESSONS.push(
     id: 'l7', kind: 'lesson', title: 'Buffers: Arrays & std::vector', short: 'Arrays and std::vector',
     concepts: ['containers'],
     hook: 'A delay pedal doesn\'t "slow down" audio — it remembers it. Inside is a memory bank holding the last second of sound, replayed a moment later. Time to build memory banks.',
-    objective: 'Store rows of samples — fixed banks and resizable ones — and learn when resizing is forbidden.',
+    objective: 'Store rows of samples — fixed banks and resizable ones — and learn the one moment you must never resize them.',
     sections: [
       {
         h: 'A row of slots',
@@ -1470,7 +1470,7 @@ ZONE1_LESSONS.push(
           { t: '`buffer.first`', why: 'Vectors have `.front()`, not `.first` — and raw arrays have neither. Indexing with [0] works for both.' },
         ],
         answer: 0,
-        explain: 'Indexes run from 0 to size-1. First sample: `buffer[0]`; last of 512: `buffer[511]`.',
+        explain: 'Counting starts at zero, so valid indexes run from 0 up to size minus one. The first sample is `buffer[0]`, and the last of 512 is `buffer[511]`.',
       },
       {
         type: 'fill', concept: 'containers',
@@ -1578,7 +1578,7 @@ ZONE1_LESSONS.push(
           { t: '`float bank`', why: 'A sample bank can\'t collapse into a single float without losing everything.' },
         ],
         answer: 0,
-        explain: 'const reference: zero-copy access plus a compiler-enforced promise not to modify. This is the default way to pass anything bigger than a few bytes read-only.',
+        explain: 'A const reference gives you the whole thing with no copy at all, plus a promise the compiler enforces that you won\'t modify it. It\'s the default way to pass anything bigger than a few bytes when you only need to read it.',
       },
     ],
     recap: [
@@ -1668,7 +1668,7 @@ ZONE1_LESSONS.push(
         mistakes: [
           { match: '^==$', msg: '`==` would process only when osc is null — dereferencing the null pointer and crashing. You want `!=`.' },
         ],
-        explain: '`if (osc != nullptr)` guards the dereference. Idiomatic shorthand you\'ll also see: `if (osc)`.',
+        explain: '`if (osc != nullptr)` guards the moment you follow the pointer. You\'ll also see the shorthand `if (osc)` — same thing.',
       },
     ],
     recap: [
@@ -1746,7 +1746,7 @@ ZONE1_LESSONS.push(
         prompt: 'Match each C++ term to the synth-hardware idea.',
         left: ['class', 'object', 'member variable', 'member function'],
         right: ['the schematic a module is built from', 'one physical unit on your desk', 'a knob position stored inside one unit', 'pressing a button that makes the unit act'],
-        explain: 'Design → instance → per-instance state → per-instance behavior. Hold onto this map — JUCE\'s AudioProcessor is exactly a class you\'ll instantiate.',
+        explain: 'Design, then one unit built from it, then the settings that unit remembers, then what it does. Hold onto this map — JUCE\'s AudioProcessor is exactly a class you\'ll instantiate.',
       },
     ],
     recap: [
@@ -1813,7 +1813,7 @@ ZONE1_LESSONS.push(
         accept: ['gain(g)', 'gain{g}', 'gain (g)', 'gain { g }', 'gain{ g }', 'gain( g )'],
         placeholder: 'member(value)',
         hint: 'membername(parametername)',
-        explain: 'The initializer list `: gain(g)` initializes the member directly from the parameter — the preferred style over assigning inside the constructor body, because members are initialized exactly once.',
+        explain: 'The initializer list `: gain(g)` sets the member straight from the parameter. Reach for it over assigning inside the constructor body — this way each member is initialized exactly once.',
       },
       {
         type: 'mcq', concept: 'encapsulation',
@@ -1971,7 +1971,7 @@ const ZONE1_CHALLENGES = [
   {
     id: 'c2', kind: 'challenge', ctype: 'completion', title: 'Complete: Apply Gain to a Block', short: 'Code completion',
     concepts: ['loops'],
-    intro: 'The output buffer should carry the input scaled by gain — the core of every gain stage.',
+    intro: 'Every gain stage comes down to this: the output carries the input, scaled by gain.',
     questions: [
       {
         type: 'fill', concept: 'loops',
@@ -2313,7 +2313,7 @@ const ZONE1_CHALLENGES = [
         },
       },
       {
-        note: 'Step 2 — Musicians think in dB. Convert the user-facing dB value to a linear multiplier.',
+        note: 'Step 2 — Musicians think in dB. Convert the dB value the user sees into a linear multiplier.',
         q: {
           type: 'fill', concept: 'functions',
           prompt: 'Complete the amplitude conversion: 0 dB → 1.0, -6 dB → ≈0.5.',
@@ -2460,7 +2460,7 @@ const ZONE1_CHALLENGES = [
             { t: 'Random — depends on memory contents', why: 'phase was explicitly initialized to 0.0 — no garbage involved. (If it *hadn\'t* been initialized, this answer would be the scary truth.)' },
           ],
           answer: 0,
-          explain: 'sin(0) = 0: the wave starts at the zero crossing and rises — a click-free start. Your SineOsc is complete: state, increment, wrap, output. In Zone 4 this exact class grows anti-aliasing and modulation inputs.',
+          explain: 'sin(0) = 0: the wave starts at the zero crossing and rises, so it begins with no click. Your SineOsc is complete: state, increment, wrap, output. In Zone 4 this exact class grows anti-aliasing and modulation inputs.',
         },
       },
     ],
@@ -2651,11 +2651,11 @@ const ZONE2_LESSONS = [
     id: 'm2', kind: 'lesson', title: 'Backstage Memory: Stack vs Heap', short: 'Stack, heap, dynamic memory',
     concepts: ['memory'], time: '~5 MIN', diff: 1,
     hook: 'Some gear lives on your pedalboard — grabbed instantly, packed up after each song. Some lives in the warehouse — room for anything, but every checkout takes paperwork. Your program\'s memory works exactly like that.',
-    objective: 'Know which memory your objects live in, what dynamic allocation really costs, and why you\'ll never hand-manage it.',
+    objective: 'Know which memory your objects live in, what dynamic allocation really costs, and why you\'ll never manage it by hand.',
     sections: [
       {
         h: 'Two kinds of memory',
-        body: 'The **stack**: fast, automatic, small — locals live here and vanish at the closing brace. The **heap**: the big flexible pool — sample libraries and delay lines live here, requested at runtime. Requesting heap memory is called **allocation**, and its timing is unpredictable.',
+        body: 'The **stack**: fast, automatic, small — locals live here and vanish at the closing brace. The **heap**: the big flexible pool — sample libraries and delay lines live here, requested at runtime. Requesting heap memory is called **allocation**, and you can never quite predict how long it\'ll take.',
         viz: { t: 'twoLayer', top: 'STACK — automatic, fast', topSub: 'locals; gone at return', bottom: 'HEAP — requested, flexible', bottomSub: 'big & persistent; someone must release it', caption: 'pedalboard vs warehouse' },
       },
       {
@@ -2824,7 +2824,7 @@ const ZONE2_LESSONS = [
       },
       {
         h: 'Using and moving it',
-        body: 'Check it like any pointer (`if (osc)`), reach members with `->`. To hand ownership to someone else, you **move** it — the full story next-next lesson. In plugins: your processor owns its DSP modules and its editor through unique_ptr. It\'s the default owning type of modern JUCE.',
+        body: 'Check it like any pointer (`if (osc)`), reach members with `->`. To hand ownership to someone else, you **move** it — the full story two lessons from now. In plugins: your processor owns its DSP modules and its editor through unique_ptr. It\'s the default owning type of modern JUCE.',
         code: 'std::unique_ptr<SineOsc> a = std::make_unique<SineOsc>();\nauto b = a;              // ✗ refuses to build: no copies\nauto c = std::move(a);   // ✓ ownership handed to c; a is now empty',
         codeTitle: 'no copies — only handovers',
       },
@@ -3034,7 +3034,7 @@ const ZONE2_LESSONS = [
     ],
     recap: [
       'Copy duplicates contents; move transfers them.',
-      'std::move = permission, not action; source ends valid-but-empty.',
+      'std::move = permission, not action; source ends valid but empty.',
       'Never read a moved-from object expecting its old data.',
       'const methods and const& params: promises the compiler enforces.',
     ],
@@ -3221,13 +3221,13 @@ ZONE2_LESSONS.push(
     sections: [
       {
         h: 'enum class: the labeled selector ring',
-        body: '`enum class Waveform { sine, saw, square };` creates a type whose only values are those names. No silent conversion to int, no nonsense value 47, and a `switch` over it can warn when a position is missing. Every mode selector you write from now on uses this.',
+        body: '`enum class Waveform { sine, saw, square };` gives you a type that can only ever be one of those names. No silent conversion to int, no nonsense value 47, and a `switch` over it can warn when a position is missing. Every mode selector you write from now on uses this.',
         code: 'enum class Waveform { sine, saw, square };\n\nWaveform wave = Waveform::saw;\n\nswitch (wave) {\n    case Waveform::sine:   /* ... */ break;\n    case Waveform::saw:    /* ... */ break;\n    case Waveform::square: /* ... */ break;\n}',
         codeTitle: 'a type-safe selector',
       },
       {
         h: 'auto and range-based for',
-        body: '`auto` asks the compiler to infer an obvious type — perfect for `auto osc = std::make_unique<SineOsc>();` where the type is written once already. And the **range-based for** sweeps a whole container: `for (auto& s : buffer)`. That `&` is load-bearing: with it you edit the real samples; without it you edit throwaway copies. (`constexpr` from Zone 1 and `inline` for small header functions round out the kit — you\'ll meet inline again at project-layout time.)',
+        body: '`auto` asks the compiler to infer an obvious type — perfect for `auto osc = std::make_unique<SineOsc>();` where the type is written once already. And the **range-based for** sweeps a whole container: `for (auto& s : buffer)`. That `&` is load-bearing: with it you edit the real samples; without it you edit throwaway copies. (`constexpr` from Zone 1 and `inline` for small header functions round out the kit — you\'ll meet inline again when we lay out a project.)',
         mistake: { code: 'for (auto s : buffer)   // ✗ s is a COPY\n    s *= gain;          // the buffer never changes!', text: 'The missing & is Zone 1\'s "effect does nothing" bug wearing modern clothes: `for (auto& s : buffer)` edits the real audio.' },
       },
     ],
@@ -3379,7 +3379,7 @@ ZONE2_LESSONS.push(
       },
       {
         h: 'Namespaces and the shape of a real project',
-        body: 'Wrap your own code in a **namespace** (`namespace txpps { ... }`) so your Filter never collides with anyone else\'s. And as the file count grows, structure follows roles: `dsp/` for engines, `ui/` for components, one class per .h/.cpp pair. Tiny functions defined in headers get marked **inline** — the Zone 1 panel/circuit split, scaled up to a product.',
+        body: 'Wrap your own code in a **namespace** (`namespace txpps { ... }`) so your Filter never collides with anyone else\'s. And as the files pile up, group them by role: `dsp/` for engines, `ui/` for components, one class per .h/.cpp pair. Tiny functions defined in headers get marked **inline** — the Zone 1 panel/circuit split, grown to fit a whole product.',
         viz: { t: 'twoLayer', top: 'dsp/ — SynthEngine, Voice, Filter', topSub: 'the sound', bottom: 'ui/ — Editor, Knobs, Meters', bottomSub: 'the panel', caption: 'folders by role — the standard plugin layout' },
       },
     ],
@@ -3418,7 +3418,7 @@ ZONE2_LESSONS.push(
           { t: 'A new folder per function', why: 'Over-fragmentation is its own maze. Classes are the natural file unit; folders group by role.' },
         ],
         answer: 0,
-        explain: 'Role folders + one class per header/source pair + a project namespace: the layout every JUCE plugin you\'ll read in Zone 3 uses. Structure is a gift to future-you.',
+        explain: 'Role folders, one class per header/source pair, your code in a namespace — the layout every JUCE plugin you\'ll read in Zone 3 uses. Structure is a gift to future-you.',
       },
     ],
     recap: [
@@ -3454,7 +3454,7 @@ ZONE2_LESSONS.push(
       },
       {
         h: 'Exceptions — and the audio-thread ban',
-        body: '**Exceptions** (`throw` / `catch`) handle rare failures like a missing sample file: normal flow stops and control jumps to a handler. Fine on the UI thread. On the **audio thread: never.** Throwing has unpredictable cost, and an exception escaping into the host is a crash. Audio code reports trouble with return values and `std::optional` — honest, bounded, silent-at-the-gig.',
+        body: '**Exceptions** (`throw` / `catch`) handle rare failures like a missing sample file: normal flow stops and control jumps to a handler. Fine on the UI thread. On the **audio thread: never.** Throwing has unpredictable cost, and an exception escaping into the host is a crash. Audio code reports trouble with return values and `std::optional` — honest, bounded, and silent at the gig.',
         mistake: { code: 'void processBlock(...)\n{\n    if (!tableReady)\n        throw std::runtime_error("no table"); // ✗ never here\n}', text: 'The real-time list grows one final entry: no allocation, no locks, no I/O, no logging — **and no throwing** — on the audio thread.' },
       },
     ],
@@ -3772,7 +3772,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'mo2', kind: 'challenge', ctype: 'ordering', title: 'Assemble: The Parameter Handoff', short: 'Order the flow',
     concepts: ['threading'],
-    intro: 'A knob value must travel from a UI drag to smooth audio. Arrange the four stages of the professional path.',
+    intro: 'A knob value must travel from a UI drag to smooth audio. Put the four stages of that journey in order.',
     questions: [
       {
         type: 'order', concept: 'threading',
@@ -3793,7 +3793,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'mc1', kind: 'challenge', ctype: 'completion', title: 'Complete: Own the Oscillator', short: 'Code completion',
     concepts: ['smart-pointers'],
-    intro: 'The engine needs a heap-allocated oscillator with one clear owner, created the modern way.',
+    intro: 'The engine needs an oscillator that lives on the heap, with one clear owner, built the modern way.',
     questions: [
       {
         type: 'fill', concept: 'smart-pointers',
@@ -3844,7 +3844,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'mc4', kind: 'challenge', ctype: 'completion', title: 'Complete: The Voice Pool Type', short: 'Code completion',
     concepts: ['templates'],
-    intro: 'Declare the canonical synth voice pool: resizable, one clear owner per voice.',
+    intro: 'Declare the voice pool every synth is built on: resizable, one clear owner per voice.',
     questions: [
       {
         type: 'fill', concept: 'templates',
@@ -4028,7 +4028,7 @@ const ZONE2_CHALLENGES = [
             { t: 'Eight global Voice variables', why: 'Globals can\'t resize, can\'t loop cleanly, and leak state across plugin instances.' },
           ],
           answer: 0,
-          explain: 'The canonical pool: resizable backstage, one owner per voice, automatic teardown. You typed this type in the challenges — now it\'s load-bearing.',
+          explain: 'The pool every synth leans on: resizable backstage, one owner per voice, automatic teardown. You typed this type in the challenges — now it\'s load-bearing.',
         },
       },
       {
@@ -4173,7 +4173,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'p5', kind: 'project', title: 'Mission: The Synth Skeleton', short: 'Zone project',
     concepts: ['threading', 'smart-pointers', 'ownership'],
-    brief: 'The Zone 2 finale: assemble the architecture of a real synthesizer — owned voice pool, atomic parameter bridge, real-time-clean processBlock. This exact skeleton becomes a sounding instrument in Zones 3–5.',
+    brief: 'The Zone 2 finale: assemble the architecture of a real synthesizer — owned voice pool, atomic parameter bridge, and a processBlock that stays clean on the real-time thread. This exact skeleton becomes a sounding instrument in Zones 3–5.',
     steps: [
       {
         note: 'Step 1 — The blueprint. An engine, its voices, and two threads that must never collide.',
@@ -4390,7 +4390,7 @@ const ZONE3_LESSONS = [
           { t: 'A compiler', why: 'Your normal compiler builds JUCE code; JUCE supplies classes and build recipes, not compilation.' },
         ],
         answer: 0,
-        explain: 'JUCE = library + build tooling. You supply the processor, editor and CMake description; it supplies everything between your code and the DAW.',
+        explain: 'JUCE is a library plus build tooling. You supply the processor, editor and CMake description; it supplies everything between your code and the DAW.',
       },
       {
         type: 'mcq', concept: 'juce-basics',
@@ -4510,7 +4510,7 @@ const ZONE3_LESSONS = [
       },
       {
         h: 'What First Signal targets',
-        body: 'One line in CMake decides: `FORMATS VST3 Standalone` (plus `AU` when building on a Mac — CMake simply skips formats a platform can\'t build). JUCE compiles your one AudioProcessor into each wrapper. AAX stays out of scope: its SDK and signing process are a shipping-stage concern, not a first-plugin one.',
+        body: 'One line in CMake decides: `FORMATS VST3 Standalone` (plus `AU` when building on a Mac — CMake simply skips formats a platform can\'t build). JUCE compiles your one AudioProcessor into each wrapper. AAX stays out of scope: its SDK and signing process are something to deal with when you ship, not when you\'re building your first plugin.',
         code: 'juce_add_plugin(FirstSignal\n    FORMATS VST3 Standalone   # add AU on macOS\n    ...)',
         codeTitle: 'formats, chosen in one line',
       },
@@ -4533,7 +4533,7 @@ const ZONE3_LESSONS = [
           { t: 'It\'s required for VST3 to work', why: 'Formats are independent doorways into the same engine.' },
         ],
         answer: 0,
-        explain: 'Build → double-click → hear it. No scanning, no host quirks. Standalone-first testing is the professional development rhythm you\'ll use from Mission 3 on.',
+        explain: 'Build → double-click → hear it. No scanning, no host quirks. Testing in standalone first is the working rhythm you\'ll use from Mission 3 on.',
       },
       {
         type: 'mcq', concept: 'formats',
@@ -4697,7 +4697,7 @@ const ZONE3_LESSONS = [
           { t: 'Only if the plugin requests it', why: 'The host decides — your job is to make prepare safely re-runnable.' },
         ],
         answer: 0,
-        explain: 'Write prepareToPlay as "reset the world to a valid state for THIS rate and size" — idempotent, allocation-friendly, callable forever.',
+        explain: 'Write prepareToPlay as "reset the world to a valid state for THIS rate and size" — idempotent, safe to allocate in, callable forever.',
       },
     ],
     recap: [
@@ -4733,7 +4733,7 @@ const ZONE3_LESSONS = [
           ['sampleRate', 'time↔samples conversion for everything downstream'],
           ['samplesPerBlock', 'the MAXIMUM you\'ll see — real blocks vary'],
           ['gainSmoothed.reset(rate, 0.05)', 'teach the smoother the rate: 50 ms of glide'],
-          ['setCurrentAndTargetValue', 'start settled — no glide-from-zero on first play'],
+          ['setCurrentAndTargetValue', 'start settled — no gliding up from zero on first play'],
         ],
       },
       {
@@ -4855,7 +4855,7 @@ const ZONE3_LESSONS = [
           '}',
         ],
         buggy: 3,
-        explain: 'Disk access on the audio thread: unbounded, blocking, glitch-guaranteed. Preset loads belong on the UI/background side, handed over lock-free (Zone 2\'s FIFO). The gain line? Perfectly legal.',
+        explain: 'Disk access on the audio thread: unbounded, blocking, and guaranteed to glitch. Preset loads belong on the UI/background side, handed over lock-free (Zone 2\'s FIFO). The gain line? Perfectly legal.',
         fix: 'Load on the UI thread; hand results across via atomics/FIFO',
       },
     ],
@@ -5027,7 +5027,7 @@ const ZONE3_LESSONS = [
       { name: 'Zone 5 synth', use: 'this exact loop feeds the voice allocator you built in p3' },
     ],
     analogyPanel: 'The block is a bar of the song; MIDI events are cue marks written at exact beats within it. A good player hits the cue mid-bar — not at the next barline.',
-    beginnerMistake: 'Handling all MIDI at the top of the block "to keep it simple." That bakes in up-to-a-block timing error. Read positions now, even before you need them.',
+    beginnerMistake: 'Handling all MIDI at the top of the block "to keep it simple." That bakes in timing error of up to a full block. Read positions now, even before you need them.',
     remember: 'MIDI arrives as sample-stamped mail — deliver each event at its exact sample.',
     builds: ['midi', 'velocity', 'block'],
     leads: ['voice', 'polyphony'],
@@ -5127,7 +5127,7 @@ ZONE3_LESSONS.push(
     sections: [
       {
         h: 'Three jobs, one object',
-        body: '**AudioProcessorValueTreeState** (APVTS) does: ① own your parameters and sync them with the host, ② expose each value as an atomic for the audio thread (Zone 2\'s bridge, institutionalized), ③ hold state as a **ValueTree** — a saveable named-value tree — for sessions and presets. The pieces:',
+        body: '**AudioProcessorValueTreeState** (APVTS) does: ① own your parameters and sync them with the host, ② expose each value as an atomic for the audio thread (Zone 2\'s bridge, now built in), ③ hold state as a **ValueTree** — a saveable named-value tree — for sessions and presets. The pieces:',
         code: '// PluginProcessor.h — the member (lives with the engine)\njuce::AudioProcessorValueTreeState apvts {\n    *this, nullptr, "PARAMS", createParameterLayout() };\n\n// PluginProcessor.cpp — the layout\njuce::AudioProcessorValueTreeState::ParameterLayout\nFirstSignalProcessor::createParameterLayout()\n{\n    juce::AudioProcessorValueTreeState::ParameterLayout layout;\n    layout.add(std::make_unique<juce::AudioParameterFloat>(\n        juce::ParameterID { "gain", 1 }, "Gain",\n        juce::NormalisableRange<float>(-60.0f, 6.0f, 0.01f),\n        0.0f));\n    return layout;\n}',
         codeTitle: 'the "magic line", disassembled',
         breakdown: [
@@ -5177,7 +5177,7 @@ ZONE3_LESSONS.push(
           { t: 'A crash', why: 'This exact path is the sanctioned, lock-free design.' },
         ],
         answer: 0,
-        explain: 'Host writes, atomic carries, audio loads. Indivisible values, no locks, editor irrelevant — every Zone 2 threading lesson, productized.',
+        explain: 'Host writes, atomic carries, audio loads. Indivisible values, no locks, editor irrelevant — every Zone 2 threading lesson, now doing its job in a shipping plugin.',
       },
     ],
     recap: [
@@ -5454,7 +5454,7 @@ ZONE3_LESSONS.push(
       },
       {
         h: 'In: defensive restoration',
-        body: '**setStateInformation(data, size)** arrives with *whatever was saved* — possibly by an older version, possibly corrupted. Parse, **verify the tree type matches**, and only then `replaceState()`. Missing parameters in old saves keep their defaults — which is your version-migration safety net, and why removing/renaming IDs breaks sessions (j10\'s promise, round two).',
+        body: '**setStateInformation(data, size)** arrives with *whatever was saved* — possibly by an older version, possibly corrupted. Parse, **verify the tree type matches**, and only then `replaceState()`. Missing parameters in old saves keep their defaults — which is exactly how an old session still opens in a newer version, and why removing or renaming IDs breaks sessions (j10\'s promise, round two).',
         code: 'void FirstSignalProcessor::setStateInformation(\n        const void* data, int sizeInBytes)\n{\n    std::unique_ptr<juce::XmlElement> xml(\n        getXmlFromBinary(data, sizeInBytes));\n\n    if (xml != nullptr\n        && xml->hasTagName(apvts.state.getType()))\n        apvts.replaceState(\n            juce::ValueTree::fromXml(*xml));\n}',
         codeTitle: 'load: verify, then replace',
         breakdown: [
@@ -5485,7 +5485,7 @@ ZONE3_LESSONS.push(
         accept: ['replaceState'],
         placeholder: 'method',
         hint: 'Replace the whole tree, atomically-managed by APVTS.',
-        explain: 'replaceState swaps the tree; parameters, atomics and any open editor all follow. Assigning to apvts.state directly skips the bookkeeping — replaceState is the sanctioned door.',
+        explain: 'replaceState swaps the tree; parameters, atomics and any open editor all follow. Assigning to apvts.state directly skips the bookkeeping — replaceState is the door JUCE wants you to use.',
       },
       {
         type: 'predict', concept: 'state',
@@ -5758,7 +5758,7 @@ const ZONE3_CHALLENGES = [
         accept: ['sampleRate'],
         placeholder: 'argument',
         hint: 'Seconds only mean something once the rate is known.',
-        explain: 'reset(sampleRate, seconds): now "0.05" is a real 50 ms at this session\'s rate. Un-prepared smoothers snap instead of gliding — a boss-stage ghost you\'ve now pre-exorcised.',
+        explain: 'reset(sampleRate, seconds): now "0.05" is a real 50 ms at this session\'s rate. A smoother nobody prepared snaps instead of gliding — a boss-stage ghost you\'ve now pre-exorcised.',
       },
     ],
   },
@@ -6003,7 +6003,7 @@ const ZONE3_CHALLENGES = [
         },
       },
       {
-        note: 'Step 3 — First Signal has no per-rate state yet, but the prepare override must exist and be honest.',
+        note: 'Step 3 — First Signal has no state that depends on the sample rate yet, but the prepare override must exist and be honest.',
         q: {
           type: 'mcq', concept: 'lifecycle',
           prompt: 'What belongs in an empty-but-correct prepareToPlay today?',
@@ -6031,7 +6031,7 @@ const ZONE3_CHALLENGES = [
             '        buffer.clear(ch, 0, buffer.getNumSamples());',
             '}',
           ],
-          explain: 'Signature → denormal guard → clear the outputs you didn\'t write → done. Input samples pass through untouched: a correct, silent-safe, do-nothing plugin — which is a real milestone.',
+          explain: 'Signature → denormal guard → clear the outputs you didn\'t write → done. Input samples pass through untouched: a correct do-nothing plugin that can\'t leak stray noise — which is a real milestone.',
         },
       },
       {
@@ -6136,7 +6136,7 @@ const ZONE3_CHALLENGES = [
             'audio thread load()s the new target',
             'smoother glides; samples scale',
           ],
-          explain: 'Finger → attachment → brain/host → atomic → smoother → sound. Two threads, zero races, one click-free knob. You just traced the architecture this whole zone exists to teach — the control room is wired.',
+          explain: 'Finger → attachment → brain/host → atomic → smoother → sound. Two threads, zero races, one knob that moves without clicks or pops. You just traced the architecture this whole zone exists to teach — the control room is wired.',
         },
       },
     ],
@@ -6563,7 +6563,7 @@ const ZONE4_LESSONS = [
     sections: [
       {
         h: 'Height, multiplier, scale',
-        body: '**Amplitude** is the wave\'s height — how far samples swing from zero. **Gain** is a multiplier applied to it. **Decibels** are the logarithmic ruler ears prefer: gain = 10^(dB/20), so −6 dB ≈ ×0.5 and +6 dB ≈ ×2. All Zone 1 knowledge — now with a synthesis-shaped consequence:',
+        body: '**Amplitude** is the wave\'s height — how far samples swing from zero. **Gain** is a multiplier applied to it. **Decibels** are the logarithmic ruler ears prefer: gain = 10^(dB/20), so −6 dB ≈ ×0.5 and +6 dB ≈ ×2. All Zone 1 knowledge — now with a consequence that only shows up once you\'re the one making sound:',
         viz: { t: 'compare2', mode: 'amp' },
       },
       {
@@ -6713,7 +6713,7 @@ const ZONE4_LESSONS = [
     sections: [
       {
         h: 'The voice, assembled',
-        body: 'A tone-generating processBlock: compute each sample from the phase, write it to **every** channel, advance, wrap. Note what changed from the gain plugin: we *ignore* the input and **write** the buffer instead of scaling it.',
+        body: 'Here\'s a processBlock that generates a tone: compute each sample from the phase, write it to **every** channel, advance, wrap. Notice what changed from the gain plugin: we *ignore* the input and **write** the buffer instead of scaling it.',
         code: 'void FirstSignalProcessor::processBlock(\n        juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)\n{\n    juce::ScopedNoDenormals noDenormals;\n\n    for (int i = 0; i < buffer.getNumSamples(); ++i)\n    {\n        float s = (float) std::sin(phase) * 0.25f;\n\n        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)\n            buffer.getWritePointer(ch)[i] = s;\n\n        phase += phaseIncrement;\n        if (phase >= juce::MathConstants<double>::twoPi)\n            phase -= juce::MathConstants<double>::twoPi;\n    }\n}',
         codeTitle: 'First Signal v2 — it makes sound',
         breakdown: [
@@ -7102,7 +7102,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'its output stage clamps in d15 — after staging correctly first' },
-      { name: 'Clippers & limiters', use: 'a "ceiling" knob in dBFS is jlimit\'s bound, productized' },
+      { name: 'Clippers & limiters', use: 'a "ceiling" knob in dBFS is jlimit\'s bound, dressed up as a feature' },
     ],
     analogyPanel: 'Clipping is a doorframe too low for the mix: every peak taller than the frame doesn\'t duck — it gets its head flattened. The flattened heads are the crunch.',
     beginnerMistake: 'Believing floats clip at 1.0 *inside* the plugin. They don\'t — which is why a trim AFTER an over-hot plugin can rescue the level, as long as nothing in between already clamped it.',
@@ -7130,7 +7130,7 @@ ZONE4_LESSONS.push(
         codeTitle: 'two voices, staged safely',
         breakdown: [
           ['osc1 + osc2', 'the entire art of mixing — worst-case peak here: 2.0'],
-          ['* 0.5f', 'the bus trim: two sources → half is the guaranteed-safe factor'],
+          ['* 0.5f', 'the bus trim: two sources → half is the factor that\'s always safe'],
           ['own phase each', 'independent voices = independent bookmarks (phase, phase2)'],
           ['* env * gain', 'shape and level exactly as before — the sum slots into the chain'],
         ],
@@ -7138,7 +7138,7 @@ ZONE4_LESSONS.push(
       },
       {
         h: 'Why real mixes survive',
-        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistics is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — constructive interference, arriving on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
+        body: 'Divide-by-N sounds like burial — but unrelated signals rarely peak at the same instant, and the ear tracks average energy more than peaks. That statistic is why 40 tracks don\'t each need 1/40th. One sharp exception: **identical, in-phase signals double** (+6 dB) — constructive interference, arriving on the bus. Duplicate a track in your DAW and watch the meter jump exactly that.',
       },
     ],
     checks: [
@@ -7434,7 +7434,7 @@ ZONE4_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'd15 installs this exact tremolo in the output stage' },
-      { name: 'Every mod matrix', use: 'source / destination / amount columns — this lesson\'s three words, productized' },
+      { name: 'Every mod matrix', use: 'source / destination / amount columns — this lesson\'s three words, given a front panel' },
     ],
     analogyPanel: 'An LFO is a session robot whose only job is turning one knob back and forth, forever, in perfect time. Rate is its wrist speed, depth its twist, destination the knob you point it at.',
     beginnerMistake: 'Confusing LFOs with envelopes. Both are control signals — but an envelope is a one-shot shape per note; an LFO loops regardless of notes. Vibrato that restarts per key is an LFO with retrigger — still a loop, phase-reset at note-on.',
@@ -7515,7 +7515,7 @@ ZONE4_LESSONS.push(
       'First Signal v3: oscillator → envelope → LFO → smoothed gain → clamp → every channel.',
       'The voice is four multiplies: raw × env × trem × g — each one a lesson.',
       'Clamp last: math after the guard is unguarded.',
-      'Block-stable work outside the loop; per-sample work inside.',
+      'Work that holds steady across a block goes outside the loop; per-sample work inside.',
       'Mono, naive shapes, no filter: the roadmap, not bugs.',
     ],
     inside: [
@@ -7543,7 +7543,7 @@ const ZONE4_CHALLENGES = [
   {
     id: 'dr1', kind: 'challenge', ctype: 'reading', title: 'Read: The Sine Voice', short: 'Trace the code',
     concepts: ['oscillators'],
-    intro: 'First Signal\'s v2 processBlock, unabridged. Read it like a modular patch: what generates, what advances, what merely copies.',
+    intro: 'Here\'s First Signal\'s v2 processBlock, every line of it. Read it like a modular patch: what generates, what advances, what merely copies.',
     questions: [
       {
         type: 'match', concept: 'oscillators',
@@ -7577,7 +7577,7 @@ const ZONE4_CHALLENGES = [
         prompt: 'Match each signal to its truth.',
         left: ['adsr.getNextSample()', 'std::sin(lfoPhase)', 'raw * env * trem', 'depth'],
         right: ['one-shot shape — driven by note-on/off', 'loops forever — a control wave', 'audio × two invisible hands', 'how far the LFO turns the knob'],
-        explain: 'Envelope: triggered, plays A-D-S-R once. LFO: free-running loop. Both meet the audio the same way — by multiplication.',
+        explain: 'The envelope is triggered, playing A-D-S-R once. The LFO free-runs in a loop. Both reach the audio the same way — by multiplication.',
       },
       {
         type: 'mcq', concept: 'modulation',
@@ -7636,7 +7636,7 @@ const ZONE4_CHALLENGES = [
         mistakes: [
           { match: '^2(\\.0f?)?$', msg: 'That doubles the crash — ×2 turns a worst case of 2.0 into 4.0. The trim *divides* by the source count: 0.5.' },
         ],
-        explain: '2.0 × 0.5 = 1.0 exactly: the 1/N guarantee. Real mixes often run hotter on the statistics of peaks not aligning — but the guarantee is where you start.',
+        explain: '2.0 × 0.5 = 1.0 exactly: the 1/N guarantee. Real mixes usually run hotter than that, since two peaks rarely hit their loudest at the same instant — but the guarantee is where you start.',
       },
       {
         type: 'fill', concept: 'levels',
@@ -7674,7 +7674,7 @@ const ZONE4_CHALLENGES = [
         accept: ['getNextSample'],
         placeholder: 'method',
         hint: 'One micro-step of A-D-S-R per call.',
-        explain: 'getNextSample() advances the envelope one sample and returns 0..1 — the moving gain knob, multiplied into the voice. Per SAMPLE, inside the loop: shapes have corners otherwise.',
+        explain: 'getNextSample() advances the envelope one sample and returns 0..1 — the moving gain knob, multiplied into the voice. Call it per sample, inside the loop — otherwise the shape grows corners.',
       },
     ],
   },
@@ -7841,11 +7841,11 @@ const ZONE4_CHALLENGES = [
             { t: 'double phase; (no initializer)', why: 'Uninitialized memory as your first sample: a click, or worse, garbage. = 0.0 starts at the zero crossing, silently.' },
           ],
           answer: 0,
-          explain: 'Members, per-instance, double, initialized to 0.0: the bookmark starts at the zero crossing and never lies. Zone 1\'s precision lesson, deployed.',
+          explain: 'Real members, one per instance, kept as double and started at 0.0 — the bookmark opens at the zero crossing and never lies. Zone 1\'s precision lesson, put to work.',
         },
       },
       {
-        note: 'Step 2 — Pitch changes must recompute the step. Complete the increment setter.',
+        note: 'Step 2 — When the pitch changes, the step has to change with it. Complete the increment setter.',
         q: {
           type: 'fill', concept: 'oscillators',
           prompt: 'The formula that turns Hertz into a per-sample step.',
@@ -8215,7 +8215,7 @@ const ZONE5_LESSONS = [
       },
       {
         h: 'From byte to gain',
-        body: 'The straightforward mapping: divide by 127 to get 0..1, use it as a per-voice gain. JUCE will even do the division for you. One honest nuance: ears are logarithmic (d4), so pros often *curve* the value — squaring it is a common start — but linear is a fine first instrument.',
+        body: 'The simplest way to wire it up: divide by 127 to land in 0..1 and use it as a per-voice gain. JUCE will even do the division for you. One honest nuance: ears are logarithmic (d4), so pros often *curve* the value — squaring it is a common start — but linear is a fine first instrument.',
         code: 'float vel = msg.getFloatVelocity();   // 0.0 .. 1.0 — JUCE divides for you\nvoice.velocityGain = vel * vel;       // curved: quiet strikes stay quiet\n// later, in the render:  sample * env * voice.velocityGain',
         codeTitle: 'dynamics, wired in',
         breakdown: [
@@ -8226,7 +8226,7 @@ const ZONE5_LESSONS = [
       },
       {
         h: 'The strange rule: velocity zero',
-        body: 'A **note-on with velocity 0** officially means *note-off*. It\'s a 1983 wire-efficiency trick (running status) that never went away, and controllers still send it. Miss this rule and some keyboards leave your synth with notes that never end. JUCE has your back — `isNoteOff()` returns true for velocity-0 note-ons by default — but only if you use the message queries instead of poking raw bytes.',
+        body: 'A **note-on with velocity 0** officially means *note-off*. It\'s a 1983 trick for squeezing bytes onto the wire (running status) that never went away, and controllers still send it. Miss this rule and some keyboards leave your synth with notes that never end. JUCE has your back — `isNoteOff()` returns true for velocity-0 note-ons by default — but only if you use the message queries instead of poking raw bytes.',
         warn: 'This is the first of several “stuck note” traps in this zone. A synth that only *starts* notes correctly is half a synth — ending them correctly is where the engineering lives.',
       },
     ],
@@ -8291,7 +8291,7 @@ const ZONE5_LESSONS = [
     id: 'n3', kind: 'lesson', title: 'Reading the MIDI Inbox', short: 'The MidiBuffer loop',
     concepts: ['midi-basics'], time: '~6 MIN', diff: 2,
     hook: 'Zone 3 told you processBlock receives TWO deliveries: the audio buffer, and a MidiBuffer you\'ve politely ignored for two zones. Inside it: every key event that happened during this block, each stamped with exactly *when*. Time to open the mail.',
-    objective: 'Iterate the MidiBuffer, dispatch each message by type, and understand sample-position timing.',
+    objective: 'Walk the MidiBuffer, route each message by what it is, and see exactly when in the block a note landed.',
     sections: [
       {
         h: 'The inbox, opened',
@@ -8374,7 +8374,7 @@ const ZONE5_LESSONS = [
     id: 'n4', kind: 'lesson', title: 'Mono: One Key at a Time', short: 'Last-note, retrigger, legato',
     concepts: ['voices-mono'], time: '~6 MIN', diff: 2,
     hook: 'Hold a bass note, then tap a higher one without letting go. On a classic mono synth the pitch jumps up — release, and it falls back to the held key. That falling-back is a *decision someone programmed*. Mono synths aren\'t poly synths minus features: they\'re a personality, built from rules.',
-    objective: 'Build mono note logic: last-note priority, and the retrigger-vs-legato choice that defines mono feel.',
+    objective: 'Build mono note logic: last-note priority, and the choice between retrigger and legato that defines mono feel.',
     sections: [
       {
         h: 'The mono contract',
@@ -8560,7 +8560,7 @@ const ZONE5_LESSONS = [
       {
         h: 'Mono was a special case all along',
         body: 'Notice what polyphony did to the architecture: the *render* barely changed — it grew a loop. The hard new work is all in *management*: which voice takes which note (n7), what happens when the pool runs dry (n8), when is a voice truly done (n9). Sound generation was Zone 4; Zone 5 is government.',
-        warn: 'The ×1/8 trim is the guaranteed-safe floor, and it parks single notes at −18 dBFS — 6 dB below the mono synth\'s −12. Real synths run hotter (÷√N, or a fixed voice level plus a limiter) because eight worst-case peaks almost never align — d11\'s statistics argument, now with stakes. First Signal ships the guarantee first; taste can come later.',
+        warn: 'The ×1/8 trim is the floor that\'s always safe, and it parks single notes at −18 dBFS — 6 dB below the mono synth\'s −12. Real synths run hotter (÷√N, or a fixed voice level plus a limiter) because eight worst-case peaks almost never align — d11\'s statistics argument, now with stakes. First Signal ships the guarantee first; taste can come later.',
       },
     ],
     checks: [
@@ -8810,7 +8810,7 @@ ZONE5_LESSONS.push(
     sections: [
       {
         h: 'The life of a voice',
-        body: 'A voice cycles through states, and each transition has an owner: **note-on** starts attack; the envelope itself walks attack → decay → sustain; **note-off** starts release; and the envelope *finishing* release is what makes the voice idle again. Two different events end a note: the player ends the *key*, the envelope ends the *sound*.',
+        body: 'Every note your synth plays moves through a handful of states, and each transition has an owner: **note-on** starts attack; the envelope itself walks attack → decay → sustain; **note-off** starts release; and the envelope *finishing* release is what makes the voice idle again. Two different events end a note: the player ends the *key*, the envelope ends the *sound*.',
         viz: { t: 'voicelife', caption: 'two hands on the wheel: the player drives note-on and note-off; the envelope drives everything between and after' },
       },
       {
@@ -8902,7 +8902,7 @@ ZONE5_LESSONS.push(
     sections: [
       {
         h: 'Meet the Continuous Controllers',
-        body: 'Beyond notes, MIDI carries **Continuous Controller (CC)** messages: a controller number (which knob/pedal/slider, 0–127) and a value (0–127). CC 1 is the mod wheel (n12), CC 7 volume, CC 64 the **sustain pedal**. The pedal is a switch wearing a controller costume: by convention, value **64 and above means down**, below 64 means up.',
+        body: 'Your keyboard sends more than notes. Every knob, slider, and pedal on it speaks in **Continuous Controller (CC)** messages: a controller number (which knob/pedal/slider, 0–127) and a value (0–127). CC 1 is the mod wheel (n12), CC 7 volume, CC 64 the **sustain pedal**. The pedal is a switch wearing a controller costume: by convention, value **64 and above means down**, below 64 means up.',
         code: 'else if (msg.isController())\n{\n    if (msg.getControllerNumber() == 64)              // sustain pedal\n        setPedal(msg.getControllerValue() >= 64);     // ≥64 = down\n}',
         codeTitle: 'the inbox grows an ear for feet',
         breakdown: [
@@ -9256,7 +9256,7 @@ ZONE5_LESSONS.push(
       },
       {
         h: 'Stereo spread: the choir takes the stage',
-        body: 'Detune alone is thick but mono. Feed each copy\'s spread position into d12\'s constant-power pan — flat-left copy hard left, center copy center — and the note *widens* into a field. This is THE supersaw recipe: detune × spread. (d12\'s warning applies: spread built from level differences folds to mono gracefully; fancy phase tricks may not.)',
+        body: 'Detune alone is thick but mono. Feed each copy\'s spread position into d12\'s constant-power pan — the far-left copy pans hard left, the center copy sits dead center — and the note *widens* into a field. This is THE supersaw recipe: detune × spread. (d12\'s warning applies: spread built from level differences folds to mono gracefully; fancy phase tricks may not.)',
       },
       {
         h: 'The bill: unison eats polyphony',
@@ -9522,7 +9522,7 @@ const ZONE5_CHALLENGES = [
         accept: ['return', 'break', 'return;', 'break;'],
         placeholder: 'statement',
         hint: 'Leave the loop — the gig is filled.',
-        explain: 'Without it, every free card claims the same note: one press, a full-pool unison blast at +18 dB. One note-on, one voice — enforced by one keyword.',
+        explain: 'Without it, every free card claims the same note: one press, the whole pool blasting that one note in unison at +18 dB. One note-on, one voice — enforced by one keyword.',
       },
     ],
   },
@@ -10201,11 +10201,11 @@ const ZONE6_LESSONS = [
     id: 'r2', kind: 'lesson', title: 'Two Threads, One Plugin', short: 'Who runs where',
     concepts: ['rt-discipline'], time: '~6 MIN', diff: 2,
     hook: 'You drag First Signal\'s gain slider while a chord plays. Two things are happening AT THE SAME TIME — literally, on different CPU cores: your mouse gesture and the audio math. They\'re both inside your plugin, touching the same data. Zones 2 and 3 introduced this; Zone 6 is where it becomes the design center of everything.',
-    objective: 'Sort every piece of plugin code onto its thread — and internalize the two golden rules of the boundary.',
+    objective: 'Sort every piece of plugin code onto its thread — and make the two golden rules of the boundary second nature.',
     sections: [
       {
         h: 'The two residents',
-        body: 'The **audio thread** runs processBlock on the r1 deadline — high priority, no waiting, no excuses. The **message thread** (UI thread) runs everything human-paced: painting, mouse, timers, preset browsers, file dialogs. Slow is FINE there — a 50 ms file dialog hurts nobody. The danger is never either thread alone; it\'s the *boundary* where they share data.',
+        body: 'The **audio thread** runs processBlock on the r1 deadline — high priority, no waiting, no excuses. The **message thread** (UI thread) runs everything that happens at human speed: painting, mouse, timers, preset browsers, file dialogs. Slow is FINE there — a 50 ms file dialog hurts nobody. The danger is never either thread alone; it\'s the *boundary* where they share data.',
         viz: { t: 'lanes' },
       },
       {
@@ -10332,7 +10332,7 @@ const ZONE6_LESSONS = [
         accept: ['load'],
         placeholder: 'method',
         hint: 'The atomic read verb.',
-        explain: 'load() reads whole-and-published. The explicit verb is a feature: every boundary crossing announces itself in the code — auditable at a glance.',
+        explain: 'load() reads a whole, published value. The explicit verb is a feature: every boundary crossing announces itself in the code — auditable at a glance.',
       },
     ],
     recap: [
@@ -10616,7 +10616,7 @@ const ZONE6_LESSONS = [
           ['recompute', 'any number born from a rate is stale the moment the rate changes'],
           ['size', 'maxBlockSize is the worst case the host promises — buy exactly that'],
           ['reset', 'stale voices and delay memories from the old world must not leak into the new one'],
-          ['re-runnable', 'the host calls this whenever it likes — idempotent setup or subtle bugs'],
+          ['re-runnable', 'the host calls this whenever it likes — setup that\'s safe to repeat, or subtle bugs'],
         ],
         mistake: { code: 'phaseIncrement = twoPi * 440.0 / 44100.0;   // ✗ rate hard-coded\n// "everyone uses 44.1 anyway"', text: 'At 96 kHz the same step is taken 96,000 times a second instead of 44,100 — every pitch lands more than an octave SHARP (this "A440" renders at ≈958 Hz). Hard-coded rates are wrong at every other rate, and you don\'t choose the session. The rate arrives in prepareToPlay; use the argument.' },
       },
@@ -10694,7 +10694,7 @@ const ZONE6_LESSONS = [
   {
     id: 'r8', kind: 'lesson', title: 'Automation: The Invisible Performer', short: 'The host plays your knobs',
     concepts: ['automation-eng'], time: '~6 MIN', diff: 2,
-    hook: 'A producer draws a filter sweep across the drop — a curve in the timeline, rendered by YOUR plugin. Automation is the host performing your knobs: inhumanly fast, sample-locked, in every take identical. It\'s also the most demanding user your parameters will ever have, and the fastest way to expose every weakness this zone has discussed.',
+    hook: 'A producer draws a filter sweep across the drop — a curve in the timeline, rendered by YOUR plugin. Automation is the host performing your knobs: inhumanly fast, sample-locked, in every take identical. It\'s also the most demanding user your parameters will ever have, and the fastest way to expose every weakness we\'ve covered in this zone.',
     objective: 'Understand how host automation reaches your DSP, why it stresses parameters harder than hands do, and the professional recipe for smooth automated sound.',
     sections: [
       {
@@ -10794,7 +10794,7 @@ ZONE6_LESSONS.push(
   {
     id: 'r9', kind: 'lesson', title: 'Presets That Never Lie', short: 'Version-safe state',
     concepts: ['state-eng'], time: '~7 MIN', diff: 3,
-    hook: 'A producer opens a two-year-old session. Since then you\'ve shipped v1.4 with three new knobs. If that session opens with ANY setting changed — a mix that suddenly sounds different — you\'ve broken the one promise producers never forgive. Version-safe state is how plugins keep faith with every session ever saved.',
+    hook: 'A producer opens a two-year-old session. Since then you\'ve shipped v1.4 with three new knobs. If that session opens with ANY setting changed — a mix that suddenly sounds different — you\'ve broken the one promise producers never forgive. State that still loads in the next version is how plugins keep faith with every session ever saved.',
     objective: 'Design state that survives time: defaults for missing values, a written version number, and IDs that never change meaning.',
     sections: [
       {
@@ -10964,7 +10964,7 @@ ZONE6_LESSONS.push(
     id: 'r11', kind: 'lesson', title: 'Profiling: Measure, Don\'t Guess', short: 'CPU, cache & SIMD',
     concepts: ['performance-eng'], time: '~7 MIN', diff: 3,
     hook: 'First Signal at 8 voices with unison eats more CPU than you\'d like, and three developers have three theories about why. All three are wrong — and that\'s normal. Intuition about performance is famously terrible. The professionals\' edge isn\'t genius optimization; it\'s refusing to optimize ANYTHING until a measurement points at the real cost.',
-    objective: 'Adopt measurement-first optimization, and meet the two big levers: cache-friendly memory access and SIMD (Single Instruction, Multiple Data).',
+    objective: 'Learn to measure before you optimize, and meet the two big levers: cache-friendly memory access and SIMD (Single Instruction, Multiple Data).',
     sections: [
       {
         h: 'The profiler tells the truth',
@@ -11038,7 +11038,7 @@ ZONE6_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'p18 profiles it honestly and fixes only what the numbers convict' },
-      { name: 'juce::FloatVectorOperations', use: 'buffer-wide multiply/add/clear — SIMD, pre-written and battle-tested' },
+      { name: 'juce::FloatVectorOperations', use: 'buffer-wide multiply/add/clear — SIMD, already written and tested for you' },
     ],
     analogyPanel: 'Mixing by ear vs by solo button: everyone SWEARS they know which track is muddy, and the solo button embarrasses everyone weekly. The profiler is the solo button for CPU — press it before you reach for a single fader.',
     beginnerMistake: 'Optimizing the DSP math because it LOOKS expensive while an atomic load and a pow sit inside the sample loop. Hot loops die from boring causes; the profiler exists because "looks expensive" and "is expensive" barely correlate.',
@@ -11074,7 +11074,7 @@ ZONE6_LESSONS.push(
       },
       {
         h: 'Behavior tests: scripting the performer',
-        body: 'Above the sound sit behaviors: does the sustain pedal defer note-offs (n10)? Does a 9th note steal the releasing voice? Does dense automation stay click-free? These get **scripted tests**: feed a constructed MidiBuffer (note-ons, CCs, pitch bend at exact sample positions), run blocks, assert on the state and output. Automation tests sweep parameters while rendering and scan the output for discontinuities. And UI-level testing exists too (scripted clicking, host simulation) — the deeper the layer, the cheaper the test, so most of the pyramid is units and golds.',
+        body: 'Above the sound sit behaviors: does the sustain pedal defer note-offs (n10)? Does a 9th note steal the releasing voice? Does dense automation stay free of clicks and pops? These get **scripted tests**: feed a constructed MidiBuffer (note-ons, CCs, pitch bend at exact sample positions), run blocks, assert on the state and output. Automation tests sweep parameters while rendering and scan the output for discontinuities. And UI-level testing exists too (scripted clicking, host simulation) — the deeper the layer, the cheaper the test, so most of the pyramid is units and golds.',
         warn: 'The uncomfortable truth this stack answers: "it sounds fine on my machine" tests ONE path of thousands. The suite tests the same thousand paths every single build — it\'s not a substitute for ears; it\'s a guarantee ears can\'t give.',
       },
     ],
@@ -11114,7 +11114,7 @@ ZONE6_LESSONS.push(
     recap: [
       'Unit tests freeze each lesson\'s claims: pitch math, wraps, ladders, ownership.',
       'Golden renders prove the WHOLE sound unchanged — refactor without fear.',
-      'Scripted MIDI/automation tests prove behavior: pedals, stealing, click-free sweeps.',
+      'Scripted MIDI/automation tests prove behavior: pedals, stealing, sweeps with no clicks.',
       'Design for determinism: seedable noise, fixed configs — proof needs same-in → same-out.',
     ],
     inside: [
@@ -11213,7 +11213,7 @@ ZONE6_LESSONS.push(
     id: 'r14', kind: 'lesson', title: 'Crash Forensics', short: 'Stack traces & defense',
     concepts: ['quality-eng'], time: '~7 MIN', diff: 3,
     hook: 'The email you\'ll dread: "your synth crashed my session, lost an hour of work." No repro steps, different machine, different host. Attached: a crash log — two hundred lines of hex and symbols. To a beginner it\'s noise. To a professional it\'s a map with an X on it. This lesson teaches you to read the map — and to write code that leaves better maps.',
-    objective: 'Read a stack trace from the top down, know the classic crash signatures, and practice defensive programming that fails loudly-but-safely.',
+    objective: 'Read a stack trace from the top down, know the classic crash signatures, and practice defensive programming that fails loudly but safely.',
     sections: [
       {
         h: 'The stack trace: a map with an X',
@@ -11761,7 +11761,7 @@ const ZONE6_CHALLENGES = [
   {
     id: 'p17', kind: 'project', title: 'Mission 2: The Preset Vault 2.0', short: 'Zone mission',
     concepts: ['state-eng', 'lifecycle-eng'],
-    brief: 'First Signal\'s state must survive time, corruption, and live switching. Stamp versions, default the missing, keep every ID sacred — and make preset changes click-free. Old sessions are the customers you can\'t see.',
+    brief: 'First Signal\'s state must survive time, corruption, and live switching. Stamp versions, default the missing, keep every ID sacred — and make preset changes without clicks or pops. Old sessions are the customers you can\'t see.',
     steps: [
       {
         note: 'Step 1 — Stamp the era. Load code should never guess what it\'s reading.',
@@ -11791,7 +11791,7 @@ const ZONE6_CHALLENGES = [
         },
       },
       {
-        note: 'Step 3 — The Click of Doom. Preset changes pop while a chord rings. Arrange the click-free swap.',
+        note: 'Step 3 — The Click of Doom. Preset changes pop while a chord rings. Arrange the swap that doesn\'t pop.',
         q: {
           type: 'order', concept: 'state-eng',
           prompt: 'Arrange the live preset-switch sequence, top to bottom.',
@@ -12089,7 +12089,7 @@ const ZONE7_LESSONS = [
       },
       {
         h: 'One sample through the machine',
-        body: 'Per sample, four moves in strict order: read the delayed sample, write input PLUS feedback into the line, mix the output, advance and wrap. **Feedback** routes the delayed signal back into the line — each pass through is one more echo, quieter by the feedback factor. Keep it below 1.0 or every repeat gets LOUDER: the runaway delay, a d10 disaster on a timer.',
+        body: 'Every sample runs the same four moves, always in this order: read the delayed sample, write input PLUS feedback into the line, mix the output, advance and wrap. **Feedback** routes the delayed signal back into the line — each pass through is one more echo, quieter by the feedback factor. Keep it below 1.0 or every repeat gets LOUDER: the runaway delay, a d10 disaster on a timer.',
         code: '// prepareToPlay: buy the line once (r5)\nlineLength = (int) (maxDelaySeconds * sampleRate);\nline.setSize (1, lineLength);\n\n// per sample:\nint readPos = writePos - delaySamples;\nif (readPos < 0) readPos += lineLength;            // wrap backwards\nfloat delayed = data[readPos];\ndata[writePos] = input + delayed * feedback;       // the echo feeds itself\nfloat out = input * dry + delayed * wet;           // d11: mixing is addition\nif (++writePos >= lineLength) writePos = 0;        // wrap forwards',
         codeTitle: 'the whole echo machine',
         breakdown: [
@@ -12103,7 +12103,7 @@ const ZONE7_LESSONS = [
       },
       {
         h: 'Fractional delays & tempo sync',
-        body: 'Two production realities. First: a delay of 302.7 samples lands BETWEEN two memory slots — reading the nearest one detunes modulated delays audibly. **Interpolation** (start with linear: blend the two neighbors by the fraction) reads between slots; it\'s what chorus (p23) will lean on. Second: musicians think in note values, not milliseconds — **tempo sync** converts through the host\'s BPM: one beat = 60 ÷ BPM seconds, then × rate for samples. And when the delay TIME changes while running, glide it (d13): jumping the read head teleports through the tape — a click; sliding it is the tape-speed pitch swoop dub loves.',
+        body: 'Two things bite you the moment you build a real delay. First: a delay of 302.7 samples lands BETWEEN two memory slots — reading the nearest one detunes modulated delays audibly. **Interpolation** (start with linear: blend the two neighbors by the fraction) reads between slots; it\'s what chorus (p23) will lean on. Second: musicians think in note values, not milliseconds — **tempo sync** converts through the host\'s BPM: one beat = 60 ÷ BPM seconds, then × rate for samples. And when the delay TIME changes while running, glide it (d13): jumping the read head teleports through the tape — a click; sliding it is the tape-speed pitch swoop dub loves.',
       },
     ],
     checks: [
@@ -12167,11 +12167,11 @@ const ZONE7_LESSONS = [
     id: 'f2', kind: 'lesson', title: 'Waveshaping: Drawing Distortion', short: 'Transfer curves & drive',
     concepts: ['shaping-dsp'], time: '~6 MIN', diff: 2,
     hook: 'Every distortion you\'ve ever loved — tube warmth, fuzz, saturation on a drum bus — is one idea: a rule that answers “when THIS level comes in, THAT level goes out.” Draw the rule as a curve and you\'ve designed the pedal. Straight line: clean. Bent: warm. Cornered: fuzz.',
-    objective: 'Understand transfer curves, why soft clipping sounds warmer than hard, what drive and output compensation really do, and why distortion demands the aliasing conversation.',
+    objective: 'Understand transfer curves, why soft clipping sounds warmer than hard, what drive and output compensation really do, and why distortion always drags aliasing back into the picture.',
     sections: [
       {
         h: 'The transfer curve',
-        body: '**Waveshaping** applies a fixed function to every sample: out = shape(in). Draw it with input on one axis, output on the other. A straight diagonal is a wire (out = in). d10\'s hard clip is a diagonal with the ends snapped flat — corners, harsh harmonics. The classic **soft clip**, tanh, bends gently toward the ceiling instead: the same loudness ambition, rounder corners, warmer harmonic recipe (d7\'s law, applied on purpose).',
+        body: '**Waveshaping** runs every sample through one fixed rule: out = shape(in). Draw it with input on one axis, output on the other. A straight diagonal is a wire (out = in). d10\'s hard clip is a diagonal with the ends snapped flat — corners, harsh harmonics. The classic **soft clip**, tanh, bends gently toward the ceiling instead: the same loudness ambition, rounder corners, warmer harmonic recipe (d7\'s law, applied on purpose).',
         viz: { t: 'shaperviz' },
       },
       {
@@ -12525,7 +12525,7 @@ const ZONE7_CHALLENGES = [
         accept: ['60.0', '60', '60.0f', '60.f'],
         placeholder: 'numerator',
         hint: 'Beats per minute → seconds per beat.',
-        explain: '60 ÷ BPM: at 120 BPM a beat is half a second. Multiply by the note-value ratio (0.75 for dotted eighth of a beat… of a quarter — define your table!), then × sampleRate for the read-head distance (f1).',
+        explain: '60 ÷ BPM: at 120 BPM a beat is half a second. Multiply by the note-value ratio (0.75 for dotted eighth of a beat… of a quarter — define your table!), then × sampleRate to get how far back to place the read head (f1).',
       },
       {
         type: 'mcq', concept: 'product-eng',
@@ -12537,7 +12537,7 @@ const ZONE7_CHALLENGES = [
           { t: 'Ask the user to reload', why: 'Plugins are guests that adapt (r13) — a reload dialog for a tempo change would be a one-star review generator.' },
         ],
         answer: 0,
-        explain: 'Sync is a live conversion, not a load-time constant: new BPM → new delaySamples → glided move. Every zone\'s discipline shows up in a two-line feature.',
+        explain: 'Sync isn\'t a number you set once at load — it\'s a live conversion: new BPM → new delaySamples → glided move. Every zone\'s discipline shows up in a two-line feature.',
       },
     ],
   },
@@ -12709,7 +12709,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 3,
-        explain: 'DBG builds a heap String and prints — per SAMPLE, on the audio thread: allocation (r5) plus I/O, 44,100 times a second. Debug-only doesn\'t mean harmless: it hides races by shifting timing and makes Debug untestable. Audio-thread visibility = values into atomics/FIFOs; the UI narrates (r10).',
+        explain: 'DBG builds a heap String and prints — per SAMPLE, on the audio thread: allocation (r5) plus I/O, 44,100 times a second. Debug-only doesn\'t mean harmless: it hides races by shifting timing and makes Debug untestable. If you need to see a value from the audio thread, push it into an atomic or FIFO and let the UI narrate it (r10).',
         fix: 'Delete it — meter via a std::atomic the UI reads',
       },
       {
@@ -12735,7 +12735,7 @@ const ZONE7_CHALLENGES = [
           '}',
         ],
         buggy: 2,
-        explain: 'The clamp exists — with the wrong ceiling: 1.2 permits gain-greater-than-one regeneration, and each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
+        explain: 'The clamp exists — with the wrong ceiling: 1.2 lets each repeat come back louder than it went in, so each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
         fix: 'feedback = juce::jlimit (0.0f, 0.95f, fb);',
       },
       {
@@ -12779,7 +12779,7 @@ ZONE7_CHALLENGES.push(
   {
     id: 'p20', kind: 'project', title: 'Product 1: TXPPS Gain', short: 'Product build',
     concepts: ['product-eng'],
-    brief: 'PRODUCT BRIEF — TXPPS Gain 1.0. A gain utility so polished it earns rack space: dB-calibrated knob, click-free automation, true bypass, output meter, full preset/session recall. Nothing here is new — that\'s the point. This build proves your Zones 1–6 foundations ship.',
+    brief: 'PRODUCT BRIEF — TXPPS Gain 1.0. A gain utility so polished it earns rack space: dB-calibrated knob, automation with no clicks or pops, true bypass, output meter, full preset/session recall. Nothing here is new — that\'s the point. This build proves your Zones 1–6 foundations ship.',
     steps: [
       {
         note: 'PLANNING — Map the architecture before a line is written. Every block is a zone you own.',
@@ -12788,7 +12788,7 @@ ZONE7_CHALLENGES.push(
           prompt: 'Match each component to its job in TXPPS Gain.',
           left: ['APVTS + AudioParameterFloat', 'SmoothedValue<float>', 'the cached atomic parameter pointer', 'get/setStateInformation'],
           right: ['the knob\'s brain: host automation + editor binding (Zone 3)', 'the glide that kills zipper (d13)', 'the race-free bridge into the callback (r3)', 'session recall, defensive and versioned (r9)'],
-          explain: 'Four components, four zones, one product plan. Professional builds start by naming which solved problem each requirement maps to.',
+          explain: 'Four components, four zones, one product plan. The pros always start here — by naming which solved problem each requirement maps to.',
         },
       },
       {
@@ -13469,7 +13469,7 @@ ZONE7_CHALLENGES.push(
   {
     id: 'p30', kind: 'project', title: 'CAPSTONE: TXPPS Signature', short: 'Commercial VST3',
     concepts: ['product-eng'],
-    brief: 'SPECIFICATION — TXPPS SIGNATURE 2.0, commercial VST3. ENGINE: the 8-voice poly core + saturation stage + motion delay + master section. UI MOCKUP: three panels (VOICE / MOTION / MASTER), meter bridge, preset browser. ENGINEERING REQS: lock-free throughout, version-safe state, worst-case CPU ≤ 40% at 64/44.1k. QA REQS: pluginval strictness 10, golden renders, old-session suite, automation stress. You are the engineer of record. Hints are over.',
+    brief: 'SPECIFICATION — TXPPS SIGNATURE 2.0, commercial VST3. ENGINE: the 8-voice poly core + saturation stage + motion delay + master section. UI MOCKUP: three panels (VOICE / MOTION / MASTER), meter bridge, preset browser. ENGINEERING REQS: lock-free throughout, state that still loads in the next version, worst-case CPU ≤ 40% at 64/44.1k. QA REQS: pluginval strictness 10, golden renders, old-session suite, automation stress. You are the engineer of record. Hints are over.',
     steps: [
       {
         note: 'ARCHITECTURE — Order the build. (No guidance. You have shipped ten products.)',
@@ -13515,7 +13515,7 @@ ZONE7_CHALLENGES.push(
           accept: ['2'],
           placeholder: 'version',
           hint: '',
-          explain: 'Stamped state makes migration surgical: era 1 saves convert once, era 2 saves pass untouched. r9\'s machinery carrying a real meaning-change across a major version — the hardest state problem, handled in two lines.',
+          explain: 'Stamped state makes migration surgical: era 1 saves convert once, era 2 saves pass untouched. r9\'s machinery carrying a real change of meaning across a major version — the hardest state problem, handled in two lines.',
         },
       },
       {
@@ -13738,7 +13738,7 @@ const DICT = [
     studio: 'Rolling through a reel of tape sample by sample until the reel ends.',
     uses: ['The block loop', 'Delay line movement', 'Peak metering', 'Voice rendering'],
     viz: { t: 'buffer', n: 8, cursor: 2, highlight: 2, label: 'ONE BLOCK', caption: 'the counter i visits every slot once' },
-    mistake: 'Writing `<=` and stepping one slot past the end of the buffer — undefined behavior, the click-today-crash-tomorrow bug.',
+    mistake: 'Writing `<=` and stepping one slot past the end of the buffer — undefined behavior, the kind of bug that clicks today and crashes tomorrow.',
     remember: 'for (int i = 0; i < numSamples; ++i) — burn it in.',
     related: ['block', 'audio-buffer', 'array', 'undefined-behavior'],
     appears: [{ z: 1, node: 'l6' }, { z: 1, node: 'o1' }],
@@ -13864,7 +13864,7 @@ const DICT = [
   {
     id: 'smart-pointer', t: 'smart pointer', c: 'C++',
     plain: 'A pointer that manages its own cleanup: when the last owner lets go, the object it points at is destroyed automatically. The main ones are std::unique_ptr (one owner) and std::shared_ptr (shared owners).',
-    why: 'Manual new/delete is how plugins leak memory and double-free crash. Modern JUCE code owns things through unique_ptr — cleanup becomes impossible to forget.',
+    why: 'Manual new/delete is how plugins spring memory leaks and double-free crashes. Modern JUCE code owns things through unique_ptr — cleanup becomes impossible to forget.',
     studio: 'A rental system for gear: when the last person checks it back in, it goes back to the warehouse automatically.',
     uses: ['Owning the editor', 'Owning DSP modules', 'Preset storage'],
     mistake: 'Still writing raw `new`/`delete` in new code. Reach for std::make_unique first; raw owning pointers are legacy style.',
@@ -14132,7 +14132,7 @@ DICT.push(
   {
     id: 'thread', t: 'thread', c: 'AUDIO CODE',
     plain: 'One independent lane of running code. A program can run several threads at once — and a plugin always does: at minimum, one drawing the interface and one processing audio.',
-    why: 'The audio thread and UI thread touch the same knobs at the same time. Coordinating them safely is a defining skill of plugin development (Zone 6).',
+    why: 'The audio thread and UI thread touch the same knobs at the same time. Coordinating them safely, so neither trips the other, is one of the real skills of plugin work (Zone 6).',
     studio: 'Two engineers working the same session at once — one on the desk, one on the patch bay. Great, until they grab the same cable.',
     uses: ['Audio processing', 'UI drawing', 'Sample loading in background'],
     mistake: 'Sharing plain variables between threads and hoping. Zone 2\'s std::atomic and Zone 6\'s lock-free patterns are the real tools.',
@@ -14144,7 +14144,7 @@ DICT.push(
   {
     id: 'audio-thread', t: 'audio thread', c: 'AUDIO CODE',
     plain: 'The high-priority thread where the host calls your processBlock. It has a hard deadline: deliver the next block in a few milliseconds, every time, or the audio glitches.',
-    why: 'Everything real-time-safe programming is about happens here: no allocation, no file access, no locks, no logging — nothing with unpredictable timing.',
+    why: 'Every rule of real-time-safe programming lives here: no allocation, no file access, no locks, no logging — nothing with unpredictable timing.',
     studio: 'The live performer: the show clock never stops, and nobody hands the performer paperwork mid-song.',
     uses: ['processBlock', 'All your DSP', 'MIDI event handling'],
     viz: { t: 'chain', nodes: ['DAW asks', 'processBlock()', 'audio out'], accent: 1, caption: 'a hard deadline, hundreds of times per second' },
@@ -14170,7 +14170,7 @@ DICT.push(
   {
     id: 'real-time-audio', t: 'real-time audio', c: 'AUDIO CODE',
     plain: 'Audio produced live, block by block, against a deadline — as opposed to rendering a file offline. Miss one deadline and the listener hears a glitch.',
-    why: 'Real-time safety is the discipline that separates plugins that glitch from plugins that ship: bounded work only, on the audio thread, every block.',
+    why: 'Get real-time safety right and a plugin never glitches; get it wrong and it does. The rule is simple: bounded work only, on the audio thread, every block.',
     studio: 'Live performance vs. studio overdubs: on stage there are no second takes.',
     uses: ['All plugin DSP', 'Why callbacks have rules', 'Buffer size tradeoffs'],
     mistake: 'Testing only in ideal conditions. Real-time bugs appear under load — many tracks, small buffers, slow disks.',
@@ -14578,7 +14578,7 @@ DICT.push(
   {
     id: 'polyphony', t: 'polyphony', c: 'SYNTHS',
     plain: 'Playing multiple notes at once. A polyphonic synth keeps a pool of voices and assigns incoming notes to free ones; monophonic synths have exactly one voice.',
-    why: 'Voice pools, note-to-voice assignment, and what to do when the pool runs dry (voice stealing) — the core engineering of Zone 5\'s synth work.',
+    why: 'Voice pools, handing each incoming note to a free voice, and what to do when the pool runs dry (voice stealing) — the heart of Zone 5\'s synth work.',
     studio: 'Chords vs. bass lines: whether the instrument can say more than one thing at once.',
     uses: ['Chord playing', 'Voice pool sizing', 'CPU budgeting per voice'],
     mistake: 'Unbounded polyphony "so notes never cut" — each voice costs CPU; every real synth caps the pool.',
@@ -14590,7 +14590,7 @@ DICT.push(
   {
     id: 'voice-stealing', t: 'voice stealing', c: 'SYNTHS',
     plain: 'What a synth does when all voices are busy and a new note arrives: it steals one — usually the oldest or quietest — fades it fast, and reassigns it to the new note.',
-    why: 'Without stealing, the 9th note on an 8-voice synth is silently dropped. With clumsy stealing, tails cut with clicks. Graceful stealing is an audible quality mark.',
+    why: 'Without stealing, the 9th note on an 8-voice synth is silently dropped. With clumsy stealing, tails cut with clicks. Steal gracefully and no one in the room even notices.',
     studio: 'Playing a 9-note chord on an 8-voice classic: one earlier note quietly bows out.',
     uses: ['Note priority rules', 'Fast-release fades', 'Sustain pedal interactions'],
     viz: { t: 'voices', steal: true },
@@ -14743,7 +14743,7 @@ DICT.push(
   {
     id: 'preset', t: 'preset', c: 'PLUGIN DEV',
     plain: 'A saved snapshot of every parameter — the plugin\'s complete recallable state. Load it and every knob returns to where it was.',
-    why: 'State save/restore is a hard product requirement: sessions must reopen exactly as saved, and old presets must still load in new versions (version migration, Zone 6).',
+    why: 'Saving and restoring state is non-negotiable: sessions must reopen exactly as saved, and old presets must still load in new versions (version migration, Zone 6).',
     studio: 'Patch memory — the reason you can find that bass sound from last March.',
     uses: ['Factory banks', 'Session state', 'A/B comparisons'],
     mistake: 'Renaming or renumbering parameters between versions without a migration path — old sessions load scrambled.',
@@ -14768,7 +14768,7 @@ DICT.push(
   {
     id: 'vst', t: 'VST', full: 'Virtual Studio Technology', c: 'PLUGIN DEV',
     plain: 'Steinberg\'s plugin standard — the family name behind "VST plugin." The current version is VST3; the older VST2 is discontinued for new development.',
-    why: 'It\'s the format this whole course ships toward. JUCE generates VST3 from your AudioProcessor without format-specific code.',
+    why: 'It\'s the format this whole course ships toward. JUCE generates VST3 from your AudioProcessor without writing separate code for each format.',
     studio: 'The universal rack-mount standard of software gear.',
     uses: ['Windows standard', 'Cross-DAW distribution'],
     mistake: 'Chasing VST2 — licenses are no longer granted. New plugins target VST3 (plus AU on Mac).',
@@ -14897,7 +14897,7 @@ DICT.push(
     studio: 'The patch-up/patch-down buttons on a stage keyboard.',
     uses: ['Live preset switching', 'Song-section changes'],
     mistake: 'Swapping state abruptly on the audio thread — preset changes should be handed over safely, tails respected.',
-    remember: 'Program change = "preset N, please" — switch it glitch-free.',
+    remember: 'Program change = "preset N, please" — switch it without glitches.',
     related: ['preset', 'midi', 'cc'],
     appears: [{ z: 5, node: 'n12' }],
     search: ['preset switch', 'patch change'],
@@ -14990,7 +14990,7 @@ DICT.push(
   },
   {
     id: 'visual-studio', t: 'Visual Studio', c: 'TOOLS',
-    plain: 'Microsoft\'s full IDE for Windows: code editor, MSVC compiler and a first-class debugger in one. The standard environment for building Windows VST3s. (Not the same thing as VS Code.)',
+    plain: 'Microsoft\'s full IDE for Windows: code editor, MSVC compiler and a proper debugger in one. The standard environment for building Windows VST3s. (Not the same thing as VS Code.)',
     why: 'On Windows, CMake generates Visual Studio projects, and its debugger attaches straight into a DAW running your plugin.',
     studio: 'The big studio console of Windows development — everything in one surface.',
     uses: ['Windows builds', 'Debugging inside DAWs', 'CMake integration'],
@@ -15017,11 +15017,11 @@ DICT.push(
   {
     id: 'cursor-editor', t: 'Cursor', c: 'TOOLS',
     plain: 'An AI-first code editor built on VS Code: same interface and extensions, with an AI that reads your whole project and can write or edit code from chat instructions.',
-    why: 'AI-assisted editors accelerate plugin work — but they\'re force multipliers, not replacements: you still review every audio-thread line the AI writes.',
+    why: 'AI-assisted editors accelerate plugin work — but they speed you up, they don\'t replace you: you still review every audio-thread line the AI writes.',
     studio: 'An assistant engineer who knows the whole session — fast hands, but you still approve the mix.',
     uses: ['AI code edits', 'Explaining unfamiliar code', 'Refactoring'],
     mistake: 'Shipping AI-written callback code unreviewed — allocation and locks sneak in exactly there.',
-    remember: 'AI editors accelerate you; real-time-safety review stays human.',
+    remember: 'AI editors speed you up; the real-time safety check stays human.',
     related: ['vs-code', 'claude-code', 'ide'],
     appears: [{ z: 7, label: 'modern workflows' }],
     search: ['ai editor', 'ai coding'],
@@ -15175,7 +15175,7 @@ DICT.push(
   {
     id: 'unique-ptr', t: 'std::unique_ptr', full: 'unique (sole-ownership) smart pointer', c: 'C++',
     plain: 'A pointer that owns one heap object and deletes it automatically when the pointer dies. Copying is a compile error — exactly one owner can exist. Created with std::make_unique.',
-    why: 'The default owning type of modern plugin code: your processor owns its DSP modules, editor and voices through unique_ptr, and delete disappears from your vocabulary.',
+    why: 'In modern plugin code this is your default owner: your processor owns its DSP modules, editor and voices through unique_ptr, and delete disappears from your vocabulary.',
     studio: 'A flight case with one name on it: hold the case, own the gear. Hand it over (move) and the responsibility goes with it.',
     uses: ['Voice pools', 'DSP module ownership', 'Owning wavetables & buffers'],
     viz: { t: 'owners', mode: 'unique' },
@@ -15203,7 +15203,7 @@ DICT.push(
   {
     id: 'race-condition', t: 'race condition', c: 'AUDIO CODE',
     plain: 'Two threads touching the same data with no coordination — the result depends on which thread wins the microsecond. Races produce corruption rarely, randomly, and differently on every machine.',
-    why: 'Every plugin knob is UI-thread data the audio thread needs — an un-coordinated share is a race. "Works on my machine" plus a race equals "glitches on stage."',
+    why: 'Every plugin knob is UI-thread data the audio thread needs — an uncoordinated share is a race. "Works on my machine" plus a race equals "glitches on stage."',
     studio: 'Two engineers grabbing the same fader at the same instant, no talkback. Whoever wins the grab decides the mix — differently every take.',
     uses: ['Knob values', 'Meter data', 'Preset swaps under playback'],
     viz: { t: 'lanes' },
@@ -15231,7 +15231,7 @@ DICT.push(
   {
     id: 'atomic', t: 'std::atomic', c: 'AUDIO CODE',
     plain: 'A variable whose reads and writes are indivisible: no thread can ever see a half-written value. One thread store()s, another load()s — safely, and lock-free on every desktop platform you\'ll ship to (check is_always_lock_free).',
-    why: 'The standard bridge for knob values crossing from UI to audio. Every APVTS parameter reaches your DSP as an atomic — bounded, lock-free, deadline-safe.',
+    why: 'This is how a knob value crosses from the UI over to the audio thread. Every APVTS parameter reaches your DSP as an atomic — bounded, lock-free, and safe for the deadline.',
     studio: 'A relay baton: the handoff is one indivisible gesture — you hold it or you don\'t, never half.',
     uses: ['Parameter bridges', 'Meter levels out', 'FIFO positions'],
     viz: { t: 'lanes', atomic: true },
@@ -15295,7 +15295,7 @@ DICT.push(
     id: 'valuetree', t: 'ValueTree', c: 'JUCE',
     plain: 'JUCE\'s saveable data structure: a named tree of properties and children. APVTS keeps your parameter state in one, and it serializes to XML — which is how sessions and presets travel.',
     why: 'Every getStateInformation you write copies a ValueTree out; every setStateInformation replaces one. Understanding the tree means state code stops being boilerplate.',
-    studio: 'The session\'s recall sheet: a structured page of every setting, copyable, storable, and re-loadable.',
+    studio: 'The session\'s recall sheet: a structured page of every setting you can copy out, store, and load back in.',
     uses: ['APVTS state', 'Session save/restore', 'Preset files'],
     mistake: 'Assigning to apvts.state directly. Use replaceState() — it swaps the tree while keeping parameters, atomics and editors coherent.',
     remember: 'The ValueTree is your plugin\'s recall sheet — copy it out to save, replace it to restore.',
@@ -15307,7 +15307,7 @@ DICT.push(
   {
     id: 'slider-attachment', t: 'SliderAttachment', full: 'AudioProcessorValueTreeState::SliderAttachment', c: 'JUCE',
     plain: 'A small object that binds one slider to one parameter, both ways: drag the slider and the parameter updates (host sees it); automation moves the parameter and the slider follows.',
-    why: 'Without it you\'d hand-wire callbacks and silently lose automation, gestures and state sync. With it, one constructor call buys the whole professional pipeline.',
+    why: 'Without it you\'d hand-wire callbacks and silently lose automation, gestures and state sync. With it, one constructor call wires up all three.',
     studio: 'A two-way patch cable between a panel knob and the automation bus.',
     uses: ['Every slider↔parameter link', 'ButtonAttachment / ComboBoxAttachment siblings'],
     viz: { t: 'paramflow' },
@@ -15424,7 +15424,7 @@ DICT.push(
   {
     id: 'headroom', t: 'headroom', c: 'AUDIO ENG',
     plain: 'The safety margin between your signal\'s peaks and the ±1.0 ceiling. Generating a sine at 0.25 instead of 1.0 leaves 12 dB of headroom — space for sums, envelopes and surprises before anything clips.',
-    why: 'Every professional DSP chain is designed around preserved headroom: scale each voice, plan the worst-case sum, and the output clamp never engages in normal use.',
+    why: 'Every clean DSP chain guards its headroom on purpose: scale each voice, plan the worst-case sum, and the output clamp never engages in normal use.',
     studio: 'Recording at −18 dBFS instead of slamming the converter: the same discipline, in code. Room to move is room to mix.',
     uses: ['Voice levels (the 0.25f)', 'Bus trims after summing', 'Worst-case peak planning'],
     mistake: 'Treating the output clamp as the loudness plan. If the clamp engages constantly, it IS distortion — headroom upstream is the real protection; the clamp is only the seatbelt.',
@@ -15463,7 +15463,7 @@ DICT.push(
   },
   {
     id: 'panning', t: 'panning', c: 'AUDIO ENG',
-    plain: 'Placing one sound in the stereo image by sending it to left and right at different gains. The professional version — constant-power panning — uses cos/sin gains so loudness stays even as the sound sweeps through center.',
+    plain: 'Placing one sound in the stereo image by sending it to left and right at different gains. Done right, it\'s constant-power panning — cos/sin gains that keep loudness even as the sound sweeps through center.',
     why: 'The naive linear pan law (pan and 1−pan) dips about 3 dB at center — the classic "hole in the middle." One cos/sin pair fixes it, and explains the pan-law setting in your DAW.',
     studio: 'The pan pot on every console channel: one source, two bus sends, and the level DIFFERENCE is the position your brain hears.',
     uses: ['Pan knobs', 'Auto-panners', 'Stereo spread in synth voices'],
@@ -15684,7 +15684,7 @@ DICT.push(
 DICT.push(
   {
     id: 'ring-buffer', t: 'ring buffer (FIFO)', c: 'ARCHITECTURE',
-    plain: 'A pre-allocated, fixed-size buffer treated as a circle: one thread writes at the head, another reads at the tail, and two atomic positions keep them coordinated. First-In-First-Out (FIFO) — a stream crosses the thread boundary and nobody ever waits.',
+    plain: 'A buffer of a fixed size, set aside once up front and treated as a circle: one thread writes at the head, another reads at the tail, and two atomic positions keep them coordinated. First-In-First-Out (FIFO) — a stream crosses the thread boundary and nobody ever waits.',
     why: 'It\'s THE lock-free vehicle for streams: meter data, visualizer samples, MIDI events to the UI. The audio thread pushes without blocking; the reader drains at its leisure; a full ring triggers a chosen policy (drop, overwrite) — never a stall.',
     studio: 'The kitchen pass in a restaurant: cooks put plates up, servers take them away, and neither ever stops the other. If the pass fills, the policy decides — but nobody stands still holding a plate.',
     uses: ['Meter/visualizer data audio→UI', 'MIDI event streams', 'Any producer/consumer pair'],
@@ -15792,7 +15792,7 @@ DICT.push(
   },
   {
     id: 'plugin-validation', t: 'plugin validation', c: 'PLUGIN DEV',
-    plain: 'Automated entrance exams that torture a plugin with legal-but-extreme host behavior: pluginval (open source — VST3 and AU) and auval (Apple\'s, run by Logic before trusting any AU). Odd lifecycle orders, 0-sample blocks, rapid rate changes, state chaos.',
+    plain: 'Automated entrance exams that torture a plugin with host behavior that\'s extreme but perfectly legal: pluginval (open source — VST3 and AU) and auval (Apple\'s, run by Logic before trusting any AU). Odd lifecycle orders, 0-sample blocks, rapid rate changes, state chaos.',
     why: 'Everything a validator does, some real host somewhere does eventually — validation concentrates a year of edge cases into a minute you can debug locally. Crash Monday in the validator, not Friday on a customer\'s stage.',
     studio: 'Venue security testing your rig harder than any audience will: cables yanked, power cycled, inputs slammed — because "it worked at rehearsal" is not a plan for 50,000 people.',
     uses: ['Pre-release gates (strictness 10)', 'auval for Logic/GarageBand', 'CI runs on every build'],
@@ -15858,7 +15858,7 @@ DICT.push(
   {
     id: 'delay-line', t: 'delay line', c: 'EFFECTS',
     plain: 'A pre-allocated circular buffer with two moving positions: a write head recording the incoming audio, and a read head trailing it by the delay time in samples (seconds × rate). Both wrap at the end — a tape loop made of memory.',
-    why: 'It\'s the engine inside delay, chorus, flanger and reverb — and a bounds-discipline exam: the read head\'s wrap math (C++ % keeps the dividend\'s sign!) is a classic crash site.',
+    why: 'It\'s the engine inside delay, chorus, flanger and reverb — and a test of your bounds discipline: the read head\'s wrap math (C++ % keeps the dividend\'s sign!) is a classic crash site.',
     studio: 'A tape echo: one loop of tape passing a record head, then a playback head. The gap between heads is the delay time; the splice is the wrap.',
     uses: ['Delay & echo', 'Chorus/flanger (modulated, short)', 'Reverb networks'],
     viz: { t: 'delayviz' },
@@ -15912,7 +15912,7 @@ DICT.push(
   {
     id: 'drive', t: 'drive', c: 'EFFECTS',
     plain: 'Gain applied INTO a waveshaping curve: more drive pushes more of the signal into the bend, creating more harmonics. Honest designs pair it with output compensation so the knob changes TONE at constant loudness.',
-    why: '"More, not just louder" is an engineering spec: uncompensated drive bribes the ear with level, and every A/B lies. Compensation is the oldest honesty tool in audio.',
+    why: '"More, not just louder" is the whole point: uncompensated drive bribes the ear with level, and every A/B lies. Compensation is the oldest honesty tool in audio.',
     studio: 'The input gain on a preamp pushed hot on purpose, with the channel fader pulled down to match: the crunch changes, the loudness doesn\'t.',
     uses: ['Distortion amount', 'Saturation depth', 'Any shaped input stage'],
     mistake: 'Applying compensation BEFORE the shaper — it un-drives the distortion instead of trimming its loudness. Multiplication commutes; stages don\'t (d15\'s law).',
@@ -18574,8 +18574,8 @@ const Views = (() => {
       ));
     } else {
       grid.appendChild(el('div', { class: 'card raised span2' },
-        el('div', { class: 'eyebrow phos' }, 'ALL CURRENT ZONES COMPLETE'),
-        el('div', { class: 'h-sub mt-s' }, 'You\'ve cleared everything currently built. Sharpen mastery in Practice Mode, or replay any node from the map. The next zone arrives in a future update.')));
+        el('div', { class: 'eyebrow phos' }, 'CURRICULUM COMPLETE'),
+        el('div', { class: 'h-sub mt-s' }, 'Seven zones cleared and the whole product line shipped — you\'ve finished the curriculum. Keep your edge sharp in Practice Mode, or drop back into any node from the map.')));
     }
 
     // daily challenge
@@ -18677,7 +18677,7 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'col gap-s' },
       el('div', { class: 'eyebrow phos' }, 'CURRICULUM MAP'),
       el('h1', { class: 'h-display' }, 'Seven zones to shipping plugins'),
-      el('p', { class: 'small dim' }, 'Zone 1 is fully playable now. Later zones show their planned curriculum and unlock in future updates.')));
+      el('p', { class: 'small dim' }, 'All seven zones are open — from your first line of C++ to shipping a commercial plugin. Work straight through, or drop back into any station to sharpen it.')));
 
     ZONES.forEach((z) => {
       const live = z.status === 'live';
@@ -19361,7 +19361,7 @@ const Views = (() => {
 
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. Zone 1 (C++ Signal Path) is fully playable; Zones 2–7 are mapped and arrive in future updates.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.0.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
     return main;
   }

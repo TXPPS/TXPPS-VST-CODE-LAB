@@ -90,11 +90,11 @@ const ZONE6_LESSONS = [
     id: 'r2', kind: 'lesson', title: 'Two Threads, One Plugin', short: 'Who runs where',
     concepts: ['rt-discipline'], time: '~6 MIN', diff: 2,
     hook: 'You drag First Signal\'s gain slider while a chord plays. Two things are happening AT THE SAME TIME — literally, on different CPU cores: your mouse gesture and the audio math. They\'re both inside your plugin, touching the same data. Zones 2 and 3 introduced this; Zone 6 is where it becomes the design center of everything.',
-    objective: 'Sort every piece of plugin code onto its thread — and internalize the two golden rules of the boundary.',
+    objective: 'Sort every piece of plugin code onto its thread — and make the two golden rules of the boundary second nature.',
     sections: [
       {
         h: 'The two residents',
-        body: 'The **audio thread** runs processBlock on the r1 deadline — high priority, no waiting, no excuses. The **message thread** (UI thread) runs everything human-paced: painting, mouse, timers, preset browsers, file dialogs. Slow is FINE there — a 50 ms file dialog hurts nobody. The danger is never either thread alone; it\'s the *boundary* where they share data.',
+        body: 'The **audio thread** runs processBlock on the r1 deadline — high priority, no waiting, no excuses. The **message thread** (UI thread) runs everything that happens at human speed: painting, mouse, timers, preset browsers, file dialogs. Slow is FINE there — a 50 ms file dialog hurts nobody. The danger is never either thread alone; it\'s the *boundary* where they share data.',
         viz: { t: 'lanes' },
       },
       {
@@ -221,7 +221,7 @@ const ZONE6_LESSONS = [
         accept: ['load'],
         placeholder: 'method',
         hint: 'The atomic read verb.',
-        explain: 'load() reads whole-and-published. The explicit verb is a feature: every boundary crossing announces itself in the code — auditable at a glance.',
+        explain: 'load() reads a whole, published value. The explicit verb is a feature: every boundary crossing announces itself in the code — auditable at a glance.',
       },
     ],
     recap: [
@@ -505,7 +505,7 @@ const ZONE6_LESSONS = [
           ['recompute', 'any number born from a rate is stale the moment the rate changes'],
           ['size', 'maxBlockSize is the worst case the host promises — buy exactly that'],
           ['reset', 'stale voices and delay memories from the old world must not leak into the new one'],
-          ['re-runnable', 'the host calls this whenever it likes — idempotent setup or subtle bugs'],
+          ['re-runnable', 'the host calls this whenever it likes — setup that\'s safe to repeat, or subtle bugs'],
         ],
         mistake: { code: 'phaseIncrement = twoPi * 440.0 / 44100.0;   // ✗ rate hard-coded\n// "everyone uses 44.1 anyway"', text: 'At 96 kHz the same step is taken 96,000 times a second instead of 44,100 — every pitch lands more than an octave SHARP (this "A440" renders at ≈958 Hz). Hard-coded rates are wrong at every other rate, and you don\'t choose the session. The rate arrives in prepareToPlay; use the argument.' },
       },
@@ -583,7 +583,7 @@ const ZONE6_LESSONS = [
   {
     id: 'r8', kind: 'lesson', title: 'Automation: The Invisible Performer', short: 'The host plays your knobs',
     concepts: ['automation-eng'], time: '~6 MIN', diff: 2,
-    hook: 'A producer draws a filter sweep across the drop — a curve in the timeline, rendered by YOUR plugin. Automation is the host performing your knobs: inhumanly fast, sample-locked, in every take identical. It\'s also the most demanding user your parameters will ever have, and the fastest way to expose every weakness this zone has discussed.',
+    hook: 'A producer draws a filter sweep across the drop — a curve in the timeline, rendered by YOUR plugin. Automation is the host performing your knobs: inhumanly fast, sample-locked, in every take identical. It\'s also the most demanding user your parameters will ever have, and the fastest way to expose every weakness we\'ve covered in this zone.',
     objective: 'Understand how host automation reaches your DSP, why it stresses parameters harder than hands do, and the professional recipe for smooth automated sound.',
     sections: [
       {

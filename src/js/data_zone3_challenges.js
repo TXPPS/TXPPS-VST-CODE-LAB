@@ -93,7 +93,7 @@ const ZONE3_CHALLENGES = [
         accept: ['sampleRate'],
         placeholder: 'argument',
         hint: 'Seconds only mean something once the rate is known.',
-        explain: 'reset(sampleRate, seconds): now "0.05" is a real 50 ms at this session\'s rate. Un-prepared smoothers snap instead of gliding — a boss-stage ghost you\'ve now pre-exorcised.',
+        explain: 'reset(sampleRate, seconds): now "0.05" is a real 50 ms at this session\'s rate. A smoother nobody prepared snaps instead of gliding — a boss-stage ghost you\'ve now pre-exorcised.',
       },
     ],
   },
@@ -338,7 +338,7 @@ const ZONE3_CHALLENGES = [
         },
       },
       {
-        note: 'Step 3 — First Signal has no per-rate state yet, but the prepare override must exist and be honest.',
+        note: 'Step 3 — First Signal has no state that depends on the sample rate yet, but the prepare override must exist and be honest.',
         q: {
           type: 'mcq', concept: 'lifecycle',
           prompt: 'What belongs in an empty-but-correct prepareToPlay today?',
@@ -366,7 +366,7 @@ const ZONE3_CHALLENGES = [
             '        buffer.clear(ch, 0, buffer.getNumSamples());',
             '}',
           ],
-          explain: 'Signature → denormal guard → clear the outputs you didn\'t write → done. Input samples pass through untouched: a correct, silent-safe, do-nothing plugin — which is a real milestone.',
+          explain: 'Signature → denormal guard → clear the outputs you didn\'t write → done. Input samples pass through untouched: a correct do-nothing plugin that can\'t leak stray noise — which is a real milestone.',
         },
       },
       {
@@ -471,7 +471,7 @@ const ZONE3_CHALLENGES = [
             'audio thread load()s the new target',
             'smoother glides; samples scale',
           ],
-          explain: 'Finger → attachment → brain/host → atomic → smoother → sound. Two threads, zero races, one click-free knob. You just traced the architecture this whole zone exists to teach — the control room is wired.',
+          explain: 'Finger → attachment → brain/host → atomic → smoother → sound. Two threads, zero races, one knob that moves without clicks or pops. You just traced the architecture this whole zone exists to teach — the control room is wired.',
         },
       },
     ],

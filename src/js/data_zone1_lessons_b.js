@@ -11,7 +11,7 @@ ZONE1_LESSONS.push(
     id: 'l7', kind: 'lesson', title: 'Buffers: Arrays & std::vector', short: 'Arrays and std::vector',
     concepts: ['containers'],
     hook: 'A delay pedal doesn\'t "slow down" audio — it remembers it. Inside is a memory bank holding the last second of sound, replayed a moment later. Time to build memory banks.',
-    objective: 'Store rows of samples — fixed banks and resizable ones — and learn when resizing is forbidden.',
+    objective: 'Store rows of samples — fixed banks and resizable ones — and learn the one moment you must never resize them.',
     sections: [
       {
         h: 'A row of slots',
@@ -50,7 +50,7 @@ ZONE1_LESSONS.push(
           { t: '`buffer.first`', why: 'Vectors have `.front()`, not `.first` — and raw arrays have neither. Indexing with [0] works for both.' },
         ],
         answer: 0,
-        explain: 'Indexes run from 0 to size-1. First sample: `buffer[0]`; last of 512: `buffer[511]`.',
+        explain: 'Counting starts at zero, so valid indexes run from 0 up to size minus one. The first sample is `buffer[0]`, and the last of 512 is `buffer[511]`.',
       },
       {
         type: 'fill', concept: 'containers',
@@ -158,7 +158,7 @@ ZONE1_LESSONS.push(
           { t: '`float bank`', why: 'A sample bank can\'t collapse into a single float without losing everything.' },
         ],
         answer: 0,
-        explain: 'const reference: zero-copy access plus a compiler-enforced promise not to modify. This is the default way to pass anything bigger than a few bytes read-only.',
+        explain: 'A const reference gives you the whole thing with no copy at all, plus a promise the compiler enforces that you won\'t modify it. It\'s the default way to pass anything bigger than a few bytes when you only need to read it.',
       },
     ],
     recap: [
@@ -248,7 +248,7 @@ ZONE1_LESSONS.push(
         mistakes: [
           { match: '^==$', msg: '`==` would process only when osc is null — dereferencing the null pointer and crashing. You want `!=`.' },
         ],
-        explain: '`if (osc != nullptr)` guards the dereference. Idiomatic shorthand you\'ll also see: `if (osc)`.',
+        explain: '`if (osc != nullptr)` guards the moment you follow the pointer. You\'ll also see the shorthand `if (osc)` — same thing.',
       },
     ],
     recap: [
@@ -326,7 +326,7 @@ ZONE1_LESSONS.push(
         prompt: 'Match each C++ term to the synth-hardware idea.',
         left: ['class', 'object', 'member variable', 'member function'],
         right: ['the schematic a module is built from', 'one physical unit on your desk', 'a knob position stored inside one unit', 'pressing a button that makes the unit act'],
-        explain: 'Design → instance → per-instance state → per-instance behavior. Hold onto this map — JUCE\'s AudioProcessor is exactly a class you\'ll instantiate.',
+        explain: 'Design, then one unit built from it, then the settings that unit remembers, then what it does. Hold onto this map — JUCE\'s AudioProcessor is exactly a class you\'ll instantiate.',
       },
     ],
     recap: [
@@ -393,7 +393,7 @@ ZONE1_LESSONS.push(
         accept: ['gain(g)', 'gain{g}', 'gain (g)', 'gain { g }', 'gain{ g }', 'gain( g )'],
         placeholder: 'member(value)',
         hint: 'membername(parametername)',
-        explain: 'The initializer list `: gain(g)` initializes the member directly from the parameter — the preferred style over assigning inside the constructor body, because members are initialized exactly once.',
+        explain: 'The initializer list `: gain(g)` sets the member straight from the parameter. Reach for it over assigning inside the constructor body — this way each member is initialized exactly once.',
       },
       {
         type: 'mcq', concept: 'encapsulation',

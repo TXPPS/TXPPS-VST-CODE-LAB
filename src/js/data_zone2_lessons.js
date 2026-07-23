@@ -93,11 +93,11 @@ const ZONE2_LESSONS = [
     id: 'm2', kind: 'lesson', title: 'Backstage Memory: Stack vs Heap', short: 'Stack, heap, dynamic memory',
     concepts: ['memory'], time: '~5 MIN', diff: 1,
     hook: 'Some gear lives on your pedalboard — grabbed instantly, packed up after each song. Some lives in the warehouse — room for anything, but every checkout takes paperwork. Your program\'s memory works exactly like that.',
-    objective: 'Know which memory your objects live in, what dynamic allocation really costs, and why you\'ll never hand-manage it.',
+    objective: 'Know which memory your objects live in, what dynamic allocation really costs, and why you\'ll never manage it by hand.',
     sections: [
       {
         h: 'Two kinds of memory',
-        body: 'The **stack**: fast, automatic, small — locals live here and vanish at the closing brace. The **heap**: the big flexible pool — sample libraries and delay lines live here, requested at runtime. Requesting heap memory is called **allocation**, and its timing is unpredictable.',
+        body: 'The **stack**: fast, automatic, small — locals live here and vanish at the closing brace. The **heap**: the big flexible pool — sample libraries and delay lines live here, requested at runtime. Requesting heap memory is called **allocation**, and you can never quite predict how long it\'ll take.',
         viz: { t: 'twoLayer', top: 'STACK — automatic, fast', topSub: 'locals; gone at return', bottom: 'HEAP — requested, flexible', bottomSub: 'big & persistent; someone must release it', caption: 'pedalboard vs warehouse' },
       },
       {
@@ -266,7 +266,7 @@ const ZONE2_LESSONS = [
       },
       {
         h: 'Using and moving it',
-        body: 'Check it like any pointer (`if (osc)`), reach members with `->`. To hand ownership to someone else, you **move** it — the full story next-next lesson. In plugins: your processor owns its DSP modules and its editor through unique_ptr. It\'s the default owning type of modern JUCE.',
+        body: 'Check it like any pointer (`if (osc)`), reach members with `->`. To hand ownership to someone else, you **move** it — the full story two lessons from now. In plugins: your processor owns its DSP modules and its editor through unique_ptr. It\'s the default owning type of modern JUCE.',
         code: 'std::unique_ptr<SineOsc> a = std::make_unique<SineOsc>();\nauto b = a;              // ✗ refuses to build: no copies\nauto c = std::move(a);   // ✓ ownership handed to c; a is now empty',
         codeTitle: 'no copies — only handovers',
       },
@@ -476,7 +476,7 @@ const ZONE2_LESSONS = [
     ],
     recap: [
       'Copy duplicates contents; move transfers them.',
-      'std::move = permission, not action; source ends valid-but-empty.',
+      'std::move = permission, not action; source ends valid but empty.',
       'Never read a moved-from object expecting its old data.',
       'const methods and const& params: promises the compiler enforces.',
     ],

@@ -61,7 +61,7 @@ DICT.push(
   {
     id: 'headroom', t: 'headroom', c: 'AUDIO ENG',
     plain: 'The safety margin between your signal\'s peaks and the ±1.0 ceiling. Generating a sine at 0.25 instead of 1.0 leaves 12 dB of headroom — space for sums, envelopes and surprises before anything clips.',
-    why: 'Every professional DSP chain is designed around preserved headroom: scale each voice, plan the worst-case sum, and the output clamp never engages in normal use.',
+    why: 'Every clean DSP chain guards its headroom on purpose: scale each voice, plan the worst-case sum, and the output clamp never engages in normal use.',
     studio: 'Recording at −18 dBFS instead of slamming the converter: the same discipline, in code. Room to move is room to mix.',
     uses: ['Voice levels (the 0.25f)', 'Bus trims after summing', 'Worst-case peak planning'],
     mistake: 'Treating the output clamp as the loudness plan. If the clamp engages constantly, it IS distortion — headroom upstream is the real protection; the clamp is only the seatbelt.',
@@ -100,7 +100,7 @@ DICT.push(
   },
   {
     id: 'panning', t: 'panning', c: 'AUDIO ENG',
-    plain: 'Placing one sound in the stereo image by sending it to left and right at different gains. The professional version — constant-power panning — uses cos/sin gains so loudness stays even as the sound sweeps through center.',
+    plain: 'Placing one sound in the stereo image by sending it to left and right at different gains. Done right, it\'s constant-power panning — cos/sin gains that keep loudness even as the sound sweeps through center.',
     why: 'The naive linear pan law (pan and 1−pan) dips about 3 dB at center — the classic "hole in the middle." One cos/sin pair fixes it, and explains the pan-law setting in your DAW.',
     studio: 'The pan pot on every console channel: one source, two bus sends, and the level DIFFERENCE is the position your brain hears.',
     uses: ['Pan knobs', 'Auto-panners', 'Stereo spread in synth voices'],

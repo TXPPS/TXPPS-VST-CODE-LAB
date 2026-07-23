@@ -89,7 +89,7 @@ ZONE3_LESSONS.push(
     sections: [
       {
         h: 'Three jobs, one object',
-        body: '**AudioProcessorValueTreeState** (APVTS) does: ① own your parameters and sync them with the host, ② expose each value as an atomic for the audio thread (Zone 2\'s bridge, institutionalized), ③ hold state as a **ValueTree** — a saveable named-value tree — for sessions and presets. The pieces:',
+        body: '**AudioProcessorValueTreeState** (APVTS) does: ① own your parameters and sync them with the host, ② expose each value as an atomic for the audio thread (Zone 2\'s bridge, now built in), ③ hold state as a **ValueTree** — a saveable named-value tree — for sessions and presets. The pieces:',
         code: '// PluginProcessor.h — the member (lives with the engine)\njuce::AudioProcessorValueTreeState apvts {\n    *this, nullptr, "PARAMS", createParameterLayout() };\n\n// PluginProcessor.cpp — the layout\njuce::AudioProcessorValueTreeState::ParameterLayout\nFirstSignalProcessor::createParameterLayout()\n{\n    juce::AudioProcessorValueTreeState::ParameterLayout layout;\n    layout.add(std::make_unique<juce::AudioParameterFloat>(\n        juce::ParameterID { "gain", 1 }, "Gain",\n        juce::NormalisableRange<float>(-60.0f, 6.0f, 0.01f),\n        0.0f));\n    return layout;\n}',
         codeTitle: 'the "magic line", disassembled',
         breakdown: [
@@ -139,7 +139,7 @@ ZONE3_LESSONS.push(
           { t: 'A crash', why: 'This exact path is the sanctioned, lock-free design.' },
         ],
         answer: 0,
-        explain: 'Host writes, atomic carries, audio loads. Indivisible values, no locks, editor irrelevant — every Zone 2 threading lesson, productized.',
+        explain: 'Host writes, atomic carries, audio loads. Indivisible values, no locks, editor irrelevant — every Zone 2 threading lesson, now doing its job in a shipping plugin.',
       },
     ],
     recap: [
@@ -416,7 +416,7 @@ ZONE3_LESSONS.push(
       },
       {
         h: 'In: defensive restoration',
-        body: '**setStateInformation(data, size)** arrives with *whatever was saved* — possibly by an older version, possibly corrupted. Parse, **verify the tree type matches**, and only then `replaceState()`. Missing parameters in old saves keep their defaults — which is your version-migration safety net, and why removing/renaming IDs breaks sessions (j10\'s promise, round two).',
+        body: '**setStateInformation(data, size)** arrives with *whatever was saved* — possibly by an older version, possibly corrupted. Parse, **verify the tree type matches**, and only then `replaceState()`. Missing parameters in old saves keep their defaults — which is exactly how an old session still opens in a newer version, and why removing or renaming IDs breaks sessions (j10\'s promise, round two).',
         code: 'void FirstSignalProcessor::setStateInformation(\n        const void* data, int sizeInBytes)\n{\n    std::unique_ptr<juce::XmlElement> xml(\n        getXmlFromBinary(data, sizeInBytes));\n\n    if (xml != nullptr\n        && xml->hasTagName(apvts.state.getType()))\n        apvts.replaceState(\n            juce::ValueTree::fromXml(*xml));\n}',
         codeTitle: 'load: verify, then replace',
         breakdown: [
@@ -447,7 +447,7 @@ ZONE3_LESSONS.push(
         accept: ['replaceState'],
         placeholder: 'method',
         hint: 'Replace the whole tree, atomically-managed by APVTS.',
-        explain: 'replaceState swaps the tree; parameters, atomics and any open editor all follow. Assigning to apvts.state directly skips the bookkeeping — replaceState is the sanctioned door.',
+        explain: 'replaceState swaps the tree; parameters, atomics and any open editor all follow. Assigning to apvts.state directly skips the bookkeeping — replaceState is the door JUCE wants you to use.',
       },
       {
         type: 'predict', concept: 'state',

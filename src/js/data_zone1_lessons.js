@@ -59,7 +59,7 @@ const ZONE1_LESSONS = [
           { t: '`char`', why: 'A char holds a small integer/character. Audio samples need fractional values.' },
         ],
         answer: 0,
-        explain: 'Audio samples are fractional values, normally in the -1.0 to +1.0 range, and `float` is the standard sample type in JUCE and most plugin APIs.',
+        explain: 'Audio samples are fractional values, normally between -1.0 and +1.0 — and `float` is the sample type you\'ll see all over JUCE and most plugin APIs.',
       },
       {
         type: 'fill', concept: 'types',
@@ -85,7 +85,7 @@ const ZONE1_LESSONS = [
           { t: 'It fails to compile', why: 'It compiles fine — that\'s what makes this bug so sneaky.' },
         ],
         answer: 0,
-        explain: 'int / int is integer division: the fractional part is discarded, so 3 / 2 is 1. To keep the .5, at least one side must be floating point: `beats / 2.0f`.',
+        explain: 'Two whole numbers divide as whole numbers — the remainder just gets thrown away, so 3 / 2 is 1. Want to keep the .5? Make at least one side a float: `beats / 2.0f`.',
       },
     ],
     recap: [
@@ -144,7 +144,7 @@ const ZONE1_LESSONS = [
           { t: 'It automatically converts the value to float', why: 'const never changes a variable\'s type — only whether it can be written to.' },
         ],
         answer: 0,
-        explain: 'const is a compile-time contract: any attempt to modify the value is a build error. Bugs the compiler catches are bugs you never have to debug in a DAW.',
+        explain: 'const is a promise the compiler enforces: try to change the value and the build simply fails. Bugs the compiler catches are bugs you never have to debug in a DAW.',
       },
       {
         type: 'fill', concept: 'const',
@@ -165,14 +165,14 @@ const ZONE1_LESSONS = [
           { t: '`bool table` — convert it first', why: 'A wavetable can\'t meaningfully become a bool — this loses all the data.' },
         ],
         answer: 0,
-        explain: 'Const reference is the standard for read-only access to anything non-trivial: no copy is made, and the compiler guarantees the function can\'t modify the caller\'s object.',
+        explain: 'Const reference is the standard way to read a big object: no copy is made, and the compiler guarantees the function can\'t modify the caller\'s object.',
       },
     ],
     recap: [
-      '`const` = compile-time lock: modification becomes a build error.',
-      '`constexpr` = fixed at compile time.',
+      '`const` is a compile-time lock — try to modify it and the build fails.',
+      '`constexpr` goes further — the value is fixed at compile time.',
       'Pass large read-only objects by `const&` to skip the copy.',
-      'Default to const; remove it only where mutation is intended.',
+      'Default to const; drop it only where you actually mean to change the value.',
     ],
     inside: [
       { name: 'Synth', use: 'twoPi and tuning constants inside every oscillator' },
@@ -246,7 +246,7 @@ const ZONE1_LESSONS = [
       },
     ],
     recap: [
-      'Signature = return type, name, parameter list.',
+      'A signature is three parts: the return type, the name, and the parameter list.',
       'Arguments are copied into parameters; `return` sends one value back.',
       '`void` functions act instead of answering.',
       'Don\'t discard a return value you needed.',
@@ -403,7 +403,7 @@ const ZONE1_LESSONS = [
       },
     ],
     recap: [
-      'switch = a rotary mode selector for integer-like values.',
+      'A rotary mode selector for integer-like values — that\'s all a switch is.',
       'Every case needs `break` unless fallthrough is deliberate.',
       'default catches unknown values.',
       'enum class (Zone 2) makes selectors type-safe.',
@@ -483,7 +483,7 @@ const ZONE1_LESSONS = [
           { t: 'No loop — process the whole block in one statement', why: 'Some vectorized helpers exist (you\'ll meet juce::FloatVectorOperations later), but the fundamental model is the per-sample loop.' },
         ],
         answer: 0,
-        explain: 'Known iteration count = `for` loop. It puts the start, end and step on one line where a reader (and reviewer) can verify the bounds at a glance.',
+        explain: 'When you know the count up front, reach for a `for` loop. It puts the start, end and step on one line, so a reader — or a reviewer — can check the bounds at a glance.',
       },
     ],
     recap: [

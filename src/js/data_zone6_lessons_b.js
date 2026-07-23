@@ -10,7 +10,7 @@ ZONE6_LESSONS.push(
   {
     id: 'r9', kind: 'lesson', title: 'Presets That Never Lie', short: 'Version-safe state',
     concepts: ['state-eng'], time: '~7 MIN', diff: 3,
-    hook: 'A producer opens a two-year-old session. Since then you\'ve shipped v1.4 with three new knobs. If that session opens with ANY setting changed — a mix that suddenly sounds different — you\'ve broken the one promise producers never forgive. Version-safe state is how plugins keep faith with every session ever saved.',
+    hook: 'A producer opens a two-year-old session. Since then you\'ve shipped v1.4 with three new knobs. If that session opens with ANY setting changed — a mix that suddenly sounds different — you\'ve broken the one promise producers never forgive. State that still loads in the next version is how plugins keep faith with every session ever saved.',
     objective: 'Design state that survives time: defaults for missing values, a written version number, and IDs that never change meaning.',
     sections: [
       {
@@ -180,7 +180,7 @@ ZONE6_LESSONS.push(
     id: 'r11', kind: 'lesson', title: 'Profiling: Measure, Don\'t Guess', short: 'CPU, cache & SIMD',
     concepts: ['performance-eng'], time: '~7 MIN', diff: 3,
     hook: 'First Signal at 8 voices with unison eats more CPU than you\'d like, and three developers have three theories about why. All three are wrong — and that\'s normal. Intuition about performance is famously terrible. The professionals\' edge isn\'t genius optimization; it\'s refusing to optimize ANYTHING until a measurement points at the real cost.',
-    objective: 'Adopt measurement-first optimization, and meet the two big levers: cache-friendly memory access and SIMD (Single Instruction, Multiple Data).',
+    objective: 'Learn to measure before you optimize, and meet the two big levers: cache-friendly memory access and SIMD (Single Instruction, Multiple Data).',
     sections: [
       {
         h: 'The profiler tells the truth',
@@ -254,7 +254,7 @@ ZONE6_LESSONS.push(
     ],
     inside: [
       { name: 'First Signal', use: 'p18 profiles it honestly and fixes only what the numbers convict' },
-      { name: 'juce::FloatVectorOperations', use: 'buffer-wide multiply/add/clear — SIMD, pre-written and battle-tested' },
+      { name: 'juce::FloatVectorOperations', use: 'buffer-wide multiply/add/clear — SIMD, already written and tested for you' },
     ],
     analogyPanel: 'Mixing by ear vs by solo button: everyone SWEARS they know which track is muddy, and the solo button embarrasses everyone weekly. The profiler is the solo button for CPU — press it before you reach for a single fader.',
     beginnerMistake: 'Optimizing the DSP math because it LOOKS expensive while an atomic load and a pow sit inside the sample loop. Hot loops die from boring causes; the profiler exists because "looks expensive" and "is expensive" barely correlate.',
@@ -290,7 +290,7 @@ ZONE6_LESSONS.push(
       },
       {
         h: 'Behavior tests: scripting the performer',
-        body: 'Above the sound sit behaviors: does the sustain pedal defer note-offs (n10)? Does a 9th note steal the releasing voice? Does dense automation stay click-free? These get **scripted tests**: feed a constructed MidiBuffer (note-ons, CCs, pitch bend at exact sample positions), run blocks, assert on the state and output. Automation tests sweep parameters while rendering and scan the output for discontinuities. And UI-level testing exists too (scripted clicking, host simulation) — the deeper the layer, the cheaper the test, so most of the pyramid is units and golds.',
+        body: 'Above the sound sit behaviors: does the sustain pedal defer note-offs (n10)? Does a 9th note steal the releasing voice? Does dense automation stay free of clicks and pops? These get **scripted tests**: feed a constructed MidiBuffer (note-ons, CCs, pitch bend at exact sample positions), run blocks, assert on the state and output. Automation tests sweep parameters while rendering and scan the output for discontinuities. And UI-level testing exists too (scripted clicking, host simulation) — the deeper the layer, the cheaper the test, so most of the pyramid is units and golds.',
         warn: 'The uncomfortable truth this stack answers: "it sounds fine on my machine" tests ONE path of thousands. The suite tests the same thousand paths every single build — it\'s not a substitute for ears; it\'s a guarantee ears can\'t give.',
       },
     ],
@@ -330,7 +330,7 @@ ZONE6_LESSONS.push(
     recap: [
       'Unit tests freeze each lesson\'s claims: pitch math, wraps, ladders, ownership.',
       'Golden renders prove the WHOLE sound unchanged — refactor without fear.',
-      'Scripted MIDI/automation tests prove behavior: pedals, stealing, click-free sweeps.',
+      'Scripted MIDI/automation tests prove behavior: pedals, stealing, sweeps with no clicks.',
       'Design for determinism: seedable noise, fixed configs — proof needs same-in → same-out.',
     ],
     inside: [
@@ -429,7 +429,7 @@ ZONE6_LESSONS.push(
     id: 'r14', kind: 'lesson', title: 'Crash Forensics', short: 'Stack traces & defense',
     concepts: ['quality-eng'], time: '~7 MIN', diff: 3,
     hook: 'The email you\'ll dread: "your synth crashed my session, lost an hour of work." No repro steps, different machine, different host. Attached: a crash log — two hundred lines of hex and symbols. To a beginner it\'s noise. To a professional it\'s a map with an X on it. This lesson teaches you to read the map — and to write code that leaves better maps.',
-    objective: 'Read a stack trace from the top down, know the classic crash signatures, and practice defensive programming that fails loudly-but-safely.',
+    objective: 'Read a stack trace from the top down, know the classic crash signatures, and practice defensive programming that fails loudly but safely.',
     sections: [
       {
         h: 'The stack trace: a map with an X',

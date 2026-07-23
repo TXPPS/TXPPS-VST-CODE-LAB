@@ -380,7 +380,7 @@ const ZONE6_CHALLENGES = [
   {
     id: 'p17', kind: 'project', title: 'Mission 2: The Preset Vault 2.0', short: 'Zone mission',
     concepts: ['state-eng', 'lifecycle-eng'],
-    brief: 'First Signal\'s state must survive time, corruption, and live switching. Stamp versions, default the missing, keep every ID sacred — and make preset changes click-free. Old sessions are the customers you can\'t see.',
+    brief: 'First Signal\'s state must survive time, corruption, and live switching. Stamp versions, default the missing, keep every ID sacred — and make preset changes without clicks or pops. Old sessions are the customers you can\'t see.',
     steps: [
       {
         note: 'Step 1 — Stamp the era. Load code should never guess what it\'s reading.',
@@ -410,7 +410,7 @@ const ZONE6_CHALLENGES = [
         },
       },
       {
-        note: 'Step 3 — The Click of Doom. Preset changes pop while a chord rings. Arrange the click-free swap.',
+        note: 'Step 3 — The Click of Doom. Preset changes pop while a chord rings. Arrange the swap that doesn\'t pop.',
         q: {
           type: 'order', concept: 'state-eng',
           prompt: 'Arrange the live preset-switch sequence, top to bottom.',

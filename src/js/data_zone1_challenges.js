@@ -33,7 +33,7 @@ const ZONE1_CHALLENGES = [
   {
     id: 'c2', kind: 'challenge', ctype: 'completion', title: 'Complete: Apply Gain to a Block', short: 'Code completion',
     concepts: ['loops'],
-    intro: 'The output buffer should carry the input scaled by gain — the core of every gain stage.',
+    intro: 'Every gain stage comes down to this: the output carries the input, scaled by gain.',
     questions: [
       {
         type: 'fill', concept: 'loops',
@@ -375,7 +375,7 @@ const ZONE1_CHALLENGES = [
         },
       },
       {
-        note: 'Step 2 — Musicians think in dB. Convert the user-facing dB value to a linear multiplier.',
+        note: 'Step 2 — Musicians think in dB. Convert the dB value the user sees into a linear multiplier.',
         q: {
           type: 'fill', concept: 'functions',
           prompt: 'Complete the amplitude conversion: 0 dB → 1.0, -6 dB → ≈0.5.',
@@ -522,7 +522,7 @@ const ZONE1_CHALLENGES = [
             { t: 'Random — depends on memory contents', why: 'phase was explicitly initialized to 0.0 — no garbage involved. (If it *hadn\'t* been initialized, this answer would be the scary truth.)' },
           ],
           answer: 0,
-          explain: 'sin(0) = 0: the wave starts at the zero crossing and rises — a click-free start. Your SineOsc is complete: state, increment, wrap, output. In Zone 4 this exact class grows anti-aliasing and modulation inputs.',
+          explain: 'sin(0) = 0: the wave starts at the zero crossing and rises, so it begins with no click. Your SineOsc is complete: state, increment, wrap, output. In Zone 4 this exact class grows anti-aliasing and modulation inputs.',
         },
       },
     ],

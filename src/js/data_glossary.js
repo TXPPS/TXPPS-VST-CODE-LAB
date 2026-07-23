@@ -182,7 +182,7 @@ const DICT = [
     studio: 'Rolling through a reel of tape sample by sample until the reel ends.',
     uses: ['The block loop', 'Delay line movement', 'Peak metering', 'Voice rendering'],
     viz: { t: 'buffer', n: 8, cursor: 2, highlight: 2, label: 'ONE BLOCK', caption: 'the counter i visits every slot once' },
-    mistake: 'Writing `<=` and stepping one slot past the end of the buffer — undefined behavior, the click-today-crash-tomorrow bug.',
+    mistake: 'Writing `<=` and stepping one slot past the end of the buffer — undefined behavior, the kind of bug that clicks today and crashes tomorrow.',
     remember: 'for (int i = 0; i < numSamples; ++i) — burn it in.',
     related: ['block', 'audio-buffer', 'array', 'undefined-behavior'],
     appears: [{ z: 1, node: 'l6' }, { z: 1, node: 'o1' }],
@@ -308,7 +308,7 @@ const DICT = [
   {
     id: 'smart-pointer', t: 'smart pointer', c: 'C++',
     plain: 'A pointer that manages its own cleanup: when the last owner lets go, the object it points at is destroyed automatically. The main ones are std::unique_ptr (one owner) and std::shared_ptr (shared owners).',
-    why: 'Manual new/delete is how plugins leak memory and double-free crash. Modern JUCE code owns things through unique_ptr — cleanup becomes impossible to forget.',
+    why: 'Manual new/delete is how plugins spring memory leaks and double-free crashes. Modern JUCE code owns things through unique_ptr — cleanup becomes impossible to forget.',
     studio: 'A rental system for gear: when the last person checks it back in, it goes back to the warehouse automatically.',
     uses: ['Owning the editor', 'Owning DSP modules', 'Preset storage'],
     mistake: 'Still writing raw `new`/`delete` in new code. Reach for std::make_unique first; raw owning pointers are legacy style.',

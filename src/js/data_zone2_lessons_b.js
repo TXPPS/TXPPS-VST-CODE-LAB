@@ -13,13 +13,13 @@ ZONE2_LESSONS.push(
     sections: [
       {
         h: 'enum class: the labeled selector ring',
-        body: '`enum class Waveform { sine, saw, square };` creates a type whose only values are those names. No silent conversion to int, no nonsense value 47, and a `switch` over it can warn when a position is missing. Every mode selector you write from now on uses this.',
+        body: '`enum class Waveform { sine, saw, square };` gives you a type that can only ever be one of those names. No silent conversion to int, no nonsense value 47, and a `switch` over it can warn when a position is missing. Every mode selector you write from now on uses this.',
         code: 'enum class Waveform { sine, saw, square };\n\nWaveform wave = Waveform::saw;\n\nswitch (wave) {\n    case Waveform::sine:   /* ... */ break;\n    case Waveform::saw:    /* ... */ break;\n    case Waveform::square: /* ... */ break;\n}',
         codeTitle: 'a type-safe selector',
       },
       {
         h: 'auto and range-based for',
-        body: '`auto` asks the compiler to infer an obvious type — perfect for `auto osc = std::make_unique<SineOsc>();` where the type is written once already. And the **range-based for** sweeps a whole container: `for (auto& s : buffer)`. That `&` is load-bearing: with it you edit the real samples; without it you edit throwaway copies. (`constexpr` from Zone 1 and `inline` for small header functions round out the kit — you\'ll meet inline again at project-layout time.)',
+        body: '`auto` asks the compiler to infer an obvious type — perfect for `auto osc = std::make_unique<SineOsc>();` where the type is written once already. And the **range-based for** sweeps a whole container: `for (auto& s : buffer)`. That `&` is load-bearing: with it you edit the real samples; without it you edit throwaway copies. (`constexpr` from Zone 1 and `inline` for small header functions round out the kit — you\'ll meet inline again when we lay out a project.)',
         mistake: { code: 'for (auto s : buffer)   // ✗ s is a COPY\n    s *= gain;          // the buffer never changes!', text: 'The missing & is Zone 1\'s "effect does nothing" bug wearing modern clothes: `for (auto& s : buffer)` edits the real audio.' },
       },
     ],
@@ -171,7 +171,7 @@ ZONE2_LESSONS.push(
       },
       {
         h: 'Namespaces and the shape of a real project',
-        body: 'Wrap your own code in a **namespace** (`namespace txpps { ... }`) so your Filter never collides with anyone else\'s. And as the file count grows, structure follows roles: `dsp/` for engines, `ui/` for components, one class per .h/.cpp pair. Tiny functions defined in headers get marked **inline** — the Zone 1 panel/circuit split, scaled up to a product.',
+        body: 'Wrap your own code in a **namespace** (`namespace txpps { ... }`) so your Filter never collides with anyone else\'s. And as the files pile up, group them by role: `dsp/` for engines, `ui/` for components, one class per .h/.cpp pair. Tiny functions defined in headers get marked **inline** — the Zone 1 panel/circuit split, grown to fit a whole product.',
         viz: { t: 'twoLayer', top: 'dsp/ — SynthEngine, Voice, Filter', topSub: 'the sound', bottom: 'ui/ — Editor, Knobs, Meters', bottomSub: 'the panel', caption: 'folders by role — the standard plugin layout' },
       },
     ],
@@ -210,7 +210,7 @@ ZONE2_LESSONS.push(
           { t: 'A new folder per function', why: 'Over-fragmentation is its own maze. Classes are the natural file unit; folders group by role.' },
         ],
         answer: 0,
-        explain: 'Role folders + one class per header/source pair + a project namespace: the layout every JUCE plugin you\'ll read in Zone 3 uses. Structure is a gift to future-you.',
+        explain: 'Role folders, one class per header/source pair, your code in a namespace — the layout every JUCE plugin you\'ll read in Zone 3 uses. Structure is a gift to future-you.',
       },
     ],
     recap: [
@@ -246,7 +246,7 @@ ZONE2_LESSONS.push(
       },
       {
         h: 'Exceptions — and the audio-thread ban',
-        body: '**Exceptions** (`throw` / `catch`) handle rare failures like a missing sample file: normal flow stops and control jumps to a handler. Fine on the UI thread. On the **audio thread: never.** Throwing has unpredictable cost, and an exception escaping into the host is a crash. Audio code reports trouble with return values and `std::optional` — honest, bounded, silent-at-the-gig.',
+        body: '**Exceptions** (`throw` / `catch`) handle rare failures like a missing sample file: normal flow stops and control jumps to a handler. Fine on the UI thread. On the **audio thread: never.** Throwing has unpredictable cost, and an exception escaping into the host is a crash. Audio code reports trouble with return values and `std::optional` — honest, bounded, and silent at the gig.',
         mistake: { code: 'void processBlock(...)\n{\n    if (!tableReady)\n        throw std::runtime_error("no table"); // ✗ never here\n}', text: 'The real-time list grows one final entry: no allocation, no locks, no I/O, no logging — **and no throwing** — on the audio thread.' },
       },
     ],

@@ -101,7 +101,7 @@ const ZONE5_LESSONS = [
       },
       {
         h: 'From byte to gain',
-        body: 'The straightforward mapping: divide by 127 to get 0..1, use it as a per-voice gain. JUCE will even do the division for you. One honest nuance: ears are logarithmic (d4), so pros often *curve* the value — squaring it is a common start — but linear is a fine first instrument.',
+        body: 'The simplest way to wire it up: divide by 127 to land in 0..1 and use it as a per-voice gain. JUCE will even do the division for you. One honest nuance: ears are logarithmic (d4), so pros often *curve* the value — squaring it is a common start — but linear is a fine first instrument.',
         code: 'float vel = msg.getFloatVelocity();   // 0.0 .. 1.0 — JUCE divides for you\nvoice.velocityGain = vel * vel;       // curved: quiet strikes stay quiet\n// later, in the render:  sample * env * voice.velocityGain',
         codeTitle: 'dynamics, wired in',
         breakdown: [
@@ -112,7 +112,7 @@ const ZONE5_LESSONS = [
       },
       {
         h: 'The strange rule: velocity zero',
-        body: 'A **note-on with velocity 0** officially means *note-off*. It\'s a 1983 wire-efficiency trick (running status) that never went away, and controllers still send it. Miss this rule and some keyboards leave your synth with notes that never end. JUCE has your back — `isNoteOff()` returns true for velocity-0 note-ons by default — but only if you use the message queries instead of poking raw bytes.',
+        body: 'A **note-on with velocity 0** officially means *note-off*. It\'s a 1983 trick for squeezing bytes onto the wire (running status) that never went away, and controllers still send it. Miss this rule and some keyboards leave your synth with notes that never end. JUCE has your back — `isNoteOff()` returns true for velocity-0 note-ons by default — but only if you use the message queries instead of poking raw bytes.',
         warn: 'This is the first of several “stuck note” traps in this zone. A synth that only *starts* notes correctly is half a synth — ending them correctly is where the engineering lives.',
       },
     ],
@@ -177,7 +177,7 @@ const ZONE5_LESSONS = [
     id: 'n3', kind: 'lesson', title: 'Reading the MIDI Inbox', short: 'The MidiBuffer loop',
     concepts: ['midi-basics'], time: '~6 MIN', diff: 2,
     hook: 'Zone 3 told you processBlock receives TWO deliveries: the audio buffer, and a MidiBuffer you\'ve politely ignored for two zones. Inside it: every key event that happened during this block, each stamped with exactly *when*. Time to open the mail.',
-    objective: 'Iterate the MidiBuffer, dispatch each message by type, and understand sample-position timing.',
+    objective: 'Walk the MidiBuffer, route each message by what it is, and see exactly when in the block a note landed.',
     sections: [
       {
         h: 'The inbox, opened',
@@ -260,7 +260,7 @@ const ZONE5_LESSONS = [
     id: 'n4', kind: 'lesson', title: 'Mono: One Key at a Time', short: 'Last-note, retrigger, legato',
     concepts: ['voices-mono'], time: '~6 MIN', diff: 2,
     hook: 'Hold a bass note, then tap a higher one without letting go. On a classic mono synth the pitch jumps up — release, and it falls back to the held key. That falling-back is a *decision someone programmed*. Mono synths aren\'t poly synths minus features: they\'re a personality, built from rules.',
-    objective: 'Build mono note logic: last-note priority, and the retrigger-vs-legato choice that defines mono feel.',
+    objective: 'Build mono note logic: last-note priority, and the choice between retrigger and legato that defines mono feel.',
     sections: [
       {
         h: 'The mono contract',
@@ -446,7 +446,7 @@ const ZONE5_LESSONS = [
       {
         h: 'Mono was a special case all along',
         body: 'Notice what polyphony did to the architecture: the *render* barely changed — it grew a loop. The hard new work is all in *management*: which voice takes which note (n7), what happens when the pool runs dry (n8), when is a voice truly done (n9). Sound generation was Zone 4; Zone 5 is government.',
-        warn: 'The ×1/8 trim is the guaranteed-safe floor, and it parks single notes at −18 dBFS — 6 dB below the mono synth\'s −12. Real synths run hotter (÷√N, or a fixed voice level plus a limiter) because eight worst-case peaks almost never align — d11\'s statistics argument, now with stakes. First Signal ships the guarantee first; taste can come later.',
+        warn: 'The ×1/8 trim is the floor that\'s always safe, and it parks single notes at −18 dBFS — 6 dB below the mono synth\'s −12. Real synths run hotter (÷√N, or a fixed voice level plus a limiter) because eight worst-case peaks almost never align — d11\'s statistics argument, now with stakes. First Signal ships the guarantee first; taste can come later.',
       },
     ],
     checks: [

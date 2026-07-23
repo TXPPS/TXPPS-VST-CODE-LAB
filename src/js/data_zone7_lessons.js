@@ -20,7 +20,7 @@ const ZONE7_LESSONS = [
       },
       {
         h: 'One sample through the machine',
-        body: 'Per sample, four moves in strict order: read the delayed sample, write input PLUS feedback into the line, mix the output, advance and wrap. **Feedback** routes the delayed signal back into the line — each pass through is one more echo, quieter by the feedback factor. Keep it below 1.0 or every repeat gets LOUDER: the runaway delay, a d10 disaster on a timer.',
+        body: 'Every sample runs the same four moves, always in this order: read the delayed sample, write input PLUS feedback into the line, mix the output, advance and wrap. **Feedback** routes the delayed signal back into the line — each pass through is one more echo, quieter by the feedback factor. Keep it below 1.0 or every repeat gets LOUDER: the runaway delay, a d10 disaster on a timer.',
         code: '// prepareToPlay: buy the line once (r5)\nlineLength = (int) (maxDelaySeconds * sampleRate);\nline.setSize (1, lineLength);\n\n// per sample:\nint readPos = writePos - delaySamples;\nif (readPos < 0) readPos += lineLength;            // wrap backwards\nfloat delayed = data[readPos];\ndata[writePos] = input + delayed * feedback;       // the echo feeds itself\nfloat out = input * dry + delayed * wet;           // d11: mixing is addition\nif (++writePos >= lineLength) writePos = 0;        // wrap forwards',
         codeTitle: 'the whole echo machine',
         breakdown: [
@@ -34,7 +34,7 @@ const ZONE7_LESSONS = [
       },
       {
         h: 'Fractional delays & tempo sync',
-        body: 'Two production realities. First: a delay of 302.7 samples lands BETWEEN two memory slots — reading the nearest one detunes modulated delays audibly. **Interpolation** (start with linear: blend the two neighbors by the fraction) reads between slots; it\'s what chorus (p23) will lean on. Second: musicians think in note values, not milliseconds — **tempo sync** converts through the host\'s BPM: one beat = 60 ÷ BPM seconds, then × rate for samples. And when the delay TIME changes while running, glide it (d13): jumping the read head teleports through the tape — a click; sliding it is the tape-speed pitch swoop dub loves.',
+        body: 'Two things bite you the moment you build a real delay. First: a delay of 302.7 samples lands BETWEEN two memory slots — reading the nearest one detunes modulated delays audibly. **Interpolation** (start with linear: blend the two neighbors by the fraction) reads between slots; it\'s what chorus (p23) will lean on. Second: musicians think in note values, not milliseconds — **tempo sync** converts through the host\'s BPM: one beat = 60 ÷ BPM seconds, then × rate for samples. And when the delay TIME changes while running, glide it (d13): jumping the read head teleports through the tape — a click; sliding it is the tape-speed pitch swoop dub loves.',
       },
     ],
     checks: [
@@ -98,11 +98,11 @@ const ZONE7_LESSONS = [
     id: 'f2', kind: 'lesson', title: 'Waveshaping: Drawing Distortion', short: 'Transfer curves & drive',
     concepts: ['shaping-dsp'], time: '~6 MIN', diff: 2,
     hook: 'Every distortion you\'ve ever loved — tube warmth, fuzz, saturation on a drum bus — is one idea: a rule that answers “when THIS level comes in, THAT level goes out.” Draw the rule as a curve and you\'ve designed the pedal. Straight line: clean. Bent: warm. Cornered: fuzz.',
-    objective: 'Understand transfer curves, why soft clipping sounds warmer than hard, what drive and output compensation really do, and why distortion demands the aliasing conversation.',
+    objective: 'Understand transfer curves, why soft clipping sounds warmer than hard, what drive and output compensation really do, and why distortion always drags aliasing back into the picture.',
     sections: [
       {
         h: 'The transfer curve',
-        body: '**Waveshaping** applies a fixed function to every sample: out = shape(in). Draw it with input on one axis, output on the other. A straight diagonal is a wire (out = in). d10\'s hard clip is a diagonal with the ends snapped flat — corners, harsh harmonics. The classic **soft clip**, tanh, bends gently toward the ceiling instead: the same loudness ambition, rounder corners, warmer harmonic recipe (d7\'s law, applied on purpose).',
+        body: '**Waveshaping** runs every sample through one fixed rule: out = shape(in). Draw it with input on one axis, output on the other. A straight diagonal is a wire (out = in). d10\'s hard clip is a diagonal with the ends snapped flat — corners, harsh harmonics. The classic **soft clip**, tanh, bends gently toward the ceiling instead: the same loudness ambition, rounder corners, warmer harmonic recipe (d7\'s law, applied on purpose).',
         viz: { t: 'shaperviz' },
       },
       {

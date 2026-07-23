@@ -28,7 +28,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'mo2', kind: 'challenge', ctype: 'ordering', title: 'Assemble: The Parameter Handoff', short: 'Order the flow',
     concepts: ['threading'],
-    intro: 'A knob value must travel from a UI drag to smooth audio. Arrange the four stages of the professional path.',
+    intro: 'A knob value must travel from a UI drag to smooth audio. Put the four stages of that journey in order.',
     questions: [
       {
         type: 'order', concept: 'threading',
@@ -49,7 +49,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'mc1', kind: 'challenge', ctype: 'completion', title: 'Complete: Own the Oscillator', short: 'Code completion',
     concepts: ['smart-pointers'],
-    intro: 'The engine needs a heap-allocated oscillator with one clear owner, created the modern way.',
+    intro: 'The engine needs an oscillator that lives on the heap, with one clear owner, built the modern way.',
     questions: [
       {
         type: 'fill', concept: 'smart-pointers',
@@ -100,7 +100,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'mc4', kind: 'challenge', ctype: 'completion', title: 'Complete: The Voice Pool Type', short: 'Code completion',
     concepts: ['templates'],
-    intro: 'Declare the canonical synth voice pool: resizable, one clear owner per voice.',
+    intro: 'Declare the voice pool every synth is built on: resizable, one clear owner per voice.',
     questions: [
       {
         type: 'fill', concept: 'templates',
@@ -284,7 +284,7 @@ const ZONE2_CHALLENGES = [
             { t: 'Eight global Voice variables', why: 'Globals can\'t resize, can\'t loop cleanly, and leak state across plugin instances.' },
           ],
           answer: 0,
-          explain: 'The canonical pool: resizable backstage, one owner per voice, automatic teardown. You typed this type in the challenges — now it\'s load-bearing.',
+          explain: 'The pool every synth leans on: resizable backstage, one owner per voice, automatic teardown. You typed this type in the challenges — now it\'s load-bearing.',
         },
       },
       {
@@ -429,7 +429,7 @@ const ZONE2_CHALLENGES = [
   {
     id: 'p5', kind: 'project', title: 'Mission: The Synth Skeleton', short: 'Zone project',
     concepts: ['threading', 'smart-pointers', 'ownership'],
-    brief: 'The Zone 2 finale: assemble the architecture of a real synthesizer — owned voice pool, atomic parameter bridge, real-time-clean processBlock. This exact skeleton becomes a sounding instrument in Zones 3–5.',
+    brief: 'The Zone 2 finale: assemble the architecture of a real synthesizer — owned voice pool, atomic parameter bridge, and a processBlock that stays clean on the real-time thread. This exact skeleton becomes a sounding instrument in Zones 3–5.',
     steps: [
       {
         note: 'Step 1 — The blueprint. An engine, its voices, and two threads that must never collide.',

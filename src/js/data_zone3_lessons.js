@@ -35,7 +35,7 @@ const ZONE3_LESSONS = [
           { t: 'A compiler', why: 'Your normal compiler builds JUCE code; JUCE supplies classes and build recipes, not compilation.' },
         ],
         answer: 0,
-        explain: 'JUCE = library + build tooling. You supply the processor, editor and CMake description; it supplies everything between your code and the DAW.',
+        explain: 'JUCE is a library plus build tooling. You supply the processor, editor and CMake description; it supplies everything between your code and the DAW.',
       },
       {
         type: 'mcq', concept: 'juce-basics',
@@ -155,7 +155,7 @@ const ZONE3_LESSONS = [
       },
       {
         h: 'What First Signal targets',
-        body: 'One line in CMake decides: `FORMATS VST3 Standalone` (plus `AU` when building on a Mac — CMake simply skips formats a platform can\'t build). JUCE compiles your one AudioProcessor into each wrapper. AAX stays out of scope: its SDK and signing process are a shipping-stage concern, not a first-plugin one.',
+        body: 'One line in CMake decides: `FORMATS VST3 Standalone` (plus `AU` when building on a Mac — CMake simply skips formats a platform can\'t build). JUCE compiles your one AudioProcessor into each wrapper. AAX stays out of scope: its SDK and signing process are something to deal with when you ship, not when you\'re building your first plugin.',
         code: 'juce_add_plugin(FirstSignal\n    FORMATS VST3 Standalone   # add AU on macOS\n    ...)',
         codeTitle: 'formats, chosen in one line',
       },
@@ -178,7 +178,7 @@ const ZONE3_LESSONS = [
           { t: 'It\'s required for VST3 to work', why: 'Formats are independent doorways into the same engine.' },
         ],
         answer: 0,
-        explain: 'Build → double-click → hear it. No scanning, no host quirks. Standalone-first testing is the professional development rhythm you\'ll use from Mission 3 on.',
+        explain: 'Build → double-click → hear it. No scanning, no host quirks. Testing in standalone first is the working rhythm you\'ll use from Mission 3 on.',
       },
       {
         type: 'mcq', concept: 'formats',
@@ -342,7 +342,7 @@ const ZONE3_LESSONS = [
           { t: 'Only if the plugin requests it', why: 'The host decides — your job is to make prepare safely re-runnable.' },
         ],
         answer: 0,
-        explain: 'Write prepareToPlay as "reset the world to a valid state for THIS rate and size" — idempotent, allocation-friendly, callable forever.',
+        explain: 'Write prepareToPlay as "reset the world to a valid state for THIS rate and size" — idempotent, safe to allocate in, callable forever.',
       },
     ],
     recap: [
@@ -378,7 +378,7 @@ const ZONE3_LESSONS = [
           ['sampleRate', 'time↔samples conversion for everything downstream'],
           ['samplesPerBlock', 'the MAXIMUM you\'ll see — real blocks vary'],
           ['gainSmoothed.reset(rate, 0.05)', 'teach the smoother the rate: 50 ms of glide'],
-          ['setCurrentAndTargetValue', 'start settled — no glide-from-zero on first play'],
+          ['setCurrentAndTargetValue', 'start settled — no gliding up from zero on first play'],
         ],
       },
       {
@@ -500,7 +500,7 @@ const ZONE3_LESSONS = [
           '}',
         ],
         buggy: 3,
-        explain: 'Disk access on the audio thread: unbounded, blocking, glitch-guaranteed. Preset loads belong on the UI/background side, handed over lock-free (Zone 2\'s FIFO). The gain line? Perfectly legal.',
+        explain: 'Disk access on the audio thread: unbounded, blocking, and guaranteed to glitch. Preset loads belong on the UI/background side, handed over lock-free (Zone 2\'s FIFO). The gain line? Perfectly legal.',
         fix: 'Load on the UI thread; hand results across via atomics/FIFO',
       },
     ],
@@ -672,7 +672,7 @@ const ZONE3_LESSONS = [
       { name: 'Zone 5 synth', use: 'this exact loop feeds the voice allocator you built in p3' },
     ],
     analogyPanel: 'The block is a bar of the song; MIDI events are cue marks written at exact beats within it. A good player hits the cue mid-bar — not at the next barline.',
-    beginnerMistake: 'Handling all MIDI at the top of the block "to keep it simple." That bakes in up-to-a-block timing error. Read positions now, even before you need them.',
+    beginnerMistake: 'Handling all MIDI at the top of the block "to keep it simple." That bakes in timing error of up to a full block. Read positions now, even before you need them.',
     remember: 'MIDI arrives as sample-stamped mail — deliver each event at its exact sample.',
     builds: ['midi', 'velocity', 'block'],
     leads: ['voice', 'polyphony'],

@@ -15,7 +15,7 @@ ZONE5_LESSONS.push(
     sections: [
       {
         h: 'The life of a voice',
-        body: 'A voice cycles through states, and each transition has an owner: **note-on** starts attack; the envelope itself walks attack → decay → sustain; **note-off** starts release; and the envelope *finishing* release is what makes the voice idle again. Two different events end a note: the player ends the *key*, the envelope ends the *sound*.',
+        body: 'Every note your synth plays moves through a handful of states, and each transition has an owner: **note-on** starts attack; the envelope itself walks attack → decay → sustain; **note-off** starts release; and the envelope *finishing* release is what makes the voice idle again. Two different events end a note: the player ends the *key*, the envelope ends the *sound*.',
         viz: { t: 'voicelife', caption: 'two hands on the wheel: the player drives note-on and note-off; the envelope drives everything between and after' },
       },
       {
@@ -107,7 +107,7 @@ ZONE5_LESSONS.push(
     sections: [
       {
         h: 'Meet the Continuous Controllers',
-        body: 'Beyond notes, MIDI carries **Continuous Controller (CC)** messages: a controller number (which knob/pedal/slider, 0–127) and a value (0–127). CC 1 is the mod wheel (n12), CC 7 volume, CC 64 the **sustain pedal**. The pedal is a switch wearing a controller costume: by convention, value **64 and above means down**, below 64 means up.',
+        body: 'Your keyboard sends more than notes. Every knob, slider, and pedal on it speaks in **Continuous Controller (CC)** messages: a controller number (which knob/pedal/slider, 0–127) and a value (0–127). CC 1 is the mod wheel (n12), CC 7 volume, CC 64 the **sustain pedal**. The pedal is a switch wearing a controller costume: by convention, value **64 and above means down**, below 64 means up.',
         code: 'else if (msg.isController())\n{\n    if (msg.getControllerNumber() == 64)              // sustain pedal\n        setPedal(msg.getControllerValue() >= 64);     // ≥64 = down\n}',
         codeTitle: 'the inbox grows an ear for feet',
         breakdown: [
@@ -461,7 +461,7 @@ ZONE5_LESSONS.push(
       },
       {
         h: 'Stereo spread: the choir takes the stage',
-        body: 'Detune alone is thick but mono. Feed each copy\'s spread position into d12\'s constant-power pan — flat-left copy hard left, center copy center — and the note *widens* into a field. This is THE supersaw recipe: detune × spread. (d12\'s warning applies: spread built from level differences folds to mono gracefully; fancy phase tricks may not.)',
+        body: 'Detune alone is thick but mono. Feed each copy\'s spread position into d12\'s constant-power pan — the far-left copy pans hard left, the center copy sits dead center — and the note *widens* into a field. This is THE supersaw recipe: detune × spread. (d12\'s warning applies: spread built from level differences folds to mono gracefully; fancy phase tricks may not.)',
       },
       {
         h: 'The bill: unison eats polyphony',

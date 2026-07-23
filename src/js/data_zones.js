@@ -8,7 +8,7 @@ const ZONES = [
   {
     id: 'z1', num: 1, title: 'C++ SIGNAL PATH', status: 'live',
     tagline: 'The C++ core every plugin is built on',
-    desc: 'Variables, functions, control flow, containers, pointers, classes and compiler errors — taught through gain stages, buffers and oscillators.',
+    desc: 'Variables, functions, control flow, containers, pointers, classes and compiler errors — all learned by building gain stages, buffers and oscillators.',
     nodeOrder: [
       'l1', 'l2', 'l3', 'c1', 'l4', 'l5', 'e1', 'l6', 'o1', 'c2',
       'l7', 'b1', 'c3', 'l8', 'l9', 'b2', 'e2', 'p1', 'l10', 'o2',
@@ -18,7 +18,7 @@ const ZONES = [
   {
     id: 'z2', num: 2, title: 'MODERN C++ FOR AUDIO', status: 'live',
     tagline: 'Professional C++ techniques used in real VST plugins',
-    desc: 'Ownership, RAII, smart pointers, move semantics, atomics and lock-free thinking — modern C++ taught entirely through plugin development.',
+    desc: 'Ownership, RAII, smart pointers, move semantics, atomics and lock-free thinking — modern C++, learned entirely by building plugins.',
     nodeOrder: [
       'm1', 'm2', 'm3', 'mo1', 'm4', 'mc1', 'me1', 'm5', 'm6', 'mb1',
       'mc2', 'm7', 'mb2', 'p3', 'm8', 'mc3', 'm9', 'me2', 'm10', 'mb3',
@@ -62,7 +62,7 @@ const ZONES = [
   {
     id: 'z6', num: 6, title: 'PROFESSIONAL PLUGIN ENGINEERING', status: 'live',
     tagline: 'From working prototype to shippable product',
-    desc: 'What keeps plugins stable inside real DAWs: the real-time deadline, thread safety and lock-free design, allocation rules, denormals, version-safe state, automation, profiling, testing, validation, crash forensics — and the shipping checklist that makes 1.0 mean something.',
+    desc: 'What keeps plugins stable inside real DAWs: the real-time deadline, thread safety and lock-free design, allocation rules, denormals, state that still loads in the next version, automation, profiling, testing, validation, crash forensics — and the shipping checklist that makes 1.0 mean something.',
     nodeOrder: [
       'r1', 'r2', 'rr1', 'r3', 'rc1', 'r4', 'rb1', 'p16', 'r5', 'rb2',
       'r6', 'rc2', 'r7', 'rr2', 'r8', 'rb4', 'r9', 'rc3', 'p17',
