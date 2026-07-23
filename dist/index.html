@@ -16291,11 +16291,15 @@ const Store = (() => {
     return idx;
   }
   function readV101Profile(id) { return unpack(lsGet(v101P(id))) || unpack(lsGet(v101B(id))); }
+  // Snapshot the whole pre-migration dataset. Returns whether it is confirmed ON DISK
+  // (not just the in-memory fallback) so callers never delete originals against a
+  // volatile backup under quota.
   function backupV101(idx) {
-    if (rawLocalGet(MIGBAK)) return;            // idempotent: snapshot once
+    if (rawLocalGet(MIGBAK)) return true;       // idempotent: already snapshotted on disk
     const dump = { schema: 'txpps.v101.backup', at: nowIso(), index: lsGet(V101_INDEX), profiles: {} };
     for (const id of idx.ids) dump.profiles[id] = { cur: lsGet(v101P(id)), bak: lsGet(v101B(id)) };
     lsSet(MIGBAK, JSON.stringify(dump));
+    return !!rawLocalGet(MIGBAK);
   }
   function cleanupV101(idx) {
     lsDel(V101_INDEX);
@@ -16353,7 +16357,7 @@ const Store = (() => {
     // 2. A 1.0.1 multi-profile registry exists → collapse to one.
     const idx = readV101Index();
     if (idx && idx.ids.length) {
-      backupV101(idx);                                   // snapshot EVERYTHING before touching it
+      const backed = backupV101(idx);                    // snapshot EVERYTHING before touching it
       const readable = idx.ids.filter((id) => readV101Profile(id));
       let chosen = null;
       if (idx.activeId && readV101Profile(idx.activeId)) chosen = idx.activeId;   // the currently-active readable profile
@@ -16364,7 +16368,7 @@ const Store = (() => {
       }
       if (chosen) {
         const committed = adoptAsSingle(readV101Profile(chosen));
-        if (committed) cleanupV101(idx);                 // drop old keys only after the single save is on disk
+        if (committed && backed) cleanupV101(idx);        // drop old keys only once BOTH the save AND the backup are on disk
         return;
       }
       // 0 readable profiles → fall through (data safe in MIGBAK); try legacy, then welcome.
@@ -16388,13 +16392,16 @@ const Store = (() => {
   }
 
   function commitMigrationChoice(id) {
+    // Another tab may have already completed the migration → adopt that single save.
+    const already = unpack(rawLocalGet(SKEY));
+    if (already) { state = sanitizeFull(already); hasProfile = true; needsWelcome = false; pendingMigration = null; return true; }
     if (!pendingMigration) return false;
     const idx = pendingMigration.idx || readV101Index();
     const data = idx ? readV101Profile(id) : null;
-    if (!data) return false;
+    if (!data) return false;                             // chosen profile unreadable/gone — keep the chooser up
     const committed = adoptAsSingle(data);               // adoptAsSingle clears pendingMigration
-    if (committed && idx) cleanupV101(idx);
-    return true;
+    if (committed && idx && rawLocalGet(MIGBAK)) cleanupV101(idx);   // wipe originals only against a disk-confirmed backup
+    return committed;
   }
 
   function defaults() {
@@ -16791,6 +16798,10 @@ const Store = (() => {
   function profileMeta() { return hasProfile ? metaFromData(state.id, state) : null; }
 
   function createProfile(identity) {
+    // If a valid profile appeared on disk (another tab finished onboarding first),
+    // adopt it instead of writing a second, clobbering document.
+    const existing = unpack(rawLocalGet(SKEY));
+    if (existing) { state = sanitizeFull(existing); hasProfile = true; needsWelcome = false; pendingMigration = null; return state.id; }
     const id = newId();
     state = Object.assign(freshState(), {
       id,
@@ -16816,15 +16827,23 @@ const Store = (() => {
     return true;
   }
 
-  // Cross-tab convergence: when another tab writes the single profile, adopt the
-  // newer save so our next autosave can't clobber it with stale state.
-  function adoptExternal(key) {
-    if (!hasProfile || key !== SKEY) return false;
-    const d = unpack(rawLocalGet(SKEY));
-    if (!d) return false;
-    state = sanitizeFull(d);
-    return true;
+  // Cross-tab convergence for the single key. Returns an action for the app to take:
+  //  'adopt'   — another tab wrote a newer save; we took it (refresh chrome)
+  //  'created' — a profile appeared while we had none (welcome/migration up); adopt + close overlay
+  //  'reset'   — our profile was deleted by another tab; return to first-launch
+  //  null      — nothing relevant changed
+  function syncTab(key) {
+    if (key !== null && key !== SKEY) return null;   // key===null is storage.clear()
+    const disk = unpack(rawLocalGet(SKEY));
+    if (hasProfile) {
+      if (!disk) { hasProfile = false; needsWelcome = true; pendingMigration = null; state = freshState(); return 'reset'; }
+      state = sanitizeFull(disk);
+      return 'adopt';
+    }
+    if (disk) { state = sanitizeFull(disk); hasProfile = true; needsWelcome = false; pendingMigration = null; return 'created'; }
+    return null;
   }
+  function adoptExternal(key) { return syncTab(key) === 'adopt'; }   // back-compat
 
   return {
     get state() { return state; },
@@ -16844,7 +16863,7 @@ const Store = (() => {
     zoneMastery, bossReady,
     setSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
-    profileMeta, createProfile, editProfile, adoptExternal, commitMigrationChoice,
+    profileMeta, createProfile, editProfile, adoptExternal, syncTab, commitMigrationChoice,
   };
 })();
 
@@ -19674,7 +19693,7 @@ const Views = (() => {
         el('h1', { class: 'h-display' }, 'Choose your profile'),
         el('p', { class: 'small dim' }, 'This version keeps a single local profile. Pick the one to keep — the rest are saved to a backup on this device first. Only one profile can remain active.')),
       el('div', { class: 'col', style: 'gap:10px' }, cands.map((p) =>
-        el('button', { class: 'profile-card card-tap', style: 'text-align:left; width:100%', onclick: () => { Store.commitMigrationChoice(p.id); if (opts.onDone) opts.onDone(); } },
+        el('button', { class: 'profile-card card-tap', style: 'text-align:left; width:100%', onclick: () => { if (Store.commitMigrationChoice(p.id)) { if (opts.onDone) opts.onDone(); } else { UI.toast('That profile could not be read — pick another.'); } } },
           el('div', { class: 'row', style: 'gap:10px; align-items:center' },
             avatarBadge(p.avatar, 'sm'),
             el('div', { style: 'min-width:0; flex:1' },
@@ -20057,6 +20076,7 @@ const App = (() => {
     if (autosaveTimer) return;
     autosaveTimer = setInterval(() => { try { Store.save(); } catch (e) { /* keep running */ } }, 30000);
   }
+  function stopAutosave() { if (autosaveTimer) { clearInterval(autosaveTimer); autosaveTimer = null; } }
 
   // First-launch / migration setup is a TRUE modal overlay: the app shell renders
   // behind it, but the overlay (mounted on <body>, not the app flow) blocks all
@@ -20069,20 +20089,28 @@ const App = (() => {
     document.body.classList.add('modal-open');
     overlayEl = veil;
     const focusables = () => Array.from(veil.querySelectorAll('input,textarea,button,[tabindex]:not([tabindex="-1"])')).filter((n) => !n.disabled && n.offsetParent !== null);
-    const f0 = focusables()[0]; if (f0) setTimeout(() => { try { f0.focus(); } catch (e) { /* ignore */ } }, 40);
+    const f0 = focusables()[0];
+    if (f0) { try { f0.focus(); } catch (e) { /* ignore */ } setTimeout(() => { try { if (!veil.contains(document.activeElement)) f0.focus(); } catch (e) { /* ignore */ } }, 40); }
     veil._onKey = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); return; }   // setup cannot be dismissed
       if (e.key !== 'Tab') return;
       const f = focusables(); if (!f.length) return;
       const a = f[0], b = f[f.length - 1];
+      if (!veil.contains(document.activeElement)) { e.preventDefault(); a.focus(); return; } // pull focus back in
       if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
       else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
     };
+    veil._onFocus = (e) => { if (!veil.contains(e.target)) { const f = focusables()[0]; if (f) { try { f.focus(); } catch (x) { /* ignore */ } } } };
     document.addEventListener('keydown', veil._onKey, true);
+    document.addEventListener('focusin', veil._onFocus, true);
     return veil;
   }
   function unmountOverlay() {
-    if (overlayEl) { if (overlayEl._onKey) document.removeEventListener('keydown', overlayEl._onKey, true); overlayEl.remove(); overlayEl = null; }
+    if (overlayEl) {
+      if (overlayEl._onKey) document.removeEventListener('keydown', overlayEl._onKey, true);
+      if (overlayEl._onFocus) document.removeEventListener('focusin', overlayEl._onFocus, true);
+      overlayEl.remove(); overlayEl = null;
+    }
     document.body.classList.remove('modal-open');
   }
 
@@ -20130,10 +20158,16 @@ const App = (() => {
       // capture progress the moment the tab is hidden or closed
       window.addEventListener('pagehide', () => { try { Store.save(); } catch (e) { /* ignore */ } });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { try { Store.save(); } catch (e) { /* ignore */ } } });
-      // cross-tab convergence: adopt a newer save written by another tab of the
-      // same profile, so our autosave heartbeat can't overwrite it with stale state
+      // cross-tab convergence for the single profile: adopt a newer save, adopt a
+      // profile another tab just created (closing our setup overlay), or return to
+      // first-launch if another tab reset the profile out from under us.
       window.addEventListener('storage', (e) => {
-        try { if (e.key && Store.adoptExternal(e.key)) renderTopbar(); } catch (err) { /* ignore */ }
+        try {
+          const action = Store.syncTab(e.key);
+          if (action === 'reset') { stopAutosave(); showWelcome(); }
+          else if (action === 'created') { unmountOverlay(); startAutosave(); reboot(); }
+          else if (action === 'adopt') { renderTopbar(); }
+        } catch (err) { /* ignore */ }
       });
 
       applyCodeSize();

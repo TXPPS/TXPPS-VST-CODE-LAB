@@ -148,6 +148,7 @@ const App = (() => {
     if (autosaveTimer) return;
     autosaveTimer = setInterval(() => { try { Store.save(); } catch (e) { /* keep running */ } }, 30000);
   }
+  function stopAutosave() { if (autosaveTimer) { clearInterval(autosaveTimer); autosaveTimer = null; } }
 
   // First-launch / migration setup is a TRUE modal overlay: the app shell renders
   // behind it, but the overlay (mounted on <body>, not the app flow) blocks all
@@ -160,20 +161,28 @@ const App = (() => {
     document.body.classList.add('modal-open');
     overlayEl = veil;
     const focusables = () => Array.from(veil.querySelectorAll('input,textarea,button,[tabindex]:not([tabindex="-1"])')).filter((n) => !n.disabled && n.offsetParent !== null);
-    const f0 = focusables()[0]; if (f0) setTimeout(() => { try { f0.focus(); } catch (e) { /* ignore */ } }, 40);
+    const f0 = focusables()[0];
+    if (f0) { try { f0.focus(); } catch (e) { /* ignore */ } setTimeout(() => { try { if (!veil.contains(document.activeElement)) f0.focus(); } catch (e) { /* ignore */ } }, 40); }
     veil._onKey = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); return; }   // setup cannot be dismissed
       if (e.key !== 'Tab') return;
       const f = focusables(); if (!f.length) return;
       const a = f[0], b = f[f.length - 1];
+      if (!veil.contains(document.activeElement)) { e.preventDefault(); a.focus(); return; } // pull focus back in
       if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
       else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
     };
+    veil._onFocus = (e) => { if (!veil.contains(e.target)) { const f = focusables()[0]; if (f) { try { f.focus(); } catch (x) { /* ignore */ } } } };
     document.addEventListener('keydown', veil._onKey, true);
+    document.addEventListener('focusin', veil._onFocus, true);
     return veil;
   }
   function unmountOverlay() {
-    if (overlayEl) { if (overlayEl._onKey) document.removeEventListener('keydown', overlayEl._onKey, true); overlayEl.remove(); overlayEl = null; }
+    if (overlayEl) {
+      if (overlayEl._onKey) document.removeEventListener('keydown', overlayEl._onKey, true);
+      if (overlayEl._onFocus) document.removeEventListener('focusin', overlayEl._onFocus, true);
+      overlayEl.remove(); overlayEl = null;
+    }
     document.body.classList.remove('modal-open');
   }
 
@@ -221,10 +230,16 @@ const App = (() => {
       // capture progress the moment the tab is hidden or closed
       window.addEventListener('pagehide', () => { try { Store.save(); } catch (e) { /* ignore */ } });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { try { Store.save(); } catch (e) { /* ignore */ } } });
-      // cross-tab convergence: adopt a newer save written by another tab of the
-      // same profile, so our autosave heartbeat can't overwrite it with stale state
+      // cross-tab convergence for the single profile: adopt a newer save, adopt a
+      // profile another tab just created (closing our setup overlay), or return to
+      // first-launch if another tab reset the profile out from under us.
       window.addEventListener('storage', (e) => {
-        try { if (e.key && Store.adoptExternal(e.key)) renderTopbar(); } catch (err) { /* ignore */ }
+        try {
+          const action = Store.syncTab(e.key);
+          if (action === 'reset') { stopAutosave(); showWelcome(); }
+          else if (action === 'created') { unmountOverlay(); startAutosave(); reboot(); }
+          else if (action === 'adopt') { renderTopbar(); }
+        } catch (err) { /* ignore */ }
       });
 
       applyCodeSize();

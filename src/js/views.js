@@ -1328,7 +1328,7 @@ const Views = (() => {
         el('h1', { class: 'h-display' }, 'Choose your profile'),
         el('p', { class: 'small dim' }, 'This version keeps a single local profile. Pick the one to keep — the rest are saved to a backup on this device first. Only one profile can remain active.')),
       el('div', { class: 'col', style: 'gap:10px' }, cands.map((p) =>
-        el('button', { class: 'profile-card card-tap', style: 'text-align:left; width:100%', onclick: () => { Store.commitMigrationChoice(p.id); if (opts.onDone) opts.onDone(); } },
+        el('button', { class: 'profile-card card-tap', style: 'text-align:left; width:100%', onclick: () => { if (Store.commitMigrationChoice(p.id)) { if (opts.onDone) opts.onDone(); } else { UI.toast('That profile could not be read — pick another.'); } } },
           el('div', { class: 'row', style: 'gap:10px; align-items:center' },
             avatarBadge(p.avatar, 'sm'),
             el('div', { style: 'min-width:0; flex:1' },

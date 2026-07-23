@@ -94,11 +94,15 @@ const Store = (() => {
     return idx;
   }
   function readV101Profile(id) { return unpack(lsGet(v101P(id))) || unpack(lsGet(v101B(id))); }
+  // Snapshot the whole pre-migration dataset. Returns whether it is confirmed ON DISK
+  // (not just the in-memory fallback) so callers never delete originals against a
+  // volatile backup under quota.
   function backupV101(idx) {
-    if (rawLocalGet(MIGBAK)) return;            // idempotent: snapshot once
+    if (rawLocalGet(MIGBAK)) return true;       // idempotent: already snapshotted on disk
     const dump = { schema: 'txpps.v101.backup', at: nowIso(), index: lsGet(V101_INDEX), profiles: {} };
     for (const id of idx.ids) dump.profiles[id] = { cur: lsGet(v101P(id)), bak: lsGet(v101B(id)) };
     lsSet(MIGBAK, JSON.stringify(dump));
+    return !!rawLocalGet(MIGBAK);
   }
   function cleanupV101(idx) {
     lsDel(V101_INDEX);
@@ -156,7 +160,7 @@ const Store = (() => {
     // 2. A 1.0.1 multi-profile registry exists → collapse to one.
     const idx = readV101Index();
     if (idx && idx.ids.length) {
-      backupV101(idx);                                   // snapshot EVERYTHING before touching it
+      const backed = backupV101(idx);                    // snapshot EVERYTHING before touching it
       const readable = idx.ids.filter((id) => readV101Profile(id));
       let chosen = null;
       if (idx.activeId && readV101Profile(idx.activeId)) chosen = idx.activeId;   // the currently-active readable profile
@@ -167,7 +171,7 @@ const Store = (() => {
       }
       if (chosen) {
         const committed = adoptAsSingle(readV101Profile(chosen));
-        if (committed) cleanupV101(idx);                 // drop old keys only after the single save is on disk
+        if (committed && backed) cleanupV101(idx);        // drop old keys only once BOTH the save AND the backup are on disk
         return;
       }
       // 0 readable profiles → fall through (data safe in MIGBAK); try legacy, then welcome.
@@ -191,13 +195,16 @@ const Store = (() => {
   }
 
   function commitMigrationChoice(id) {
+    // Another tab may have already completed the migration → adopt that single save.
+    const already = unpack(rawLocalGet(SKEY));
+    if (already) { state = sanitizeFull(already); hasProfile = true; needsWelcome = false; pendingMigration = null; return true; }
     if (!pendingMigration) return false;
     const idx = pendingMigration.idx || readV101Index();
     const data = idx ? readV101Profile(id) : null;
-    if (!data) return false;
+    if (!data) return false;                             // chosen profile unreadable/gone — keep the chooser up
     const committed = adoptAsSingle(data);               // adoptAsSingle clears pendingMigration
-    if (committed && idx) cleanupV101(idx);
-    return true;
+    if (committed && idx && rawLocalGet(MIGBAK)) cleanupV101(idx);   // wipe originals only against a disk-confirmed backup
+    return committed;
   }
 
   function defaults() {
@@ -594,6 +601,10 @@ const Store = (() => {
   function profileMeta() { return hasProfile ? metaFromData(state.id, state) : null; }
 
   function createProfile(identity) {
+    // If a valid profile appeared on disk (another tab finished onboarding first),
+    // adopt it instead of writing a second, clobbering document.
+    const existing = unpack(rawLocalGet(SKEY));
+    if (existing) { state = sanitizeFull(existing); hasProfile = true; needsWelcome = false; pendingMigration = null; return state.id; }
     const id = newId();
     state = Object.assign(freshState(), {
       id,
@@ -619,15 +630,23 @@ const Store = (() => {
     return true;
   }
 
-  // Cross-tab convergence: when another tab writes the single profile, adopt the
-  // newer save so our next autosave can't clobber it with stale state.
-  function adoptExternal(key) {
-    if (!hasProfile || key !== SKEY) return false;
-    const d = unpack(rawLocalGet(SKEY));
-    if (!d) return false;
-    state = sanitizeFull(d);
-    return true;
+  // Cross-tab convergence for the single key. Returns an action for the app to take:
+  //  'adopt'   — another tab wrote a newer save; we took it (refresh chrome)
+  //  'created' — a profile appeared while we had none (welcome/migration up); adopt + close overlay
+  //  'reset'   — our profile was deleted by another tab; return to first-launch
+  //  null      — nothing relevant changed
+  function syncTab(key) {
+    if (key !== null && key !== SKEY) return null;   // key===null is storage.clear()
+    const disk = unpack(rawLocalGet(SKEY));
+    if (hasProfile) {
+      if (!disk) { hasProfile = false; needsWelcome = true; pendingMigration = null; state = freshState(); return 'reset'; }
+      state = sanitizeFull(disk);
+      return 'adopt';
+    }
+    if (disk) { state = sanitizeFull(disk); hasProfile = true; needsWelcome = false; pendingMigration = null; return 'created'; }
+    return null;
   }
+  function adoptExternal(key) { return syncTab(key) === 'adopt'; }   // back-compat
 
   return {
     get state() { return state; },
@@ -647,6 +666,6 @@ const Store = (() => {
     zoneMastery, bossReady,
     setSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
-    profileMeta, createProfile, editProfile, adoptExternal, commitMigrationChoice,
+    profileMeta, createProfile, editProfile, adoptExternal, syncTab, commitMigrationChoice,
   };
 })();
