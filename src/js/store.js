@@ -12,6 +12,7 @@ const Store = (() => {
   const SKEY = 'txpps_profile';                 // v1.0.2 single authoritative save
   const SBAK = 'txpps_profile_backup';          // its previous-save backup
   const MIGBAK = 'txpps_v101_backup';           // one-time snapshot of pre-migration data
+  const PREQA = 'txpps_pre_qa';                 // v1.2.1: the real profile, stashed while a QA test profile is active
   const SAVE_V = 2;
 
   // Curated offline avatar set — emoji only, no uploads, no network.
@@ -37,11 +38,18 @@ const Store = (() => {
   // Fire a decorative game-layer event, never letting it affect persistence.
   function bus(t, p) { try { if (typeof GameBus !== 'undefined') GameBus.emit(t, p); } catch (e) { /* decorative */ } }
 
+  // Central progression/reward gate (v1.2.1). When the owner's QA simulation
+  // mode is active these return false, so permanent progress/reward writes are
+  // suppressed while grading, sheets and events still run. Absent the policy
+  // modules they always allow — the course never depends on QA being present.
+  function persistOk() { try { return (typeof ProgressionPolicy === 'undefined') || ProgressionPolicy.shouldPersist(); } catch (e) { return true; } }
+  function grantOk() { try { return (typeof RewardPolicy === 'undefined') || RewardPolicy.shouldGrant(); } catch (e) { return true; } }
+
   function cleanName(s) { return String(s == null ? '' : s).replace(/[\x00-\x1f]/g, '').trim().slice(0, 40); }
   function cleanUser(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24); }
 
   function identityDefaults() {
-    return { displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '', createdAt: nowIso(), lastPlayed: nowIso() };
+    return { displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '', isQaProfile: false, createdAt: nowIso(), lastPlayed: nowIso() };
   }
 
   /* ---- low-level storage, with an in-memory fallback when blocked ----
@@ -127,6 +135,7 @@ const Store = (() => {
     s.username = cleanUser(raw && raw.username) || idn.username;
     s.avatar = (raw && typeof raw.avatar === 'string' && raw.avatar) ? raw.avatar : idn.avatar;
     s.bio = (raw && typeof raw.bio === 'string') ? raw.bio.slice(0, 280) : '';
+    s.isQaProfile = !!(raw && raw.isQaProfile);   // v1.2.1: preserved through save / import / migration
     s.createdAt = (raw && typeof raw.createdAt === 'string' && raw.createdAt) ? raw.createdAt : idn.createdAt;
     s.lastPlayed = (raw && typeof raw.lastPlayed === 'string' && raw.lastPlayed) ? raw.lastPlayed : idn.lastPlayed;
     s.currentNode = (raw && typeof raw.currentNode === 'string') ? raw.currentNode : null;
@@ -142,7 +151,7 @@ const Store = (() => {
     const done = order.filter((x) => s.nodes[x] && s.nodes[x].done).length;
     let lv = 1; for (let i = 0; i < LEVELS.length; i++) if (s.xp >= LEVELS[i]) lv = i + 1;
     return {
-      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio,
+      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio, isQaProfile: !!s.isQaProfile,
       xp: s.xp, level: lv, rank: LEVEL_TITLES[Math.min(lv - 1, LEVEL_TITLES.length - 1)],
       completion: order.length ? Math.round((done / order.length) * 100) : 0, doneCount: done, total: order.length,
       graduate: !!(s.nodes['boss7'] && s.nodes['boss7'].done),
@@ -302,6 +311,7 @@ const Store = (() => {
   }
 
   function touchStreak() {
+    if (!persistOk()) return;                 // QA: never touch the real streak
     const today = todayStr();
     const last = state.streak.last;
     if (last === today) return;
@@ -335,6 +345,7 @@ const Store = (() => {
   }
 
   function addXp(amount) {
+    if (!persistOk()) return { leveledUp: false, level: level(), simulated: true };   // QA: no XP banked
     const before = level();
     state.xp += Math.max(0, Math.round(amount));
     if (state.xp >= 100) grant('signal_present');
@@ -387,8 +398,11 @@ const Store = (() => {
   }
 
   function completeNode(id, firstTry, checks) {
-    const ns = nodeState(id);
     const stars = starsFor(firstTry, checks);
+    // QA simulation: report what WOULD happen (so the completion sheet can show
+    // stars) but write nothing — real completion state is untouched.
+    if (!persistOk()) return { stars, firstCompletion: !isDone(id), simulated: true };
+    const ns = nodeState(id);
     const firstCompletion = !ns.done;
     ns.done = true;
     ns.attempts += 1;
@@ -425,12 +439,14 @@ const Store = (() => {
   }
 
   function setProjectStep(id, step) {
+    if (!persistOk()) return;                 // QA: don't write build-log progression
     nodeState(id).step = step;
     save();
   }
 
   /* ---- weak topics / practice ---- */
   function markWeak(qid, nodeId, concept) {
+    if (!persistOk()) return;                 // QA: don't pollute the practice queue
     const w = state.weak[qid] || { nodeId, concept, misses: 0, ts: 0 };
     w.misses += 1;
     w.ts = Date.now();
@@ -440,6 +456,7 @@ const Store = (() => {
   }
 
   function clearWeak(qid) {
+    if (!persistOk()) return;                 // QA: leave the real practice queue intact
     if (state.weak[qid]) {
       delete state.weak[qid];
       state.practiceCleared += 1;
@@ -465,6 +482,9 @@ const Store = (() => {
     const t = todayStr();
     if (!state.daily[t]) {
       const qid = Engine.dailyQid(t);
+      // QA: return today's (deterministic) question without materializing/persisting it,
+      // so inspecting the daily challenge leaves the real profile byte-identical.
+      if (!persistOk()) return { date: t, qid, done: false, correct: false };
       state.daily[t] = { qid, done: false, correct: false };
       save();
     }
@@ -472,6 +492,7 @@ const Store = (() => {
   }
 
   function completeDaily(dateStr, correct) {
+    if (!persistOk()) return;                 // QA: daily progress not banked
     const t = dateStr || todayStr();
     if (state.daily[t] && !state.daily[t].done) {
       state.daily[t].done = true;
@@ -487,6 +508,7 @@ const Store = (() => {
   function grant(id) {
     if (!ACHIEVEMENTS.some((a) => a.id === id)) return;
     if (state.achievements.includes(id)) return;
+    if (!grantOk()) return;                   // QA: no achievement banked
     state.achievements.push(id);
     achQueue.push(id);
     save();
@@ -545,6 +567,7 @@ const Store = (() => {
   }
 
   function setCurrentNode(id) {
+    if (!persistOk()) return;                 // QA: don't move the real resume pointer
     if (!state || state.currentNode === id) return;
     state.currentNode = id;
     save();
@@ -554,7 +577,7 @@ const Store = (() => {
   function buildExport(data) {
     return {
       schema: 'txpps.profile.export', v: SAVE_V, app: 'TXPPS VST CODE LAB', exportedAt: nowIso(),
-      profile: { id: data.id, displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, createdAt: data.createdAt },
+      profile: { id: data.id, displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, isQaProfile: !!data.isQaProfile, createdAt: data.createdAt },
       progress: {
         xp: data.xp, nodes: data.nodes, achievements: data.achievements, weak: data.weak,
         streak: data.streak, daily: data.daily, dailyDone: data.dailyDone,
@@ -631,12 +654,59 @@ const Store = (() => {
       username: cleanUser(identity && identity.username) || ('user' + id.slice(-4)),
       avatar: (identity && identity.avatar) || AVATARS[0],
       bio: String((identity && identity.bio) || '').slice(0, 280),
+      isQaProfile: !!(identity && identity.isQaProfile),
       createdAt: nowIso(), lastPlayed: nowIso(),
     });
     hasProfile = true; needsWelcome = false; pendingMigration = null;
     writeProfile(state);
     bus('PROFILE_CREATED', { profileId: id });
     return id;
+  }
+
+  /* ---- QA test profile (v1.2.1) ----
+     Installs a clearly-labelled QA profile as the single active profile,
+     stashing the REAL learner profile in a dedicated slot so it can be
+     restored later. Never silently discards the learner's data. Fixture
+     presets (qa_fixtures.js) then populate it via the real completeNode /
+     addXp factories, so the built state is always validated. */
+  function installQaProfile(identity) {
+    if (hasProfile && !(state && state.isQaProfile)) {   // stash the real profile once
+      const cur = lsGet(SKEY);
+      if (cur && unpack(cur)) lsSet(PREQA, cur);
+    }
+    const id = newId();
+    state = Object.assign(freshState(), {
+      id,
+      displayName: cleanName(identity && identity.displayName) || 'TXPPS QA',
+      username: cleanUser(identity && identity.username) || 'txpps-qa',
+      avatar: (identity && identity.avatar) || '🧪',
+      bio: 'Local QA test profile — not a genuine learner profile.',
+      isQaProfile: true,
+      createdAt: nowIso(), lastPlayed: nowIso(),
+    });
+    hasProfile = true; needsWelcome = false; pendingMigration = null;
+    writeProfile(state);
+    bus('QA_PROFILE_CREATED', { profileId: id });
+    return id;
+  }
+  function hasStashedReal() { return !!unpack(lsGet(PREQA)); }
+  // Remove the active QA profile and restore the stashed real profile (or return
+  // to first-launch if none was stashed). Refuses to run unless the active
+  // profile is a QA profile — it can never delete a genuine learner profile.
+  function restoreRealProfile() {
+    if (!(state && state.isQaProfile)) return { ok: false, reason: 'not-qa' };
+    const pre = unpack(lsGet(PREQA));
+    lsDel(PREQA);
+    if (pre) {
+      state = sanitizeFull(pre); hasProfile = true; needsWelcome = false; pendingMigration = null;
+      writeProfile(state);
+      bus('QA_PROFILE_RESET', { restored: true });
+      return { ok: true, restored: true };
+    }
+    lsDel(SKEY); lsDel(SBAK);
+    state = freshState(); hasProfile = false; needsWelcome = true; pendingMigration = null;
+    bus('QA_PROFILE_RESET', { restored: false });
+    return { ok: true, restored: false, welcome: true };
   }
   // Edit identity IN PLACE — same profile, same id, progress untouched.
   function editProfile(patch) {
@@ -688,5 +758,8 @@ const Store = (() => {
     setSetting, setGameSetting, gameSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
     profileMeta, createProfile, editProfile, adoptExternal, syncTab, commitMigrationChoice,
+    // v1.2.1 QA test profile
+    get isQaProfile() { return !!(state && state.isQaProfile); },
+    installQaProfile, restoreRealProfile, hasStashedReal,
   };
 })();

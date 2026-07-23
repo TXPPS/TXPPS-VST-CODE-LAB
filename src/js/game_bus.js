@@ -68,6 +68,18 @@ const GameBus = (() => {
     BOSS_GAME_OVER: 'BOSS_GAME_OVER',
     BOSS_RESTARTED: 'BOSS_RESTARTED',
     BOSS_DEFEATED: 'BOSS_DEFEATED',
+    // ---- owner QA layer (v1.2.1). Payloads never carry the passphrase,
+    //      verifier, attempt text, or full profile data. ----
+    OWNER_ACCESS_OPENED: 'OWNER_ACCESS_OPENED',
+    OWNER_ACCESS_UNLOCKED: 'OWNER_ACCESS_UNLOCKED',
+    OWNER_ACCESS_LOCKED: 'OWNER_ACCESS_LOCKED',
+    QA_MODE_ENABLED: 'QA_MODE_ENABLED',
+    QA_MODE_DISABLED: 'QA_MODE_DISABLED',
+    QA_NODE_OPENED: 'QA_NODE_OPENED',
+    QA_SIMULATION_STARTED: 'QA_SIMULATION_STARTED',
+    QA_SIMULATION_ENDED: 'QA_SIMULATION_ENDED',
+    QA_PROFILE_CREATED: 'QA_PROFILE_CREATED',
+    QA_PROFILE_RESET: 'QA_PROFILE_RESET',
   };
 
   // Reserved for the future zone-completion / graduation pass. Declared so

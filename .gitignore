@@ -1,2 +1,12 @@
 node_modules/
 .DS_Store
+
+# v1.2.1 — owner QA: local secret / env files must never be committed.
+# The build reads TXPPS_QA_PASSPHRASE_HASH from the environment; keep any
+# local copy of it (and any storage/profile dumps made while testing) out of git.
+.env
+.env.local
+*.env
+qa-owner.local.*
+**/qa-owner-note.*
+*.qa-dump.json

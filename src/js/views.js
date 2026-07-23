@@ -9,6 +9,15 @@ const Views = (() => {
   const emitG = (t, p) => { try { GameBus.emit(t, p); } catch (e) { /* decorative game layer */ } };
   const REPEAT_THRESHOLD = 2;   // wrong attempts on one question before a diagnostic-hint nudge
 
+  // v1.2.1: one place the views ask "may this node be opened?" — AccessPolicy in
+  // normal mode is byte-identical to the old Store.isUnlocked; under owner QA
+  // mode it opens everything. Falls back to the raw rule if the policy is absent.
+  function canOpenNode(id) {
+    try { if (typeof AccessPolicy !== 'undefined') return AccessPolicy.canOpenNode(id); } catch (e) { /* fall through */ }
+    return Store.isUnlocked((Store.zoneOfNode(id) || {}).id || '', id);
+  }
+  function qaSimActive() { try { return typeof QaAccess !== 'undefined' && QaAccess.qaMode(); } catch (e) { return false; } }
+
   /* =====================================================================
      QUESTION RUNNER — one component for all 7 interaction types.
      opts: { onResolved({correct, firstTry, revealed, attempts}),
@@ -536,6 +545,7 @@ const Views = (() => {
       else if (node.kind === 'boss' && node.id !== 'boss7') { emitG('ZONE_UNLOCKED', p); }
     } catch (e) { /* decorative */ }
     const nextId = Store.nextNode();
+    const simulated = qaSimActive();
     const s = UI.sheet([
       el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
         el('div', { class: 'eyebrow phos', style: 'justify-content:center' }, node.kind === 'boss' ? 'ZONE CLEARED' : 'COMPLETE'),
@@ -543,6 +553,7 @@ const Views = (() => {
         starCount !== null ? el('div', { style: 'font-size:26px; letter-spacing:6px' }, UI.stars(starCount)) : null,
         el('div', { class: 'xp-pop', style: 'font-size:24px' }, '+' + result.earned + ' XP'),
         el('div', { class: 'small dim' }, result.firstTry + ' of ' + result.total + ' first try'),
+        simulated ? el('div', { class: 'qa-note', role: 'note' }, 'QA MODE — simulated result. Nothing was saved: no XP, stars, or completion recorded.') : null,
       ),
       el('div', { class: 'col gap-s' },
         nextId ? el('button', { class: 'btn primary block', onclick: () => { s.close(); App.openNode(nextId); } },
@@ -746,7 +757,7 @@ const Views = (() => {
           const node = Engine.NODES[id];
           if (!node) return;
           const done = Store.isDone(id);
-          const unlocked = Store.isUnlocked(z.id, id);
+          const unlocked = canOpenNode(id);
           const ns = Store.state.nodes[id];
           const row = el('button', { class: 'node-row' + (unlocked ? '' : ' locked'), onclick: () => {
             if (!unlocked) { UI.toast('Locked — complete the previous step first'); return; }
@@ -1143,7 +1154,8 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'back-row' },
       el('button', { class: 'back-btn', onclick: () => App.go('map') }, UI.icon('back'), ' RETREAT')));
 
-    if (!ready.ready && !Store.isDone(node.id)) {
+    const qaBypass = (typeof AccessPolicy !== 'undefined') && AccessPolicy.qaOverride();
+    if (!ready.ready && !Store.isDone(node.id) && !qaBypass) {
       main.appendChild(el('div', { class: 'boss-banner col', style: 'gap:10px' },
         el('div', { class: 'eyebrow red' }, '☠ BOSS — LOCKED'),
         el('h1', { class: 'h-display' }, node.title),
@@ -1607,7 +1619,9 @@ const Views = (() => {
       el('div', { class: 'row', style: 'gap:14px; align-items:center' },
         avatarBadge(st.avatar, 'lg'),
         el('div', { style: 'min-width:0; flex:1' },
-          el('div', { class: 'eyebrow ' + (grad ? 'amber' : 'phos') }, grad ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
+          el('div', { class: 'row', style: 'gap:6px; align-items:center; flex-wrap:wrap' },
+            el('div', { class: 'eyebrow ' + (grad ? 'amber' : 'phos') }, grad ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
+            st.isQaProfile ? el('span', { class: 'qa-profile-badge' }, '🧪 QA TEST PROFILE') : null),
           el('h1', { class: 'h-display', style: 'margin-top:2px' }, st.displayName || 'Producer'),
           el('div', { class: 'small dim' }, '@' + (st.username || 'producer') + ' · LV ' + lv + ' — ' + Store.levelTitle())),
         el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear'))),
@@ -1652,9 +1666,9 @@ const Views = (() => {
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
       el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS, ...ZONE6_LESSONS, ...ZONE7_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
-        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
+        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (canOpenNode(l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),
-          ns && ns.done ? UI.stars(ns.stars) : el('span', { class: 'mono small faint' }, Store.isUnlocked('z1', l.id) ? 'NOT DONE' : 'LOCKED'));
+          ns && ns.done ? UI.stars(ns.stars) : el('span', { class: 'mono small faint' }, canOpenNode(l.id) ? 'NOT DONE' : 'LOCKED'));
       }))));
 
     main.appendChild(el('button', { class: 'btn block', onclick: () => App.go('settings') }, 'Settings & data'));
@@ -1789,10 +1803,18 @@ const Views = (() => {
         }, true);
       } }, 'Reset local profile and progress')));
 
+    const versionRow = el('div', { class: 'set-row qa-version-row' },
+      el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
+      el('span', { class: 'mono small phos' }, 'v1.2.1'));
+    try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.0 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, and the first boss encounter live in Zone 1.'),
+      versionRow,
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.1 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, the first boss encounter live in Zone 1, and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
+
+    // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.
+    try { if (typeof QaUi !== 'undefined' && QaUi.isAuthorized()) { const op = QaUi.ownerPanel(); if (op) main.appendChild(op); } } catch (e) { /* QA layer optional */ }
     return main;
   }
 

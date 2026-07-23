@@ -943,6 +943,77 @@ input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-ra
 .int-pip.on { background: linear-gradient(180deg, var(--phos), var(--phos-dim)); border-color: var(--phos-dim); }
 .boss-hud.danger .int-pip.on { background: linear-gradient(180deg, var(--amber), #a3742c); border-color: var(--amber); }
 .reduce-motion .hp-seg, .reduce-motion .int-pip { transition: none; }
+
+/* ===================== v1.2.1 — owner QA layer ===================== */
+/* persistent QA indicator (only while QA simulation mode is active) */
+.qa-indicator { display: none; }
+body.qa-active .qa-indicator {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  background: linear-gradient(180deg, #3a2c0e, #241b06);
+  color: #F6DCA0; border-bottom: 1px solid var(--amber);
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+body.qa-active .app { padding-top: calc(32px + env(safe-area-inset-top, 0px)); }
+body.qa-active .topbar { top: calc(32px + env(safe-area-inset-top, 0px)); }
+.qa-indicator .qa-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: qa-pulse 1.8s ease-in-out infinite; flex: 0 0 auto; }
+.qa-ind-text { font-weight: 600; }
+.qa-ind-exit { flex: 0 0 auto; background: transparent; border: 1px solid var(--amber); color: #F6DCA0; border-radius: 6px; padding: 2px 9px; font-size: 11px; font-family: var(--mono); cursor: pointer; }
+.qa-ind-exit:hover { background: rgba(240, 180, 80, 0.14); }
+@keyframes qa-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.reduce-motion .qa-indicator .qa-dot { animation: none; }
+@media (max-width: 400px) { body.qa-active .qa-indicator { font-size: 10.5px; letter-spacing: 0.03em; gap: 6px; } }
+
+/* QA modal panels (own veil so they stack above app sheets, below toasts) */
+.qa-panel-veil {
+  position: fixed; inset: 0; z-index: 65;
+  background: rgba(5, 6, 8, 0.78);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: veilin 0.16s ease;
+}
+@media (min-width: 640px) { .qa-panel-veil { align-items: center; } }
+.qa-panel-card {
+  width: 100%; max-width: 620px; max-height: 88vh; overflow: hidden;
+  background: var(--bg1); border: 1px solid var(--line); border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  display: flex; flex-direction: column;
+}
+@media (min-width: 640px) { .qa-panel-card { border-radius: 14px; border-bottom: 1px solid var(--line); } }
+.qa-scroll, .qa-insp { padding: 16px 15px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; max-height: 88vh; }
+.qa-insp-head { position: sticky; top: 0; background: var(--bg1); padding-bottom: 6px; z-index: 1; }
+
+/* passphrase dialog */
+.qa-dialog { padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
+.qa-input {
+  flex: 1 1 auto; min-width: 0; width: 100%;
+  background: var(--bg0); border: 1px solid var(--line); border-radius: 9px;
+  color: var(--ink); font-family: var(--mono); font-size: 14px; padding: 10px 12px;
+}
+.qa-input:focus { outline: 2px solid var(--phos-dim); outline-offset: 1px; }
+.qa-err { color: var(--red); font-size: 12px; min-height: 16px; font-family: var(--mono); }
+
+/* inspector nodes + badges */
+.qa-node { border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; background: var(--bg2); }
+.qa-badge { display: inline-block; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line); color: var(--ink-dim); white-space: nowrap; }
+.qa-badge.done { color: var(--phos); border-color: var(--phos-dim); }
+.qa-badge.unlocked { color: var(--amber); border-color: var(--amber); }
+.qa-badge.locked { color: var(--ink-faint); }
+.qa-badge.qa { color: #8fd0ff; border-color: #2c5a7a; }
+.qa-badge.kind { color: var(--ink-dim); }
+.qa-list-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: var(--bg2); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; color: var(--ink); cursor: pointer; min-height: 44px; }
+.qa-list-row:hover { border-color: var(--phos-dim); }
+.qa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.qa-filters { align-items: flex-end; }
+.qa-filter { display: flex; flex-direction: column; gap: 2px; }
+.qa-select { background: var(--bg0); border: 1px solid var(--line); border-radius: 7px; color: var(--ink); font-family: var(--mono); font-size: 12px; padding: 6px 8px; min-height: 34px; }
+.qa-snap { background: var(--bg0); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; white-space: pre; overflow-x: auto; color: var(--ink); }
+.qa-note { border: 1px solid var(--amber); background: var(--amber-glow); color: #F6DCA0; border-radius: 8px; padding: 8px 10px; font-size: 11.5px; }
+.qa-version-row { cursor: default; }
+.qa-version-row:focus-visible { outline: 2px solid var(--phos-dim); outline-offset: 2px; }
+/* QA profile badge (on the profile page) */
+.qa-profile-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--amber); border: 1px solid var(--amber); border-radius: 6px; padding: 2px 7px; }
 </style>
 <div id="app" class="app">
   <noscript><div style="padding:2rem;font-family:monospace;color:#EAE4D4;background:#0A0C0F">TXPPS VST CODE LAB requires JavaScript.</div></noscript>
@@ -16213,6 +16284,18 @@ const GameBus = (() => {
     BOSS_GAME_OVER: 'BOSS_GAME_OVER',
     BOSS_RESTARTED: 'BOSS_RESTARTED',
     BOSS_DEFEATED: 'BOSS_DEFEATED',
+    // ---- owner QA layer (v1.2.1). Payloads never carry the passphrase,
+    //      verifier, attempt text, or full profile data. ----
+    OWNER_ACCESS_OPENED: 'OWNER_ACCESS_OPENED',
+    OWNER_ACCESS_UNLOCKED: 'OWNER_ACCESS_UNLOCKED',
+    OWNER_ACCESS_LOCKED: 'OWNER_ACCESS_LOCKED',
+    QA_MODE_ENABLED: 'QA_MODE_ENABLED',
+    QA_MODE_DISABLED: 'QA_MODE_DISABLED',
+    QA_NODE_OPENED: 'QA_NODE_OPENED',
+    QA_SIMULATION_STARTED: 'QA_SIMULATION_STARTED',
+    QA_SIMULATION_ENDED: 'QA_SIMULATION_ENDED',
+    QA_PROFILE_CREATED: 'QA_PROFILE_CREATED',
+    QA_PROFILE_RESET: 'QA_PROFILE_RESET',
   };
 
   // Reserved for the future zone-completion / graduation pass. Declared so
@@ -16261,6 +16344,344 @@ const GameBus = (() => {
     get seq() { return seq; },
     setEnabled(v) { enabled = !!v; },   // tests: prove course logic survives a dead bus
     reset() { for (const k of Object.keys(handlers)) delete handlers[k]; recent.length = 0; },
+  };
+})();
+
+;
+/* ===== src/js/qa_access.js ===== */
+/* ============================================================
+   QaAccess (v1.2.1) — owner-facing QA authorization + mode state.
+
+   HONEST SECURITY MODEL (read this before trusting it):
+   This is a browser app with NO trusted backend. This gate is a
+   LOCAL QA access control whose only job is to stop accidental
+   discovery and ordinary-user access to the owner tooling. It is
+   NOT server-grade authorization and cannot stop someone determined
+   to read or modify client code. It never:
+     - stores the plaintext passphrase (only a one-way verifier hash),
+     - transmits anything over a network,
+     - persists the passphrase in profile data / storage / exports /
+       logs / diagnostics / GameBus payloads.
+
+   The passphrase is checked by hashing SALT+passphrase (SHA-256) and
+   comparing to a verifier. The verifier is injected at build time from
+   the TXPPS_QA_PASSPHRASE_HASH env var; if that is absent a centralized
+   fallback verifier constant is used. Only the verifier ships — never a
+   usable secret. Web Crypto is used where available (secure context);
+   a self-contained SHA-256 is the fallback so file:// / non-secure
+   contexts still work identically.
+   ============================================================ */
+
+const QaAccess = (() => {
+  const SALT = 'TXPPS::qa::v1::';
+  // Build-time injection point: build.mjs replaces the token with the hex of
+  // env TXPPS_QA_PASSPHRASE_HASH, or leaves it (→ fallback) when unset.
+  const BUILD_VERIFIER = '__TXPPS_QA_VERIFIER__';
+  // Centralized fallback verifier — salted SHA-256 of the maintainer passphrase.
+  // A one-way hash, not the passphrase. Rotate via the env var (see README).
+  const FALLBACK_VERIFIER = '07487d7b4e8fc8764a08b77fadc4cdf792e926e19a2072e9ccf4bbc30020cad9';
+
+  const OWNER_MARKER = 'txpps_qa_owner';   // sessionStorage flag only — NEVER a secret
+  const MAX_FAILS = 5;
+  const COOLDOWN_MS = 30000;
+
+  let testVerifier = null;   // test-only override (see setTestVerifier)
+  let authorized = false;    // owner unlocked this browser session
+  let qaOn = false;          // QA simulation mode active (in-memory only; off on reload)
+  let fails = 0;
+  let cooldownUntil = 0;
+
+  function bus(t, p) { try { if (typeof GameBus !== 'undefined') GameBus.emit(t, p); } catch (e) { /* decorative */ } }
+  function nowMs() { try { return Date.now(); } catch (e) { return 0; } }
+  function hex64(s) { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s); }
+
+  function activeVerifier() {
+    if (testVerifier) return testVerifier;
+    if (hex64(BUILD_VERIFIER)) return BUILD_VERIFIER;   // real build-injected hash
+    return FALLBACK_VERIFIER;
+  }
+
+  /* ---- SHA-256 ---- Web Crypto when available; a self-contained fallback
+     otherwise. Both hash the UTF-8 bytes of the input, so their hex outputs
+     are identical and a verifier built with either matches at check time. */
+  function utf8(s) { try { return unescape(encodeURIComponent(s)); } catch (e) { return s; } }
+
+  function sha256hexJs(asciiInput) {
+    // Compact, stateless SHA-256 (operates on a byte-string, 0..255 per char).
+    function rr(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
+    const maxWord = Math.pow(2, 32);
+    let result = '';
+    const words = [];
+    let ascii = asciiInput;
+    const asciiBitLength = ascii.length * 8;
+    let hash = [];
+    const k = [];
+    let primeCounter = 0;
+    const isComposite = {};
+    for (let candidate = 2; primeCounter < 64; candidate++) {
+      if (!isComposite[candidate]) {
+        for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+        hash[primeCounter] = (Math.pow(candidate, 0.5) * maxWord) | 0;
+        k[primeCounter++] = (Math.pow(candidate, 1 / 3) * maxWord) | 0;
+      }
+    }
+    ascii += '\x80';
+    while (ascii.length % 64 - 56) ascii += '\x00';
+    for (let i = 0; i < ascii.length; i++) {
+      const j = ascii.charCodeAt(i);
+      if (j >> 8) return null;   // not a byte-string — caller must utf8() first
+      words[i >> 2] |= j << ((3 - i) % 4) * 8;
+    }
+    words[words.length] = (asciiBitLength / maxWord) | 0;
+    words[words.length] = asciiBitLength;
+    for (let j = 0; j < words.length;) {
+      const w = words.slice(j, j += 16);
+      const oldHash = hash;
+      hash = hash.slice(0, 8);
+      for (let i = 0; i < 64; i++) {
+        const w15 = w[i - 15], w2 = w[i - 2];
+        const a = hash[0], e = hash[4];
+        const temp1 = (hash[7]
+          + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25))
+          + ((e & hash[5]) ^ ((~e) & hash[6]))
+          + k[i]
+          + (w[i] = (i < 16) ? (w[i] | 0) : (
+              (w[i - 16]
+                + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3))
+                + w[i - 7]
+                + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0
+            ))) | 0;
+        const temp2 = ((rr(a, 2) ^ rr(a, 13) ^ rr(a, 22))
+          + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]))) | 0;
+        hash = [(temp1 + temp2) | 0].concat(hash);
+        hash[4] = (hash[4] + temp1) | 0;
+      }
+      for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+    for (let i = 0; i < 8; i++) {
+      for (let j = 3; j + 1; j--) {
+        const b = (hash[i] >> (j * 8)) & 255;
+        result += ((b < 16) ? '0' : '') + b.toString(16);
+      }
+    }
+    return result;
+  }
+
+  async function sha256hex(input) {
+    const bytes = utf8(input);
+    try {
+      const subtle = (typeof crypto !== 'undefined' && crypto.subtle) ? crypto.subtle : null;
+      if (subtle) {
+        const buf = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i) & 255;
+        const digest = await subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch (e) { /* fall through to JS */ }
+    return sha256hexJs(bytes);
+  }
+
+  /* ---- session marker (no secret) ---- */
+  function markOwner(on) {
+    try {
+      if (on) window.sessionStorage.setItem(OWNER_MARKER, '1');
+      else window.sessionStorage.removeItem(OWNER_MARKER);
+    } catch (e) { /* sessionStorage unavailable — in-memory `authorized` still holds */ }
+  }
+  function readOwnerMarker() { try { return window.sessionStorage.getItem(OWNER_MARKER) === '1'; } catch (e) { return false; } }
+
+  function init() {
+    // Owner authorization may survive a same-tab reload (session-scoped, no secret);
+    // it never survives tab close or browser restart. QA simulation always starts OFF.
+    authorized = readOwnerMarker();
+    qaOn = false;
+  }
+
+  function cooldownRemaining() { const r = cooldownUntil - nowMs(); return r > 0 ? r : 0; }
+
+  // Verify a submitted passphrase. Resolves { ok, cooldownMs } — NEVER echoes the
+  // input, its length, or any detail into logs / events / the return value.
+  async function verify(passphrase) {
+    if (cooldownRemaining() > 0) return { ok: false, cooldownMs: cooldownRemaining() };
+    let ok = false;
+    try {
+      const got = await sha256hex(SALT + String(passphrase == null ? '' : passphrase));
+      const want = activeVerifier();
+      ok = !!got && got.length === want.length && constantTimeEqual(got, want);
+    } catch (e) { ok = false; }
+    if (ok) {
+      fails = 0; cooldownUntil = 0;
+      authorize();
+      return { ok: true, cooldownMs: 0 };
+    }
+    fails += 1;
+    if (fails >= MAX_FAILS) { cooldownUntil = nowMs() + COOLDOWN_MS; fails = 0; }
+    return { ok: false, cooldownMs: cooldownRemaining() };
+  }
+
+  function constantTimeEqual(a, b) {
+    let diff = a.length ^ b.length;
+    for (let i = 0; i < a.length && i < b.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  }
+
+  function authorize() {
+    if (authorized) return;
+    authorized = true;
+    markOwner(true);
+    bus('OWNER_ACCESS_UNLOCKED', {});
+  }
+
+  function lock() {
+    const wasQa = qaOn;
+    qaOn = false;
+    authorized = false;
+    markOwner(false);
+    if (wasQa) bus('QA_MODE_DISABLED', {});
+    bus('OWNER_ACCESS_LOCKED', {});
+  }
+
+  function enableQa() {
+    if (!authorized) return false;
+    if (qaOn) return true;
+    qaOn = true;
+    bus('QA_MODE_ENABLED', {});
+    bus('QA_SIMULATION_STARTED', {});
+    return true;
+  }
+  function disableQa() {
+    if (!qaOn) return true;
+    qaOn = false;
+    bus('QA_MODE_DISABLED', {});
+    bus('QA_SIMULATION_ENDED', {});
+    return true;
+  }
+
+  return {
+    init,
+    verify,
+    isAuthorized: () => authorized,
+    lock,
+    enableQa, disableQa,
+    qaMode: () => qaOn,
+    // Access override + reward suppression are BOTH exactly "QA simulation is on".
+    accessOpen: () => qaOn,
+    suppresses: () => qaOn,
+    cooldownMs: cooldownRemaining,
+    maxFails: () => MAX_FAILS,
+    // Test-only: inject a known verifier so tests can prove unlock without ever
+    // committing the real passphrase. Passing null restores production behavior.
+    setTestVerifier: (hex) => { testVerifier = (typeof hex === 'string' && /^[0-9a-f]{64}$/.test(hex)) ? hex : null; },
+    // Test-only: compute a verifier hash for a chosen test passphrase.
+    hashFor: (pass) => sha256hex(SALT + String(pass)),
+  };
+})();
+
+;
+/* ===== src/js/access_policy.js ===== */
+/* ============================================================
+   AccessPolicy (v1.2.1) — the ONE place "may this be opened?" is
+   decided. Course views ask AccessPolicy instead of re-deriving lock
+   rules (map / profile / dict / boss all funnel here).
+
+   Normal mode: delegates to the existing progression rules, so
+   behaviour is byte-identical to v1.2.0. QA mode (owner simulation):
+   returns open for every VALID node so the owner can inspect anything
+   WITHOUT any completion data being written.
+
+   This is a pure, read-only authority — it never mutates progress and
+   never grades. It degrades safely: with QaAccess absent, qaOverride is
+   always false and only the normal rules apply.
+   ============================================================ */
+
+const AccessPolicy = (() => {
+  function qaOverride() {
+    try { return typeof QaAccess !== 'undefined' && QaAccess.accessOpen(); } catch (e) { return false; }
+  }
+  function node(id) { try { return (typeof Engine !== 'undefined' && Engine.NODES) ? Engine.NODES[id] : null; } catch (e) { return null; } }
+  function exists(id) { return !!node(id); }
+  function zoneOf(id) { try { return Store.zoneOfNode(id); } catch (e) { return null; } }
+
+  // The normal per-node gate — exactly the sequential unlock the map/profile/
+  // dict already used (Store.isUnlocked ignores the zone arg; the walk is global).
+  function normalNodeRule(id) {
+    try { const z = zoneOf(id); return Store.isUnlocked(z ? z.id : '', id); } catch (e) { return false; }
+  }
+
+  function canOpenNode(id) {
+    if (!exists(id)) return false;
+    if (qaOverride()) return true;
+    return normalNodeRule(id);
+  }
+
+  function canOpenZone(z) {
+    if (!z) return false;
+    if (qaOverride()) return true;
+    return z.status === 'live';
+  }
+
+  // The boss entry-requirements gate (lessons + projects + avg mastery).
+  function bossRequirements(bossId) {
+    try { return Store.bossReady(bossId); } catch (e) { return { ready: false }; }
+  }
+  function canOpenBoss(bossId) {
+    if (qaOverride()) return true;
+    try { return !!bossRequirements(bossId).ready || Store.isDone(bossId); } catch (e) { return false; }
+  }
+
+  // Enforcement predicate for App.openNode. Preserves v1.2.0 reachability exactly:
+  // a boss can be reached whenever it is sequentially unlocked, already ready
+  // (its own entry gate), or cleared — the boss view then shows its intro or the
+  // requirements screen. Regular nodes use the sequential unlock, plus replay of
+  // any completed node. QA mode opens anything valid.
+  function canEnter(id) {
+    if (!exists(id)) return false;
+    if (qaOverride()) return true;
+    const n = node(id);
+    if (n && n.kind === 'boss') {
+      try { return normalNodeRule(id) || !!bossRequirements(id).ready || Store.isDone(id); } catch (e) { return true; }
+    }
+    try { return normalNodeRule(id) || Store.isDone(id); } catch (e) { return normalNodeRule(id); }
+  }
+
+  function reason(id) { return exists(id) ? 'Locked — complete the earlier steps first.' : 'Content not found.'; }
+
+  return { qaOverride, exists, canOpenNode, canOpenZone, canOpenBoss, canEnter, bossRequirements, reason };
+})();
+
+;
+/* ===== src/js/progression_policy.js ===== */
+/* ============================================================
+   ProgressionPolicy / RewardPolicy (v1.2.1) — the ONE place that
+   decides whether a PERMANENT progression write or a REWARD grant is
+   allowed to land. The store's reward funnels (completeNode, addXp,
+   grant, touchStreak, completeDaily, markWeak, clearWeak,
+   setProjectStep) consult these instead of each carrying its own check.
+
+   Default: allow (returns true). While the owner's QA simulation mode
+   is active they return false, so opening/answering content in QA mode
+   grades and animates normally but writes NOTHING to the learner's
+   real progress — no XP, stars, ranks, achievements, streaks, node
+   completion, boss stats, or graduation.
+
+   Degrades safely: with QaAccess absent, nothing is ever suppressed.
+   These are pure predicates — they never mutate anything.
+   ============================================================ */
+
+const ProgressionPolicy = (() => {
+  function suppressed() { try { return typeof QaAccess !== 'undefined' && QaAccess.suppresses(); } catch (e) { return false; } }
+  return {
+    // May a permanent write to real learner progress be persisted right now?
+    shouldPersist: () => !suppressed(),
+    suppressed,
+  };
+})();
+
+const RewardPolicy = (() => {
+  function suppressed() { try { return typeof QaAccess !== 'undefined' && QaAccess.suppresses(); } catch (e) { return false; } }
+  return {
+    // May a reward (XP / stars / achievement / streak) be granted right now?
+    shouldGrant: () => !suppressed(),
   };
 })();
 
@@ -16446,6 +16867,7 @@ const Store = (() => {
   const SKEY = 'txpps_profile';                 // v1.0.2 single authoritative save
   const SBAK = 'txpps_profile_backup';          // its previous-save backup
   const MIGBAK = 'txpps_v101_backup';           // one-time snapshot of pre-migration data
+  const PREQA = 'txpps_pre_qa';                 // v1.2.1: the real profile, stashed while a QA test profile is active
   const SAVE_V = 2;
 
   // Curated offline avatar set — emoji only, no uploads, no network.
@@ -16471,11 +16893,18 @@ const Store = (() => {
   // Fire a decorative game-layer event, never letting it affect persistence.
   function bus(t, p) { try { if (typeof GameBus !== 'undefined') GameBus.emit(t, p); } catch (e) { /* decorative */ } }
 
+  // Central progression/reward gate (v1.2.1). When the owner's QA simulation
+  // mode is active these return false, so permanent progress/reward writes are
+  // suppressed while grading, sheets and events still run. Absent the policy
+  // modules they always allow — the course never depends on QA being present.
+  function persistOk() { try { return (typeof ProgressionPolicy === 'undefined') || ProgressionPolicy.shouldPersist(); } catch (e) { return true; } }
+  function grantOk() { try { return (typeof RewardPolicy === 'undefined') || RewardPolicy.shouldGrant(); } catch (e) { return true; } }
+
   function cleanName(s) { return String(s == null ? '' : s).replace(/[\x00-\x1f]/g, '').trim().slice(0, 40); }
   function cleanUser(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24); }
 
   function identityDefaults() {
-    return { displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '', createdAt: nowIso(), lastPlayed: nowIso() };
+    return { displayName: 'Producer', username: 'producer', avatar: AVATARS[0], bio: '', isQaProfile: false, createdAt: nowIso(), lastPlayed: nowIso() };
   }
 
   /* ---- low-level storage, with an in-memory fallback when blocked ----
@@ -16561,6 +16990,7 @@ const Store = (() => {
     s.username = cleanUser(raw && raw.username) || idn.username;
     s.avatar = (raw && typeof raw.avatar === 'string' && raw.avatar) ? raw.avatar : idn.avatar;
     s.bio = (raw && typeof raw.bio === 'string') ? raw.bio.slice(0, 280) : '';
+    s.isQaProfile = !!(raw && raw.isQaProfile);   // v1.2.1: preserved through save / import / migration
     s.createdAt = (raw && typeof raw.createdAt === 'string' && raw.createdAt) ? raw.createdAt : idn.createdAt;
     s.lastPlayed = (raw && typeof raw.lastPlayed === 'string' && raw.lastPlayed) ? raw.lastPlayed : idn.lastPlayed;
     s.currentNode = (raw && typeof raw.currentNode === 'string') ? raw.currentNode : null;
@@ -16576,7 +17006,7 @@ const Store = (() => {
     const done = order.filter((x) => s.nodes[x] && s.nodes[x].done).length;
     let lv = 1; for (let i = 0; i < LEVELS.length; i++) if (s.xp >= LEVELS[i]) lv = i + 1;
     return {
-      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio,
+      id, displayName: s.displayName, username: s.username, avatar: s.avatar, bio: s.bio, isQaProfile: !!s.isQaProfile,
       xp: s.xp, level: lv, rank: LEVEL_TITLES[Math.min(lv - 1, LEVEL_TITLES.length - 1)],
       completion: order.length ? Math.round((done / order.length) * 100) : 0, doneCount: done, total: order.length,
       graduate: !!(s.nodes['boss7'] && s.nodes['boss7'].done),
@@ -16736,6 +17166,7 @@ const Store = (() => {
   }
 
   function touchStreak() {
+    if (!persistOk()) return;                 // QA: never touch the real streak
     const today = todayStr();
     const last = state.streak.last;
     if (last === today) return;
@@ -16769,6 +17200,7 @@ const Store = (() => {
   }
 
   function addXp(amount) {
+    if (!persistOk()) return { leveledUp: false, level: level(), simulated: true };   // QA: no XP banked
     const before = level();
     state.xp += Math.max(0, Math.round(amount));
     if (state.xp >= 100) grant('signal_present');
@@ -16821,8 +17253,11 @@ const Store = (() => {
   }
 
   function completeNode(id, firstTry, checks) {
-    const ns = nodeState(id);
     const stars = starsFor(firstTry, checks);
+    // QA simulation: report what WOULD happen (so the completion sheet can show
+    // stars) but write nothing — real completion state is untouched.
+    if (!persistOk()) return { stars, firstCompletion: !isDone(id), simulated: true };
+    const ns = nodeState(id);
     const firstCompletion = !ns.done;
     ns.done = true;
     ns.attempts += 1;
@@ -16859,12 +17294,14 @@ const Store = (() => {
   }
 
   function setProjectStep(id, step) {
+    if (!persistOk()) return;                 // QA: don't write build-log progression
     nodeState(id).step = step;
     save();
   }
 
   /* ---- weak topics / practice ---- */
   function markWeak(qid, nodeId, concept) {
+    if (!persistOk()) return;                 // QA: don't pollute the practice queue
     const w = state.weak[qid] || { nodeId, concept, misses: 0, ts: 0 };
     w.misses += 1;
     w.ts = Date.now();
@@ -16874,6 +17311,7 @@ const Store = (() => {
   }
 
   function clearWeak(qid) {
+    if (!persistOk()) return;                 // QA: leave the real practice queue intact
     if (state.weak[qid]) {
       delete state.weak[qid];
       state.practiceCleared += 1;
@@ -16899,6 +17337,9 @@ const Store = (() => {
     const t = todayStr();
     if (!state.daily[t]) {
       const qid = Engine.dailyQid(t);
+      // QA: return today's (deterministic) question without materializing/persisting it,
+      // so inspecting the daily challenge leaves the real profile byte-identical.
+      if (!persistOk()) return { date: t, qid, done: false, correct: false };
       state.daily[t] = { qid, done: false, correct: false };
       save();
     }
@@ -16906,6 +17347,7 @@ const Store = (() => {
   }
 
   function completeDaily(dateStr, correct) {
+    if (!persistOk()) return;                 // QA: daily progress not banked
     const t = dateStr || todayStr();
     if (state.daily[t] && !state.daily[t].done) {
       state.daily[t].done = true;
@@ -16921,6 +17363,7 @@ const Store = (() => {
   function grant(id) {
     if (!ACHIEVEMENTS.some((a) => a.id === id)) return;
     if (state.achievements.includes(id)) return;
+    if (!grantOk()) return;                   // QA: no achievement banked
     state.achievements.push(id);
     achQueue.push(id);
     save();
@@ -16979,6 +17422,7 @@ const Store = (() => {
   }
 
   function setCurrentNode(id) {
+    if (!persistOk()) return;                 // QA: don't move the real resume pointer
     if (!state || state.currentNode === id) return;
     state.currentNode = id;
     save();
@@ -16988,7 +17432,7 @@ const Store = (() => {
   function buildExport(data) {
     return {
       schema: 'txpps.profile.export', v: SAVE_V, app: 'TXPPS VST CODE LAB', exportedAt: nowIso(),
-      profile: { id: data.id, displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, createdAt: data.createdAt },
+      profile: { id: data.id, displayName: data.displayName, username: data.username, avatar: data.avatar, bio: data.bio, isQaProfile: !!data.isQaProfile, createdAt: data.createdAt },
       progress: {
         xp: data.xp, nodes: data.nodes, achievements: data.achievements, weak: data.weak,
         streak: data.streak, daily: data.daily, dailyDone: data.dailyDone,
@@ -17065,12 +17509,59 @@ const Store = (() => {
       username: cleanUser(identity && identity.username) || ('user' + id.slice(-4)),
       avatar: (identity && identity.avatar) || AVATARS[0],
       bio: String((identity && identity.bio) || '').slice(0, 280),
+      isQaProfile: !!(identity && identity.isQaProfile),
       createdAt: nowIso(), lastPlayed: nowIso(),
     });
     hasProfile = true; needsWelcome = false; pendingMigration = null;
     writeProfile(state);
     bus('PROFILE_CREATED', { profileId: id });
     return id;
+  }
+
+  /* ---- QA test profile (v1.2.1) ----
+     Installs a clearly-labelled QA profile as the single active profile,
+     stashing the REAL learner profile in a dedicated slot so it can be
+     restored later. Never silently discards the learner's data. Fixture
+     presets (qa_fixtures.js) then populate it via the real completeNode /
+     addXp factories, so the built state is always validated. */
+  function installQaProfile(identity) {
+    if (hasProfile && !(state && state.isQaProfile)) {   // stash the real profile once
+      const cur = lsGet(SKEY);
+      if (cur && unpack(cur)) lsSet(PREQA, cur);
+    }
+    const id = newId();
+    state = Object.assign(freshState(), {
+      id,
+      displayName: cleanName(identity && identity.displayName) || 'TXPPS QA',
+      username: cleanUser(identity && identity.username) || 'txpps-qa',
+      avatar: (identity && identity.avatar) || '🧪',
+      bio: 'Local QA test profile — not a genuine learner profile.',
+      isQaProfile: true,
+      createdAt: nowIso(), lastPlayed: nowIso(),
+    });
+    hasProfile = true; needsWelcome = false; pendingMigration = null;
+    writeProfile(state);
+    bus('QA_PROFILE_CREATED', { profileId: id });
+    return id;
+  }
+  function hasStashedReal() { return !!unpack(lsGet(PREQA)); }
+  // Remove the active QA profile and restore the stashed real profile (or return
+  // to first-launch if none was stashed). Refuses to run unless the active
+  // profile is a QA profile — it can never delete a genuine learner profile.
+  function restoreRealProfile() {
+    if (!(state && state.isQaProfile)) return { ok: false, reason: 'not-qa' };
+    const pre = unpack(lsGet(PREQA));
+    lsDel(PREQA);
+    if (pre) {
+      state = sanitizeFull(pre); hasProfile = true; needsWelcome = false; pendingMigration = null;
+      writeProfile(state);
+      bus('QA_PROFILE_RESET', { restored: true });
+      return { ok: true, restored: true };
+    }
+    lsDel(SKEY); lsDel(SBAK);
+    state = freshState(); hasProfile = false; needsWelcome = true; pendingMigration = null;
+    bus('QA_PROFILE_RESET', { restored: false });
+    return { ok: true, restored: false, welcome: true };
   }
   // Edit identity IN PLACE — same profile, same id, progress untouched.
   function editProfile(patch) {
@@ -17122,6 +17613,9 @@ const Store = (() => {
     setSetting, setGameSetting, gameSetting, markDictViewed, setCurrentNode,
     exportJson, importJson, exportProfile, importProfileText, parseImport, reset, resetProfile,
     profileMeta, createProfile, editProfile, adoptExternal, syncTab, commitMigrationChoice,
+    // v1.2.1 QA test profile
+    get isQaProfile() { return !!(state && state.isQaProfile); },
+    installQaProfile, restoreRealProfile, hasStashedReal,
   };
 })();
 
@@ -19060,7 +19554,7 @@ const Game = (() => {
     }
     function pauseAmbient() { clearTimeout(ambientTimer); ambientTimer = null; }
 
-    return { mount, setState, toIdle, say, applyPresence, pauseAmbient, scheduleAmbient, get state() { return state; }, get mounted() { return mounted; } };
+    return { mount, setState, toIdle, say, applyPresence, pauseAmbient, scheduleAmbient, states: () => Object.keys(FACE), get state() { return state; }, get mounted() { return mounted; } };
   })();
 
   /* =====================================================================
@@ -19462,14 +19956,479 @@ const BossKit = (() => {
   function stats(bossId) {
     try { return (Store.gameSetting('boss.' + bossId) || { attempts: 0, victories: 0 }); } catch (e) { return { attempts: 0, victories: 0 }; }
   }
+  // Boss attempt/victory tallies are permanent progression — suppressed while
+  // the owner's QA simulation mode is active (see ProgressionPolicy).
+  function persistOk() { try { return (typeof ProgressionPolicy === 'undefined') || ProgressionPolicy.shouldPersist(); } catch (e) { return true; } }
   function recordAttempt(bossId) {
+    if (!persistOk()) return;
     try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: (st.attempts | 0) + 1, victories: st.victories | 0 }); } catch (e) { /* decorative */ }
   }
   function recordVictory(bossId) {
+    if (!persistOk()) return;
     try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: st.attempts | 0, victories: (st.victories | 0) + 1 }); } catch (e) { /* decorative */ }
   }
 
   return { has, def, createSession, stats, recordAttempt, recordVictory, STATES, TRANSITIONS: T };
+})();
+
+;
+/* ===== src/js/qa_fixtures.js ===== */
+/* ============================================================
+   QaFixtures (v1.2.1) — validated QA test-profile presets.
+
+   Presets are derived from the live curriculum (ZONES) at runtime — no
+   duplicated node catalog. Each preset installs a labelled QA profile
+   (Store.installQaProfile, which stashes the real learner profile) and
+   then populates it through the REAL factories (Store.completeNode /
+   Store.addXp), so the resulting state is always schema-valid and its
+   stars / achievements obey the exact same rules as genuine play. QA
+   simulation mode is turned OFF first so those writes actually land in
+   the QA profile (this is deliberate persistent testing, not simulation).
+   ============================================================ */
+
+const QaFixtures = (() => {
+  function liveZones() { try { return ZONES.filter((z) => z.status === 'live'); } catch (e) { return []; } }
+  function kindOf(id) { try { return (Engine.NODES[id] || {}).kind; } catch (e) { return null; } }
+  function allNodes() { return liveZones().flatMap((z) => z.nodeOrder || []); }
+
+  // Node IDs to complete for each preset (data-driven from ZONES).
+  function nodesFor(key) {
+    const zones = liveZones();
+    if (!zones.length) return [];
+    switch (key) {
+      case 'clean': return [];
+      case 'zone1': return (zones[0].nodeOrder || []).filter((id) => kindOf(id) === 'lesson').slice(0, 3);
+      case 'bossReady': return (zones[0].nodeOrder || []).filter((id) => kindOf(id) !== 'boss');
+      case 'mid': return zones.slice(0, 3).flatMap((z) => z.nodeOrder || []);
+      case 'allZones': return allNodes().filter((id) => id !== 'boss7');
+      case 'grad': return allNodes();
+      default: return [];
+    }
+  }
+
+  const XP = { clean: 0, zone1: 120, bossReady: 420, mid: 1800, allZones: 5200, grad: 7200 };
+
+  const PRESETS = [
+    { key: 'clean', label: 'Clean profile', desc: 'Fresh QA profile, nothing completed — test first-run and early locks.' },
+    { key: 'zone1', label: 'Zone 1 in progress', desc: 'First few Zone 1 lessons done — mid-zone mastery table.' },
+    { key: 'bossReady', label: 'Zone 1 boss-ready', desc: 'All Zone 1 lessons/projects cleared — boss1 unlocked & ready.' },
+    { key: 'mid', label: 'Mid-course', desc: 'Zones 1–3 fully cleared, including their bosses.' },
+    { key: 'allZones', label: 'All zones accessible', desc: 'Everything cleared except the final boss — all content open.' },
+    { key: 'grad', label: 'Graduation-ready', desc: 'Entire curriculum complete — Graduate status.' },
+  ];
+
+  function presets() { return PRESETS.slice(); }
+
+  // Build (or rebuild) the QA profile for a preset. Deliberate, confirmed action.
+  function create(key) {
+    try { if (typeof QaAccess !== 'undefined') QaAccess.disableQa(); } catch (e) { /* ignore */ }   // writes must land
+    const id = Store.installQaProfile({ displayName: 'TXPPS QA', username: 'txpps-qa' });
+    const nodes = nodesFor(key);
+    for (const nid of nodes) {
+      if (!Engine.NODES[nid]) continue;
+      Store.completeNode(nid, 1, 1);     // 3-star completion via the real factory (grants achievements)
+    }
+    const xp = XP[key] || 0;
+    if (xp) Store.addXp(xp);
+    try { Store.save(); } catch (e) { /* ignore */ }
+    return { id, key, nodesCompleted: nodes.length };
+  }
+
+  return { presets, nodesFor, create };
+})();
+
+;
+/* ===== src/js/qa_inspector.js ===== */
+/* ============================================================
+   QaUi (v1.2.1) — the owner-facing QA surface: the persistent QA
+   indicator, the hidden owner-access entry + passphrase dialog, the
+   authorized Owner QA panel, and the Curriculum Inspector (with boss /
+   PATCH / haptic inspection). Everything is local and offline.
+
+   It never echoes the passphrase anywhere, drives the REAL BossKit /
+   PATCH / Haptic systems (no parallel fakes), and degrades safely — if
+   QaAccess is absent the owner entry simply does nothing.
+   ============================================================ */
+
+const QaUi = (() => {
+  const el = UI.el;
+  function safe(fn) { try { return fn(); } catch (e) { return undefined; } }
+  function authed() { return safe(() => typeof QaAccess !== 'undefined' && QaAccess.isAuthorized()) || false; }
+  function qaOn() { return safe(() => typeof QaAccess !== 'undefined' && QaAccess.qaMode()) || false; }
+  function toast(m, ms) { safe(() => UI.toast(m, ms)); }
+  function nodeKind(id) { return safe(() => (Engine.NODES[id] || {}).kind) || ''; }
+  function nodeTitle(id) { return safe(() => (Engine.NODES[id] || {}).title) || id; }
+
+  /* ---------- persistent QA indicator ---------- */
+  let indicator = null, patchAcked = false;
+  function mountIndicator() {
+    if (indicator) return;
+    const status = el('span', { role: 'status', 'aria-live': 'polite', class: 'qa-ind-text' }, '');
+    const exit = el('button', { class: 'qa-ind-exit', 'aria-label': 'Exit QA mode', onclick: () => { safe(() => QaAccess.disableQa()); } }, 'Exit');
+    indicator = el('div', { class: 'qa-indicator', 'data-qa': 'indicator' },
+      el('span', { class: 'qa-dot', 'aria-hidden': 'true' }),
+      status, exit);
+    document.body.appendChild(indicator);
+    indicator._status = status;
+    refreshIndicator();
+  }
+  function refreshIndicator() {
+    const on = qaOn();
+    document.body.classList.toggle('qa-active', on);
+    if (indicator && indicator._status) indicator._status.textContent = on ? 'QA MODE — progression & rewards are simulated' : '';
+    if (on && !patchAcked) { patchAcked = true; safe(() => Game.Patch.say && Game.Patch.say('QA mode. Nothing you do here is saved.', 2600)); }
+    if (!on) patchAcked = false;
+  }
+
+  /* ---------- generic accessible overlay ---------- */
+  function mountPanel(contentEl, opts) {
+    opts = opts || {};
+    const prevFocus = document.activeElement;
+    const card = el('div', { class: 'qa-panel-card', role: 'dialog', 'aria-modal': 'true', 'aria-label': opts.label || 'QA panel' }, contentEl);
+    const veil = el('div', { class: 'qa-panel-veil' }, card);
+    document.body.appendChild(veil);
+    document.body.classList.add('modal-open');
+    const focusables = () => Array.from(card.querySelectorAll('input,textarea,select,button,[tabindex]:not([tabindex="-1"])')).filter((n) => !n.disabled && n.offsetParent !== null);
+    const f0 = focusables()[0]; if (f0) safe(() => f0.focus());
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key !== 'Tab') return;
+      const f = focusables(); if (!f.length) return;
+      const a = f[0], b = f[f.length - 1];
+      if (!card.contains(document.activeElement)) { e.preventDefault(); a.focus(); return; }
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
+      else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    veil.addEventListener('click', (e) => { if (e.target === veil) close(); });
+    let closed = false;
+    function close() {
+      if (closed) return; closed = true;
+      document.removeEventListener('keydown', onKey, true);
+      veil.remove();
+      if (!document.querySelector('.qa-panel-veil')) document.body.classList.remove('modal-open');
+      safe(() => opts.onClose && opts.onClose());
+      safe(() => prevFocus && prevFocus.focus && prevFocus.focus());
+    }
+    return { close, card };
+  }
+
+  /* ---------- hidden owner entry: 5 activations within a window ---------- */
+  function attachOwnerEntry(row) {
+    if (!row || typeof QaAccess === 'undefined') return row;
+    let count = 0, timer = null;
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('role', 'button');
+    row.setAttribute('aria-label', 'Application version. Activate five times to open owner access.');
+    const bump = () => {
+      count += 1;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { count = 0; }, 3000);
+      if (count >= 5) { count = 0; if (timer) clearTimeout(timer); openAccessDialog(); }
+    };
+    row.addEventListener('click', bump);
+    row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bump(); } });
+    return row;
+  }
+
+  /* ---------- owner access (passphrase) dialog ---------- */
+  function openAccessDialog() {
+    if (typeof QaAccess === 'undefined') return;
+    safe(() => GameBus.emit('OWNER_ACCESS_OPENED', {}));
+    if (authed()) { toast('Owner access already unlocked.'); return; }
+    let shown = false;
+    const input = el('input', { type: 'password', class: 'qa-input', id: 'qa-pass', 'aria-label': 'Owner passphrase', 'aria-describedby': 'qa-pass-err', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const err = el('div', { class: 'qa-err', id: 'qa-pass-err', role: 'alert', 'aria-live': 'assertive' }, '');
+    const showBtn = el('button', { type: 'button', class: 'btn sm ghost', 'aria-pressed': 'false', onclick: () => { shown = !shown; input.type = shown ? 'text' : 'password'; showBtn.setAttribute('aria-pressed', String(shown)); showBtn.textContent = shown ? 'Hide' : 'Show'; input.focus(); } }, 'Show');
+    const submit = () => {
+      const cd = safe(() => QaAccess.cooldownMs()) || 0;
+      if (cd > 0) { err.textContent = 'Too many attempts — wait ' + Math.ceil(cd / 1000) + 's and try again.'; return; }
+      const val = input.value; input.value = '';
+      QaAccess.verify(val).then((r) => {
+        if (r && r.ok) { panel.close(); toast('Owner access unlocked.'); App.go('settings'); }
+        else if (r && r.cooldownMs > 0) { err.textContent = 'Too many attempts — locked for ' + Math.ceil(r.cooldownMs / 1000) + 's.'; }
+        else { err.textContent = 'That passphrase was not accepted.'; input.focus(); }
+      });
+    };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    const content = el('div', { class: 'qa-dialog col' },
+      el('div', { class: 'eyebrow phos' }, 'OWNER ACCESS'),
+      el('p', { class: 'small dim' }, 'Enter the owner passphrase to reveal local QA tools. This is a local access gate — not account security — and works entirely offline on this device. Your passphrase is never stored or sent anywhere.'),
+      el('div', { class: 'row', style: 'gap:8px; align-items:center' }, input, showBtn),
+      err,
+      el('div', { class: 'row', style: 'gap:8px; margin-top:6px' },
+        el('button', { class: 'btn primary', onclick: submit }, 'Unlock QA Mode'),
+        el('button', { class: 'btn ghost', onclick: () => panel.close() }, 'Cancel')));
+    const panel = mountPanel(content, { label: 'Owner access' });
+  }
+
+  /* ---------- owner QA panel (rendered into Settings when authorized) ---------- */
+  function ownerPanel() {
+    if (!authed()) return null;
+    const statusLine = el('div', { class: 'small', role: 'status', 'aria-live': 'polite' }, '');
+    function refresh() {
+      const on = qaOn();
+      statusLine.textContent = (Store.isQaProfile ? 'Active profile: TXPPS QA (test profile). ' : '')
+        + (on ? 'QA MODE ON — access to all content is open; progress & rewards are simulated (not saved).' : 'QA MODE OFF — normal progression rules apply.');
+    }
+    refresh();   // the Enable/Disable buttons below call refresh() directly; no persistent
+                 // subscription here so re-rendering Settings never leaks GameBus handlers.
+
+    const inspectionCard = el('div', { class: 'card col', style: 'gap:8px' },
+      el('div', { class: 'eyebrow phos' }, 'OWNER QA — INSPECTION'),
+      statusLine,
+      el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('button', { class: 'btn sm', onclick: () => { safe(() => QaAccess.enableQa()); refresh(); toast('QA mode enabled.'); } }, 'Enable QA Mode'),
+        el('button', { class: 'btn sm ghost', onclick: () => { safe(() => QaAccess.disableQa()); refresh(); toast('QA mode disabled.'); } }, 'Disable QA Mode'),
+        el('button', { class: 'btn sm', onclick: () => openInspector() }, 'Open Curriculum Inspector'),
+        el('button', { class: 'btn sm ghost', onclick: () => openHapticPanel() }, 'Haptic diagnostics'),
+        el('button', { class: 'btn sm ghost', onclick: () => openPatchPanel() }, 'PATCH state preview')));
+
+    const dangerCard = el('div', { class: 'card col', style: 'gap:8px' },
+      el('div', { class: 'eyebrow red' }, 'OWNER QA — TEST DATA (mutates local data)'),
+      el('p', { class: 'small faint' }, 'These change local storage on this device. Your real profile is stashed and restorable while a QA test profile is active.'),
+      el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('button', { class: 'btn sm', onclick: () => openFixtures() }, 'Create QA Test Profile'),
+        Store.isQaProfile ? el('button', { class: 'btn sm amber', onclick: () => restoreReal() }, 'Restore real profile') : null,
+        el('button', { class: 'btn sm ghost', onclick: () => { safe(() => QaAccess.disableQa()); refresh(); toast('QA session reset — simulation off.'); } }, 'Reset Current QA Session')));
+
+    const lockCard = el('div', { class: 'card col', style: 'gap:8px' },
+      el('div', { class: 'eyebrow' }, 'OWNER ACCESS'),
+      el('p', { class: 'small faint' }, 'Locking clears owner access for this browser session and turns QA mode off. Access never persists across a browser restart.'),
+      el('button', { class: 'btn danger sm', onclick: () => { safe(() => QaAccess.lock()); toast('Owner access locked.'); App.go('settings'); } }, 'Lock Owner Access'));
+
+    return el('div', { class: 'col', style: 'gap:12px' }, inspectionCard, dangerCard, lockCard);
+  }
+
+  function restoreReal() {
+    UI.confirmSheet('RESTORE REAL PROFILE', 'This removes the QA test profile and restores your stashed real profile (or returns to first-launch if none was stashed). QA progress in the test profile is discarded.', 'Restore', () => {
+      const r = safe(() => Store.restoreRealProfile());
+      safe(() => QaAccess.disableQa());
+      if (r && r.welcome) { App.showWelcome(); } else { App.reboot(); }
+      toast(r && r.restored ? 'Real profile restored.' : 'Returned to first-launch.');
+    }, true);
+  }
+
+  /* ---------- QA test-profile fixtures ---------- */
+  function openFixtures() {
+    const list = safe(() => QaFixtures.presets()) || [];
+    const rows = list.map((p) => el('button', { class: 'qa-list-row', onclick: () => {
+      panel.close();   // close first so the confirm sheet is not hidden behind this panel
+      UI.confirmSheet('CREATE QA TEST PROFILE', 'This stashes your real profile and installs a labelled "TXPPS QA" test profile preset: ' + p.label + '. ' + p.desc + ' You can restore your real profile afterwards.', 'Create ' + p.label, () => {
+        const r = safe(() => QaFixtures.create(p.key));
+        App.reboot();
+        toast('QA profile created: ' + p.label + (r ? ' (' + r.nodesCompleted + ' nodes)' : ''));
+      }, false);
+    } }, el('div', { style: 'text-align:left; min-width:0' }, el('div', { class: 'small' }, p.label), el('div', { class: 'mono small faint' }, p.desc))));
+    const content = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'CREATE QA TEST PROFILE'), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      el('p', { class: 'small faint' }, 'Each preset installs a validated "TXPPS QA" profile built with the real completion factories. Your real profile is stashed first.'),
+      ...rows);
+    const panel = mountPanel(content, { label: 'Create QA test profile' });
+  }
+
+  /* ---------- Curriculum Inspector ---------- */
+  function realStatus(id) {
+    if (safe(() => Store.isDone(id))) return 'done';
+    if (safe(() => Store.isUnlocked((Store.zoneOfNode(id) || {}).id || '', id))) return 'unlocked';
+    return 'locked';
+  }
+  function openInspector() {
+    const zones = safe(() => ZONES.filter((z) => z.status === 'live')) || [];
+    const state = { q: '', zone: 'all', kind: 'all', status: 'all' };
+    const listWrap = el('div', { class: 'qa-scroll col', style: 'gap:10px', role: 'list', 'aria-label': 'Curriculum nodes' });
+
+    function nodeCard(id) {
+      const node = Engine.NODES[id]; if (!node) return null;
+      const rs = realStatus(id);
+      const badge = el('span', { class: 'qa-badge ' + rs }, rs.toUpperCase());
+      const qaBadge = el('span', { class: 'qa-badge qa' }, 'QA: OPEN');
+      const kindBadge = el('span', { class: 'qa-badge kind' }, (node.kind || 'node').toUpperCase());
+      const actions = el('div', { class: 'row wrap', style: 'gap:6px; margin-top:6px' },
+        el('button', { class: 'btn sm', onclick: () => { safe(() => QaAccess.enableQa()); panel.close(); App.openNode(id); } }, 'Open (QA)'),
+        el('button', { class: 'btn sm ghost', onclick: () => { safe(() => QaAccess.disableQa()); panel.close(); App.openNode(id); } }, 'Open normally'),
+        el('button', { class: 'btn sm ghost', onclick: () => copyId(id) }, 'Copy ID'),
+        el('button', { class: 'btn sm ghost', onclick: () => prereqSheet(id) }, 'Prereqs'),
+        node.kind === 'boss' ? el('button', { class: 'btn sm amber', onclick: () => bossSim(id) }, 'Simulate') : null);
+      return el('div', { class: 'qa-node', role: 'listitem' },
+        el('div', { class: 'row between', style: 'align-items:flex-start; gap:8px' },
+          el('div', { style: 'min-width:0' },
+            el('div', { class: 'small', style: 'font-weight:600' }, node.title),
+            el('div', { class: 'mono small faint' }, id)),
+          el('div', { class: 'row wrap', style: 'gap:4px; justify-content:flex-end' }, kindBadge, badge, qaBadge)),
+        actions);
+    }
+
+    function render() {
+      const q = state.q.trim().toLowerCase();
+      listWrap.replaceChildren();
+      let shown = 0;
+      zones.forEach((z, zi) => {
+        if (state.zone !== 'all' && state.zone !== z.id) return;
+        const matches = (z.nodeOrder || []).filter((id) => {
+          const node = Engine.NODES[id]; if (!node) return false;
+          if (state.kind !== 'all' && node.kind !== state.kind) return false;
+          if (state.status !== 'all' && realStatus(id) !== state.status) return false;
+          if (q && !((node.title || '').toLowerCase().includes(q) || id.toLowerCase().includes(q))) return false;
+          return true;
+        });
+        if (!matches.length) return;
+        listWrap.appendChild(el('div', { class: 'eyebrow', style: 'margin-top:4px' }, 'ZONE ' + (z.num || (zi + 1)) + ' — ' + z.title));
+        matches.forEach((id) => { const c = nodeCard(id); if (c) { listWrap.appendChild(c); shown += 1; } });
+      });
+      if (!shown) listWrap.appendChild(el('p', { class: 'small faint', style: 'padding:12px 0' }, 'No nodes match these filters.'));
+    }
+
+    const search = el('input', { class: 'qa-input', type: 'search', placeholder: 'Search title or node ID…', 'aria-label': 'Search curriculum' });
+    search.addEventListener('input', () => { state.q = search.value; render(); });
+    function seg(label, key, options) {
+      const sel = el('select', { class: 'qa-select', 'aria-label': label });
+      options.forEach(([v, l]) => sel.appendChild(el('option', { value: v }, l)));
+      sel.addEventListener('change', () => { state[key] = sel.value; render(); });
+      return el('label', { class: 'qa-filter' }, el('span', { class: 'mono small faint' }, label), sel);
+    }
+    const filters = el('div', { class: 'qa-filters row wrap', style: 'gap:8px' },
+      seg('Zone', 'zone', [['all', 'All']].concat(zones.map((z) => [z.id, 'Z' + (z.num || '')]))),
+      seg('Type', 'kind', [['all', 'All'], ['lesson', 'Lesson'], ['challenge', 'Challenge'], ['project', 'Project'], ['boss', 'Boss']]),
+      seg('Status', 'status', [['all', 'All'], ['locked', 'Locked'], ['unlocked', 'Unlocked'], ['done', 'Done']]),
+      el('button', { class: 'btn sm ghost', onclick: () => { state.q = ''; state.zone = 'all'; state.kind = 'all'; state.status = 'all'; search.value = ''; [...filters.querySelectorAll('select')].forEach((s) => { s.value = 'all'; }); render(); } }, 'Clear'));
+
+    const header = el('div', { class: 'qa-insp-head col', style: 'gap:8px' },
+      el('div', { class: 'row between' },
+        el('div', { class: 'eyebrow phos' }, 'CURRICULUM INSPECTOR'),
+        el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      el('p', { class: 'small faint' }, 'Real learner status is shown per node; "Open (QA)" opens it under QA mode (nothing saved), "Open normally" respects real locks.'),
+      search, filters);
+    const content = el('div', { class: 'qa-insp col', style: 'gap:10px' }, header, listWrap);
+    render();
+    const panel = mountPanel(content, { label: 'Curriculum inspector' });
+  }
+
+  function copyId(id) {
+    try { if (navigator.clipboard) navigator.clipboard.writeText(id); } catch (e) { /* ignore */ }
+    toast('Node ID copied: ' + id);
+  }
+
+  function prereqSheet(id) {
+    const node = Engine.NODES[id];
+    const rows = [];
+    if (node && node.kind === 'boss') {
+      const r = safe(() => Store.bossReady(id)) || {};
+      rows.push(el('div', { class: 'small' }, 'Boss entry (real): ' + (r.ready ? 'READY' : 'NOT READY')));
+      rows.push(el('div', { class: 'small dim' }, 'Lessons done: ' + (r.lessonsDone ? 'yes' : 'no') + ' · Missions done: ' + (r.projectsDone ? 'yes' : 'no') + ' · Avg mastery: ' + (r.avgStars != null ? r.avgStars.toFixed(1) : '?') + ' (need ' + (r.need || 2) + ')'));
+    } else {
+      const order = safe(() => Store.liveOrder()) || [];
+      const idx = order.indexOf(id);
+      const blocking = order.slice(0, idx).filter((x) => !Store.isDone(x));
+      rows.push(el('div', { class: 'small' }, 'Sequential unlock: ' + (blocking.length ? blocking.length + ' earlier node(s) still incomplete' : 'all earlier nodes complete')));
+      if (blocking.length) rows.push(el('div', { class: 'mono small faint' }, 'Next blocking: ' + blocking[0] + ' — ' + nodeTitle(blocking[0])));
+    }
+    const content = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'PREREQUISITES'), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      el('div', { class: 'small mono faint' }, id + ' · ' + (node ? node.kind : '?')),
+      ...rows,
+      el('div', { class: 'qa-note', role: 'note' }, 'Under QA mode this node opens regardless of the above.'));
+    const panel = mountPanel(content, { label: 'Prerequisites' });
+  }
+
+  /* ---------- Boss simulation (drives the REAL BossKit) ---------- */
+  function bossSim(bossId) {
+    if (typeof BossKit === 'undefined' || !BossKit.has(bossId)) {
+      const lc = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
+        el('div', { class: 'row between' }, el('div', { class: 'eyebrow red' }, 'LEGACY BOSS'), el('button', { class: 'btn sm ghost', onclick: () => lpanel.close() }, 'Close')),
+        el('p', { class: 'small dim' }, nodeTitle(bossId) + ' uses the legacy boss flow (no BossKit state machine yet). Open it under QA access to inspect its screens.'),
+        el('button', { class: 'btn primary block', onclick: () => { safe(() => QaAccess.enableQa()); lpanel.close(); App.openNode(bossId); } }, 'Open (QA)'));
+      const lpanel = mountPanel(lc, { label: 'Legacy boss' });
+      return;
+    }
+    let session = BossKit.createSession(bossId);
+    const snap = el('pre', { class: 'qa-snap mono small', 'aria-live': 'polite' }, '');
+    function show() {
+      const s = session.snapshot;
+      snap.textContent = 'state: ' + session.state + '\nphase: ' + (s.phase ? s.phase.id : '-') + '\nboss HP: ' + s.bossHp + '/' + s.maxHp + '  (repair line ' + s.defeatLine + ')\nintegrity: ' + s.playerIntegrity + '/' + s.maxIntegrity + '\ncorrect: ' + s.correctCount + '  wrong: ' + s.incorrectCount + '  q: ' + s.questionIndex + '/' + s.total;
+    }
+    function reset() { session = BossKit.createSession(bossId); show(); }
+    function step(res) { if (session.state === 'READY') { session.enter(); session.start(); } session.resolve(res); session.advance(); show(); }
+    function drive(corrects, wrongs) {
+      reset(); session.enter(); session.start();
+      let c = corrects, w = wrongs;
+      while ((c > 0 || w > 0) && session.state !== 'VICTORY' && session.state !== 'DEFEAT' && session.state !== 'COMPLETE') {
+        const correct = c > 0; if (correct) c--; else w--;
+        session.resolve({ correct: correct, firstTry: true });
+        session.advance();
+      }
+      show();
+    }
+    const b = (label, fn, cls) => el('button', { class: 'btn sm ' + (cls || 'ghost'), onclick: () => { fn(); } }, label);
+    const content = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'BOSS SIM — ' + bossId), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      el('p', { class: 'small faint' }, 'Feeds deterministic commands into the real BossKit state machine. Semantic BOSS_* events fire, so PATCH / audio / haptics react. No rewards are recorded.'),
+      snap,
+      el('div', { class: 'row wrap', style: 'gap:6px' },
+        b('Intro', () => { reset(); session.enter(); show(); }),
+        b('Start', () => { if (session.state === 'INTRO') { session.start(); show(); } }),
+        b('Correct hit', () => step({ correct: true, firstTry: true })),
+        b('Wrong hit', () => step({ correct: false })),
+        b('→ Phase 2', () => drive(2, 0)),
+        b('→ Phase 3', () => drive(4, 0)),
+        b('Low integrity', () => drive(0, 2)),
+        b('Victory', () => drive(4, 0), 'amber'),
+        b('Defeat', () => drive(0, 3), 'amber'),
+        b('Reset', () => reset())),
+      el('p', { class: 'small faint' }, 'To inspect the victory / defeat presentation sheets, use "Open (QA)" and play the encounter — nothing is saved.'),
+      el('button', { class: 'btn sm block', onclick: () => { safe(() => QaAccess.enableQa()); panel.close(); App.openNode(bossId); } }, 'Open the real encounter (QA)'));
+    reset();
+    const panel = mountPanel(content, { label: 'Boss simulation', onClose: () => safe(() => Game.Reactions && Game.Reactions.cancelRoute()) });
+  }
+
+  /* ---------- PATCH state preview (real state machine) ---------- */
+  function openPatchPanel() {
+    const states = safe(() => Game.Patch.states()) || [];
+    const rows = states.map((s) => el('button', { class: 'qa-list-row', onclick: () => { safe(() => Game.Patch.setState(s, { dur: 4000 })); toast('PATCH → ' + s); } }, el('span', { class: 'small mono' }, s)));
+    const content = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'PATCH STATE PREVIEW'), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      el('p', { class: 'small faint' }, 'Previews the real PATCH state machine (v1.1.1 geometry). Previews auto-clear when you close this panel; no dialogue seen-flags are consumed.'),
+      el('div', { class: 'qa-grid' }, ...rows));
+    const panel = mountPanel(content, { label: 'PATCH state preview', onClose: () => safe(() => Game.Patch.toIdle()) });
+  }
+
+  /* ---------- Haptic diagnostics (real Haptic director) ---------- */
+  function openHapticPanel() {
+    const cats = safe(() => Object.keys(Game.Haptic.CATEGORIES)) || [];
+    const d = safe(() => Game.Haptic.diagnostics()) || {};
+    const diagLine = el('div', { class: 'small dim' }, 'adapter: ' + (d.adapter || '?') + ' · supported: ' + (!!d.supported) + ' · enabled: ' + (!!d.enabled) + ' · status: ' + (d.status || '?'));
+    const rows = cats.map((c) => {
+      const result = el('span', { class: 'mono small faint', style: 'margin-left:auto' }, '');
+      return el('button', { class: 'qa-list-row', onclick: () => {
+        const dd = safe(() => Game.Haptic.diagnostics()) || {};
+        if (!dd.supported) { result.textContent = 'unsupported'; return; }
+        if (!dd.enabled) { result.textContent = 'disabled'; return; }
+        const ok = safe(() => Game.Haptic.trigger(c));
+        result.textContent = ok ? 'delivered' : 'suppressed (cooldown)';
+      } }, el('span', { class: 'small mono' }, c), result);
+    });
+    const content = el('div', { class: 'qa-scroll col', style: 'gap:8px' },
+      el('div', { class: 'row between' }, el('div', { class: 'eyebrow phos' }, 'HAPTIC DIAGNOSTICS'), el('button', { class: 'btn sm ghost', onclick: () => panel.close() }, 'Close')),
+      diagLine,
+      el('p', { class: 'small faint' }, 'Fires each semantic category through the real Haptic director and reports the honest result. Never claims delivery when the device is unsupported.'),
+      ...rows);
+    const panel = mountPanel(content, { label: 'Haptic diagnostics' });
+  }
+
+  /* ---------- init ---------- */
+  function init() {
+    if (typeof QaAccess === 'undefined') return;
+    safe(() => QaAccess.init());
+    mountIndicator();
+    safe(() => {
+      GameBus.on('QA_MODE_ENABLED', refreshIndicator);
+      GameBus.on('QA_MODE_DISABLED', refreshIndicator);
+      GameBus.on('OWNER_ACCESS_LOCKED', refreshIndicator);
+    });
+    refreshIndicator();
+  }
+
+  return { init, attachOwnerEntry, ownerPanel, openAccessDialog, openInspector, refreshIndicator, isAuthorized: authed };
 })();
 
 ;
@@ -19484,6 +20443,15 @@ const Views = (() => {
   const { el, fmt } = UI;
   const emitG = (t, p) => { try { GameBus.emit(t, p); } catch (e) { /* decorative game layer */ } };
   const REPEAT_THRESHOLD = 2;   // wrong attempts on one question before a diagnostic-hint nudge
+
+  // v1.2.1: one place the views ask "may this node be opened?" — AccessPolicy in
+  // normal mode is byte-identical to the old Store.isUnlocked; under owner QA
+  // mode it opens everything. Falls back to the raw rule if the policy is absent.
+  function canOpenNode(id) {
+    try { if (typeof AccessPolicy !== 'undefined') return AccessPolicy.canOpenNode(id); } catch (e) { /* fall through */ }
+    return Store.isUnlocked((Store.zoneOfNode(id) || {}).id || '', id);
+  }
+  function qaSimActive() { try { return typeof QaAccess !== 'undefined' && QaAccess.qaMode(); } catch (e) { return false; } }
 
   /* =====================================================================
      QUESTION RUNNER — one component for all 7 interaction types.
@@ -20012,6 +20980,7 @@ const Views = (() => {
       else if (node.kind === 'boss' && node.id !== 'boss7') { emitG('ZONE_UNLOCKED', p); }
     } catch (e) { /* decorative */ }
     const nextId = Store.nextNode();
+    const simulated = qaSimActive();
     const s = UI.sheet([
       el('div', { class: 'center col', style: 'gap:10px; padding:6px 0' },
         el('div', { class: 'eyebrow phos', style: 'justify-content:center' }, node.kind === 'boss' ? 'ZONE CLEARED' : 'COMPLETE'),
@@ -20019,6 +20988,7 @@ const Views = (() => {
         starCount !== null ? el('div', { style: 'font-size:26px; letter-spacing:6px' }, UI.stars(starCount)) : null,
         el('div', { class: 'xp-pop', style: 'font-size:24px' }, '+' + result.earned + ' XP'),
         el('div', { class: 'small dim' }, result.firstTry + ' of ' + result.total + ' first try'),
+        simulated ? el('div', { class: 'qa-note', role: 'note' }, 'QA MODE — simulated result. Nothing was saved: no XP, stars, or completion recorded.') : null,
       ),
       el('div', { class: 'col gap-s' },
         nextId ? el('button', { class: 'btn primary block', onclick: () => { s.close(); App.openNode(nextId); } },
@@ -20222,7 +21192,7 @@ const Views = (() => {
           const node = Engine.NODES[id];
           if (!node) return;
           const done = Store.isDone(id);
-          const unlocked = Store.isUnlocked(z.id, id);
+          const unlocked = canOpenNode(id);
           const ns = Store.state.nodes[id];
           const row = el('button', { class: 'node-row' + (unlocked ? '' : ' locked'), onclick: () => {
             if (!unlocked) { UI.toast('Locked — complete the previous step first'); return; }
@@ -20619,7 +21589,8 @@ const Views = (() => {
     main.appendChild(el('div', { class: 'back-row' },
       el('button', { class: 'back-btn', onclick: () => App.go('map') }, UI.icon('back'), ' RETREAT')));
 
-    if (!ready.ready && !Store.isDone(node.id)) {
+    const qaBypass = (typeof AccessPolicy !== 'undefined') && AccessPolicy.qaOverride();
+    if (!ready.ready && !Store.isDone(node.id) && !qaBypass) {
       main.appendChild(el('div', { class: 'boss-banner col', style: 'gap:10px' },
         el('div', { class: 'eyebrow red' }, '☠ BOSS — LOCKED'),
         el('h1', { class: 'h-display' }, node.title),
@@ -21083,7 +22054,9 @@ const Views = (() => {
       el('div', { class: 'row', style: 'gap:14px; align-items:center' },
         avatarBadge(st.avatar, 'lg'),
         el('div', { style: 'min-width:0; flex:1' },
-          el('div', { class: 'eyebrow ' + (grad ? 'amber' : 'phos') }, grad ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
+          el('div', { class: 'row', style: 'gap:6px; align-items:center; flex-wrap:wrap' },
+            el('div', { class: 'eyebrow ' + (grad ? 'amber' : 'phos') }, grad ? '★ GRADUATE — OPERATOR PROFILE' : 'OPERATOR PROFILE'),
+            st.isQaProfile ? el('span', { class: 'qa-profile-badge' }, '🧪 QA TEST PROFILE') : null),
           el('h1', { class: 'h-display', style: 'margin-top:2px' }, st.displayName || 'Producer'),
           el('div', { class: 'small dim' }, '@' + (st.username || 'producer') + ' · LV ' + lv + ' — ' + Store.levelTitle())),
         el('button', { class: 'icon-btn', 'aria-label': 'Settings', onclick: () => App.go('settings') }, UI.icon('gear'))),
@@ -21128,9 +22101,9 @@ const Views = (() => {
       el('div', { class: 'eyebrow' }, 'LESSON MASTERY'),
       el('div', { class: 'col mt-m', style: 'gap:2px' }, [...ZONE1_LESSONS, ...ZONE2_LESSONS, ...ZONE3_LESSONS, ...ZONE4_LESSONS, ...ZONE5_LESSONS, ...ZONE6_LESSONS, ...ZONE7_LESSONS].map((l) => {
         const ns = st.nodes[l.id];
-        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (Store.isUnlocked('z1', l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
+        return el('button', { class: 'row between card-tap', style: 'border:none; padding:9px 2px; min-height:44px', onclick: () => { if (canOpenNode(l.id)) App.openNode(l.id); else UI.toast('Locked — progress through the map first'); } },
           el('span', { class: 'small', style: 'text-align:left' }, l.title),
-          ns && ns.done ? UI.stars(ns.stars) : el('span', { class: 'mono small faint' }, Store.isUnlocked('z1', l.id) ? 'NOT DONE' : 'LOCKED'));
+          ns && ns.done ? UI.stars(ns.stars) : el('span', { class: 'mono small faint' }, canOpenNode(l.id) ? 'NOT DONE' : 'LOCKED'));
       }))));
 
     main.appendChild(el('button', { class: 'btn block', onclick: () => App.go('settings') }, 'Settings & data'));
@@ -21265,10 +22238,18 @@ const Views = (() => {
         }, true);
       } }, 'Reset local profile and progress')));
 
+    const versionRow = el('div', { class: 'set-row qa-version-row' },
+      el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
+      el('span', { class: 'mono small phos' }, 'v1.2.1'));
+    try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.0 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, and the first boss encounter live in Zone 1.'),
+      versionRow,
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.2.1 — a single local learner profile stored on this device, PATCH the workshop assistant alongside you, the first boss encounter live in Zone 1, and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
+
+    // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.
+    try { if (typeof QaUi !== 'undefined' && QaUi.isAuthorized()) { const op = QaUi.ownerPanel(); if (op) main.appendChild(op); } } catch (e) { /* QA layer optional */ }
     return main;
   }
 
@@ -21392,9 +22373,17 @@ const App = (() => {
   function openNode(id) {
     const node = Engine.NODES[id];
     if (!node) { UI.toast('Content not found'); return; }
+    // Single access chokepoint (v1.2.1): normally enforces the sequential unlock;
+    // under the owner's QA mode, AccessPolicy opens any valid node. Replay of an
+    // already-completed node is always allowed. Behaviour is unchanged in normal mode.
+    const qaOpen = (typeof AccessPolicy !== 'undefined') && AccessPolicy.qaOverride();
+    if (typeof AccessPolicy !== 'undefined' && !AccessPolicy.canEnter(id)) {
+      UI.toast(AccessPolicy.reason(id)); return;
+    }
     Sfx.tap();
     Store.setCurrentNode(id);
     const z = Store.zoneOfNode(id);
+    if (qaOpen) emitG('QA_NODE_OPENED', { nodeId: id, kind: node.kind });
     emitG(EV.LESSON_ENTERED, { nodeId: id, kind: node.kind, zoneId: z ? z.id : null });
     if (node.kind === 'lesson') go('lesson', { id });
     else if (node.kind === 'project') go('project', { id });
@@ -21402,11 +22391,25 @@ const App = (() => {
     else go('challenge', { id });
   }
 
+  // v1.2.1: when QA mode is switched off, if the open route is a node screen that
+  // is now genuinely locked, return to the map (progress earned before QA is safe).
+  function enforceCurrentAccess() {
+    const nodeScreens = ['lesson', 'challenge', 'project', 'boss'];
+    if (nodeScreens.includes(current.name) && current.params && current.params.id) {
+      const id = current.params.id;
+      if (typeof AccessPolicy !== 'undefined' && !AccessPolicy.canEnter(id)) {
+        UI.toast('QA mode off — that content is locked here. Back to the map.', 3200);
+        go('map');
+      }
+    }
+  }
+
   function awardXp(amount) {
     if (!amount || amount <= 0) { Store.touchStreak(); renderTopbar(); return; }
     const before = Store.level();
     const r = Store.addXp(amount);
     renderTopbar();
+    if (r && r.simulated) { UI.toast('QA · +' + Math.round(amount) + ' XP simulated (not saved)', 2600); return; }
     emitG(EV.XP_GAINED, { xp: amount, total: Store.state.xp });
     if (r.leveledUp) {
       Sfx.levelUp();
@@ -21512,6 +22515,8 @@ const App = (() => {
     try {
       emitG(EV.APPLICATION_BOOT_STARTED, {});
       try { Game.init(); } catch (e) { /* the game-feel layer must never block boot */ }
+      try { if (typeof QaUi !== 'undefined') QaUi.init(); } catch (e) { /* the owner QA layer is optional */ }
+      try { GameBus.on('QA_MODE_DISABLED', () => { try { enforceCurrentAccess(); } catch (e) { /* ignore */ } }); } catch (e) { /* ignore */ }
       // tap-to-define: abbreviations in prose open their dictionary card
       document.addEventListener('click', (e) => {
         const tl = e.target.closest && e.target.closest('.term-link');
@@ -21556,7 +22561,7 @@ const App = (() => {
   }
 
   // public API (Views call these)
-  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, showMigrationChooser, reboot, boot };
+  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, showMigrationChooser, reboot, boot, enforceCurrentAccess };
 })();
 
 App.boot();

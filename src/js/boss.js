@@ -180,10 +180,15 @@ const BossKit = (() => {
   function stats(bossId) {
     try { return (Store.gameSetting('boss.' + bossId) || { attempts: 0, victories: 0 }); } catch (e) { return { attempts: 0, victories: 0 }; }
   }
+  // Boss attempt/victory tallies are permanent progression — suppressed while
+  // the owner's QA simulation mode is active (see ProgressionPolicy).
+  function persistOk() { try { return (typeof ProgressionPolicy === 'undefined') || ProgressionPolicy.shouldPersist(); } catch (e) { return true; } }
   function recordAttempt(bossId) {
+    if (!persistOk()) return;
     try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: (st.attempts | 0) + 1, victories: st.victories | 0 }); } catch (e) { /* decorative */ }
   }
   function recordVictory(bossId) {
+    if (!persistOk()) return;
     try { const st = stats(bossId); Store.setGameSetting('boss.' + bossId, { attempts: st.attempts | 0, victories: (st.victories | 0) + 1 }); } catch (e) { /* decorative */ }
   }
 

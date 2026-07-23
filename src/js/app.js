@@ -113,9 +113,17 @@ const App = (() => {
   function openNode(id) {
     const node = Engine.NODES[id];
     if (!node) { UI.toast('Content not found'); return; }
+    // Single access chokepoint (v1.2.1): normally enforces the sequential unlock;
+    // under the owner's QA mode, AccessPolicy opens any valid node. Replay of an
+    // already-completed node is always allowed. Behaviour is unchanged in normal mode.
+    const qaOpen = (typeof AccessPolicy !== 'undefined') && AccessPolicy.qaOverride();
+    if (typeof AccessPolicy !== 'undefined' && !AccessPolicy.canEnter(id)) {
+      UI.toast(AccessPolicy.reason(id)); return;
+    }
     Sfx.tap();
     Store.setCurrentNode(id);
     const z = Store.zoneOfNode(id);
+    if (qaOpen) emitG('QA_NODE_OPENED', { nodeId: id, kind: node.kind });
     emitG(EV.LESSON_ENTERED, { nodeId: id, kind: node.kind, zoneId: z ? z.id : null });
     if (node.kind === 'lesson') go('lesson', { id });
     else if (node.kind === 'project') go('project', { id });
@@ -123,11 +131,25 @@ const App = (() => {
     else go('challenge', { id });
   }
 
+  // v1.2.1: when QA mode is switched off, if the open route is a node screen that
+  // is now genuinely locked, return to the map (progress earned before QA is safe).
+  function enforceCurrentAccess() {
+    const nodeScreens = ['lesson', 'challenge', 'project', 'boss'];
+    if (nodeScreens.includes(current.name) && current.params && current.params.id) {
+      const id = current.params.id;
+      if (typeof AccessPolicy !== 'undefined' && !AccessPolicy.canEnter(id)) {
+        UI.toast('QA mode off — that content is locked here. Back to the map.', 3200);
+        go('map');
+      }
+    }
+  }
+
   function awardXp(amount) {
     if (!amount || amount <= 0) { Store.touchStreak(); renderTopbar(); return; }
     const before = Store.level();
     const r = Store.addXp(amount);
     renderTopbar();
+    if (r && r.simulated) { UI.toast('QA · +' + Math.round(amount) + ' XP simulated (not saved)', 2600); return; }
     emitG(EV.XP_GAINED, { xp: amount, total: Store.state.xp });
     if (r.leveledUp) {
       Sfx.levelUp();
@@ -233,6 +255,8 @@ const App = (() => {
     try {
       emitG(EV.APPLICATION_BOOT_STARTED, {});
       try { Game.init(); } catch (e) { /* the game-feel layer must never block boot */ }
+      try { if (typeof QaUi !== 'undefined') QaUi.init(); } catch (e) { /* the owner QA layer is optional */ }
+      try { GameBus.on('QA_MODE_DISABLED', () => { try { enforceCurrentAccess(); } catch (e) { /* ignore */ } }); } catch (e) { /* ignore */ }
       // tap-to-define: abbreviations in prose open their dictionary card
       document.addEventListener('click', (e) => {
         const tl = e.target.closest && e.target.closest('.term-link');
@@ -277,7 +301,7 @@ const App = (() => {
   }
 
   // public API (Views call these)
-  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, showMigrationChooser, reboot, boot };
+  return { go, openNode, awardXp, flushAchievements, applyCodeSize, applyMotion, showWelcome, showMigrationChooser, reboot, boot, enforceCurrentAccess };
 })();
 
 App.boot();

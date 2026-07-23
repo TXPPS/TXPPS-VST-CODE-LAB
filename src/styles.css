@@ -941,3 +941,74 @@ input[type="range"].vol::-moz-range-thumb { width: 16px; height: 16px; border-ra
 .int-pip.on { background: linear-gradient(180deg, var(--phos), var(--phos-dim)); border-color: var(--phos-dim); }
 .boss-hud.danger .int-pip.on { background: linear-gradient(180deg, var(--amber), #a3742c); border-color: var(--amber); }
 .reduce-motion .hp-seg, .reduce-motion .int-pip { transition: none; }
+
+/* ===================== v1.2.1 — owner QA layer ===================== */
+/* persistent QA indicator (only while QA simulation mode is active) */
+.qa-indicator { display: none; }
+body.qa-active .qa-indicator {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  background: linear-gradient(180deg, #3a2c0e, #241b06);
+  color: #F6DCA0; border-bottom: 1px solid var(--amber);
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+body.qa-active .app { padding-top: calc(32px + env(safe-area-inset-top, 0px)); }
+body.qa-active .topbar { top: calc(32px + env(safe-area-inset-top, 0px)); }
+.qa-indicator .qa-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: qa-pulse 1.8s ease-in-out infinite; flex: 0 0 auto; }
+.qa-ind-text { font-weight: 600; }
+.qa-ind-exit { flex: 0 0 auto; background: transparent; border: 1px solid var(--amber); color: #F6DCA0; border-radius: 6px; padding: 2px 9px; font-size: 11px; font-family: var(--mono); cursor: pointer; }
+.qa-ind-exit:hover { background: rgba(240, 180, 80, 0.14); }
+@keyframes qa-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.reduce-motion .qa-indicator .qa-dot { animation: none; }
+@media (max-width: 400px) { body.qa-active .qa-indicator { font-size: 10.5px; letter-spacing: 0.03em; gap: 6px; } }
+
+/* QA modal panels (own veil so they stack above app sheets, below toasts) */
+.qa-panel-veil {
+  position: fixed; inset: 0; z-index: 65;
+  background: rgba(5, 6, 8, 0.78);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: veilin 0.16s ease;
+}
+@media (min-width: 640px) { .qa-panel-veil { align-items: center; } }
+.qa-panel-card {
+  width: 100%; max-width: 620px; max-height: 88vh; overflow: hidden;
+  background: var(--bg1); border: 1px solid var(--line); border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  display: flex; flex-direction: column;
+}
+@media (min-width: 640px) { .qa-panel-card { border-radius: 14px; border-bottom: 1px solid var(--line); } }
+.qa-scroll, .qa-insp { padding: 16px 15px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; max-height: 88vh; }
+.qa-insp-head { position: sticky; top: 0; background: var(--bg1); padding-bottom: 6px; z-index: 1; }
+
+/* passphrase dialog */
+.qa-dialog { padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
+.qa-input {
+  flex: 1 1 auto; min-width: 0; width: 100%;
+  background: var(--bg0); border: 1px solid var(--line); border-radius: 9px;
+  color: var(--ink); font-family: var(--mono); font-size: 14px; padding: 10px 12px;
+}
+.qa-input:focus { outline: 2px solid var(--phos-dim); outline-offset: 1px; }
+.qa-err { color: var(--red); font-size: 12px; min-height: 16px; font-family: var(--mono); }
+
+/* inspector nodes + badges */
+.qa-node { border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; background: var(--bg2); }
+.qa-badge { display: inline-block; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line); color: var(--ink-dim); white-space: nowrap; }
+.qa-badge.done { color: var(--phos); border-color: var(--phos-dim); }
+.qa-badge.unlocked { color: var(--amber); border-color: var(--amber); }
+.qa-badge.locked { color: var(--ink-faint); }
+.qa-badge.qa { color: #8fd0ff; border-color: #2c5a7a; }
+.qa-badge.kind { color: var(--ink-dim); }
+.qa-list-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: var(--bg2); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; color: var(--ink); cursor: pointer; min-height: 44px; }
+.qa-list-row:hover { border-color: var(--phos-dim); }
+.qa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.qa-filters { align-items: flex-end; }
+.qa-filter { display: flex; flex-direction: column; gap: 2px; }
+.qa-select { background: var(--bg0); border: 1px solid var(--line); border-radius: 7px; color: var(--ink); font-family: var(--mono); font-size: 12px; padding: 6px 8px; min-height: 34px; }
+.qa-snap { background: var(--bg0); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; white-space: pre; overflow-x: auto; color: var(--ink); }
+.qa-note { border: 1px solid var(--amber); background: var(--amber-glow); color: #F6DCA0; border-radius: 8px; padding: 8px 10px; font-size: 11.5px; }
+.qa-version-row { cursor: default; }
+.qa-version-row:focus-visible { outline: 2px solid var(--phos-dim); outline-offset: 2px; }
+/* QA profile badge (on the profile page) */
+.qa-profile-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--amber); border: 1px solid var(--amber); border-radius: 6px; padding: 2px 7px; }

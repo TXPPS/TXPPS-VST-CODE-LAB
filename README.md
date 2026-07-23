@@ -65,6 +65,20 @@ integrity cells, three phases, early defeat only when passing is already
 mathematically impossible, and PATCH assisting from the dock. Bosses 2–7
 keep the legacy flow until future releases.
 
+**Version 1.2.1 — Owner QA layer** adds a hidden, local-only quality-assurance
+tool for the owner: a passphrase-gated Owner Access entry inside Settings (a
+five-tap / five-Enter gesture on the version row), a temporary **QA Mode** that
+opens every zone and node for inspection, and a Curriculum Inspector for direct
+navigation to any lesson/quiz/challenge/mission/project/boss with real-vs-QA
+status, boss state-machine simulation, PATCH previews, and honest haptic
+diagnostics. Access decisions route through one `AccessPolicy`; permanent
+writes/rewards route through one `ProgressionPolicy` / `RewardPolicy` that
+suppresses XP, stars, ranks, achievements, streaks, boss stats, and node
+completion while QA Mode is active — so inspecting content never touches genuine
+learner progress. A clearly-labelled **TXPPS QA** test profile (built from
+validated fixtures, with the real profile stashed and restorable) supports
+deliberate persistent testing. See **Honest security limitations** below.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -92,6 +106,64 @@ structured validation engine, and labeled **“Simulated Compiler Feedback”** 
 Code samples are educational excerpts — intentionally simplified, never claimed to be
 production-ready.
 
+## Owner QA layer (v1.2.1)
+
+A hidden, entirely local quality-assurance tool that lets the owner inspect and
+test the whole app without completing every prerequisite by hand.
+
+**Reveal & unlock.** Settings → the **Version** row: activate it five times
+(five taps, or focus it and press Enter five times) to open the Owner Access
+dialog. Enter the owner passphrase to reveal the Owner QA panel. Owner access is
+session-scoped (it survives a same-tab reload via a `sessionStorage` flag that
+holds *no* secret, and clears on tab close, browser restart, or **Lock Owner
+Access**). QA Mode itself always starts **off** on load.
+
+**Honest security limitations.** This is a browser app with **no trusted
+backend**, so this is a *local access gate*, not account security. It only
+prevents accidental discovery and ordinary-user access; a determined user can
+still read or modify client code. The passphrase is **never** stored, sent over
+a network, or written into profile data, storage, exports, logs, diagnostics, or
+GameBus payloads. Only a one-way **verifier hash** ever ships. Comparison uses
+Web Crypto where available (secure contexts) and a self-contained SHA-256
+fallback otherwise, so it works identically offline / on `file://`. Repeated
+wrong attempts trigger a short local cooldown — no lockout, no clues, no network.
+
+**Passphrase / verifier configuration.** The verifier is injected at build time
+from `TXPPS_QA_PASSPHRASE_HASH` (a salted SHA-256 hex); if unset, a centralized
+fallback verifier constant in `src/js/qa_access.js` is used. To **rotate** the
+owner passphrase, compute a new verifier and rebuild:
+
+```sh
+node tools/qa-hash.mjs "your-new-owner-passphrase"      # prints the hash only
+TXPPS_QA_PASSPHRASE_HASH=<that-hash> node build.mjs      # bakes it into dist
+```
+
+or paste the new hash into the `FALLBACK_VERIFIER` constant. See `.env.example`.
+Never commit the passphrase or a real `.env` (both are git-ignored).
+
+**QA Mode (temporary access).** With QA Mode on, `AccessPolicy` opens every valid
+node and a persistent “QA MODE — progression & rewards are simulated” indicator
+shows on every screen. `ProgressionPolicy` / `RewardPolicy` suppress *all*
+permanent writes — XP, stars, ranks, achievements, streaks, boss stats, node
+completion, graduation — so grading, sheets and events still run but nothing is
+saved. Turning QA Mode off restores normal locks immediately and, if the open
+route is now locked, returns you to the map. Locking Owner Access also exits QA
+Mode. QA state never appears in profile exports and never syncs between tabs.
+
+**QA test profile.** “Create QA Test Profile” stashes your real profile and
+installs a clearly-labelled **TXPPS QA** profile built from a validated preset
+(clean / zone-1 / boss-ready / mid-course / all-zones / graduation). It uses the
+real completion factories, is labelled everywhere (and in exports as
+`isQaProfile: true`), and is fully restorable via **Restore real profile**. A QA
+profile — with QA Mode off — is where deliberate persistent/destructive testing
+happens.
+
+**Run the QA tests.** `node build.mjs`, then the Playwright suites
+`qatest.mjs` (authorization, access policy, reward suppression, boss QA) and
+`qashots.mjs` (responsive + accessibility). Tests inject a throwaway **test**
+verifier (`QaAccess.setTestVerifier`) — the real owner passphrase never appears
+in any test file.
+
 ## Architecture
 
 ```
@@ -113,6 +185,17 @@ src/
     data_glossary*.js        Signal Dictionary mini-lesson entries (parts a–i)
     game_bus.js              typed Game Event Bus — course logic emits semantic
                              events; the reaction layer subscribes (isolated)
+    qa_access.js             owner QA authorization: salted SHA-256 verifier
+                             (Web Crypto + JS fallback), session marker,
+                             attempt cooldown, QA-mode state (v1.2.1)
+    access_policy.js         one authority for canOpenNode/Zone/Boss — normal
+                             rules in normal mode, open-all under QA (v1.2.1)
+    progression_policy.js    one authority for shouldPersist/shouldGrant —
+                             suppresses permanent writes/rewards in QA (v1.2.1)
+    qa_fixtures.js           validated QA test-profile presets, built from the
+                             live curriculum via the real factories (v1.2.1)
+    qa_inspector.js          owner UI: indicator, access dialog, QA panel,
+                             Curriculum Inspector, boss/PATCH/haptic tools (v1.2.1)
     game.js                  PATCH the workshop assistant + Animation / Audio /
                              Haptic / Reaction / Accessibility directors (v1.1.0)
     boss.js                  BossKit — data-driven boss encounter framework:

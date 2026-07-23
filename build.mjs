@@ -38,6 +38,9 @@ const JS_ORDER = [
   'data_glossary_h.js',
   'data_glossary_i.js',
   'game_bus.js',
+  'qa_access.js',
+  'access_policy.js',
+  'progression_policy.js',
   'engine.js',
   'store.js',
   'audio.js',
@@ -46,12 +49,21 @@ const JS_ORDER = [
   'dict.js',
   'game.js',
   'boss.js',
+  'qa_fixtures.js',
+  'qa_inspector.js',
   'views.js',
   'app.js',
 ];
 
-const js = JS_ORDER.map((f) => `/* ===== src/js/${f} ===== */\n` + read(`./src/js/${f}`)).join('\n;\n');
+let js = JS_ORDER.map((f) => `/* ===== src/js/${f} ===== */\n` + read(`./src/js/${f}`)).join('\n;\n');
 const css = read('./src/styles.css');
+
+// v1.2.1: inject the owner-QA passphrase VERIFIER (a one-way hash — never the
+// passphrase) from the build environment. If TXPPS_QA_PASSPHRASE_HASH is unset,
+// the token is left and qa_access.js falls back to its centralized verifier
+// constant. Only the verifier ever ships; a usable secret never does.
+const qaVerifier = (process.env.TXPPS_QA_PASSPHRASE_HASH || '').trim();
+if (/^[0-9a-f]{64}$/.test(qaVerifier)) js = js.replace('__TXPPS_QA_VERIFIER__', qaVerifier);
 
 let html = read('./src/shell.html');
 html = html.replace('/*__CSS__*/', () => css);

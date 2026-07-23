@@ -460,7 +460,7 @@ const Game = (() => {
     }
     function pauseAmbient() { clearTimeout(ambientTimer); ambientTimer = null; }
 
-    return { mount, setState, toIdle, say, applyPresence, pauseAmbient, scheduleAmbient, get state() { return state; }, get mounted() { return mounted; } };
+    return { mount, setState, toIdle, say, applyPresence, pauseAmbient, scheduleAmbient, states: () => Object.keys(FACE), get state() { return state; }, get mounted() { return mounted; } };
   })();
 
   /* =====================================================================
