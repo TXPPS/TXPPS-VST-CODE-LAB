@@ -132,6 +132,26 @@ reuses the same shared encounter shell (HUD, phases, victory/defeat, retry,
 resume) and the same Owner QA campaign console. Zones 1–3 are now production
 encounters; Zones 4–7 remain development encounters (QA-only).
 
+**Version 1.3.3 — Zone 4 Boss: Plugin Architect** promotes Zone 4 to a
+production BossKit encounter framed as the architecture review of a failing
+commercial plugin — the capstone of the JUCE architecture taught across Zone 3.
+Its six technically-accurate stages teach plugin architecture through gameplay
+across three phases: **Broken Architecture** (the processor/editor split — DSP
+state must live in the processor because the host destroys the editor freely,
+and rate-dependent setup belongs in `prepareToPlay`, not a constructor guessing
+44100), **Repair Communication** (host automation lands only on registered APVTS
+parameters — a knob writing a plain member bypasses it — and per-sample
+`getNextValue()` smoothing turns block-rate steps into an inaudible glide), and
+**Production Stability** (the real-time contract: no heap allocation in
+`processBlock`, and defensive state restoration ordered parse → validate →
+`replaceState`). Correct answers name the repair, wrong answers the engineering
+consequence; PATCH mentors as a senior plugin engineer with authored briefing /
+victory / defeat dialogue, and the existing parameter-flow diagram (slider →
+attachment → APVTS → atomic → smoother → audio, with the automation inlet)
+illustrates the intro. Stale glossary "appears" links were retargeted to match
+the new boss content. Zones 1–4 are now production encounters; Zones 5–7 remain
+development encounters (QA-only).
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -255,10 +275,10 @@ src/
                              definitions reference curriculum nodes; a pure
                              deterministic session mirrors runner results as
                              HP / integrity / phases (v1.2.0 Zone 1 slice; v1.3.0
-                             adds auto-phases + QA-only dev_boss definitions; v1.3.1
-                             authors production boss2; v1.3.2 authors production boss3)
+                             adds auto-phases + QA-only dev_boss definitions; v1.3.1–
+                             v1.3.3 author production boss2/boss3/boss4)
     boss_campaign.js         one registry of all seven zone bosses — production
-                             (Zones 1–3) vs development (Zones 4–7), fields, order (v1.3.0)
+                             (Zones 1–4) vs development (Zones 5–7), fields, order (v1.3.0)
     boss_campaign_service.js campaign authority: lookup, sequencing, availability,
                              progress, idempotent victory, safe session persistence;
                              defers to Access/Progression/Reward policies (v1.3.0)

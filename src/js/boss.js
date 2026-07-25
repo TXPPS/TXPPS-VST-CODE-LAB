@@ -90,6 +90,28 @@ const BossKit = (() => {
       },
       viz: { t: 'clipwave' },   // clipped-waveform scope: the signal driven past full scale
     },
+    // ---- Zone 4 (v1.3.3) — production encounter. Theme: JUCE plugin architecture.
+    //      Questions live in the boss4 curriculum node (nodeRef); phases/dialogue/viz
+    //      are authored here. An architecture review of a failing plugin. ----
+    boss4: {
+      id: 'boss4', zoneId: 'z4', nodeRef: 'boss4',
+      name: 'THE PLUGIN ARCHITECT',
+      subtitle: 'A plugin failing architecture review — wrong owners, dead wiring, unsafe threads',
+      description: 'A commercial plugin is failing its architecture review: DSP state lives in the wrong class, host automation reaches nothing, parameter changes step audibly, and the audio thread breaks its real-time contract. Walk the design like a senior engineer — diagnose each fault, then repair the architecture.',
+      phases: [
+        { id: 'architecture', until: 4, title: 'PHASE 1 — BROKEN ARCHITECTURE', behavior: 'Map the responsibilities first. Which class owns the DSP state, and which lifecycle callback owns the setup? Fix the structure before touching the wiring.' },
+        { id: 'communication', until: 2, title: 'PHASE 2 — REPAIR COMMUNICATION', behavior: 'The structure stands. Now wire host, parameters and audio together: automation into the APVTS parameter, and smoothed values into the block.' },
+        { id: 'stability', until: -1, title: 'PHASE 3 — PRODUCTION STABILITY', behavior: 'Final review. Enforce the real-time contract on the audio thread and restore saved state defensively — ship-quality architecture, end to end.' },
+      ],
+      presentation: { integrityLabel: 'ARCHITECTURE INTEGRITY', hpLabel: 'DESIGN FAULTS', defeatLineLabel: 'REVIEW THRESHOLD' },
+      accessibility: { textOnly: 'Diagnose and repair a plugin\'s architecture. Each correct stage clears one design fault; each miss costs one architecture-integrity cell. Clear enough faults to pass the review.' },
+      dialogue: {
+        briefing: 'This plugin fails architecture review: state in the wrong owner, automation that reaches nothing, an audio thread missing its deadline. We fix architecture the way senior engineers do — responsibilities first, then the wiring, then the real-time contract. Reason each call out loud with me.',
+        victory: 'Architecture review passed. Every piece of state has the right owner, the host and the audio thread speak through the parameters, and the block never blocks. That is a plugin you can ship — and maintain.',
+        defeat: 'The review found design faults still standing, so this build does not ship yet — but nothing here touched a real release. Re-read the processor/editor split and the parameter path, then bring it back to review.',
+      },
+      viz: { t: 'paramflow' },   // slider → attachment → APVTS → atomic → smoother → audio, with the automation inlet
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -110,7 +132,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 4; z <= 7; z++) {   // Zones 1–3 are production encounters (DEFS.boss1/2/3); Zones 4–7 remain development
+    for (let z = 5; z <= 7; z++) {   // Zones 1–4 are production encounters (DEFS.boss1–4); Zones 5–7 remain development
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {

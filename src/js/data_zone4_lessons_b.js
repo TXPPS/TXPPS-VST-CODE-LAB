@@ -584,7 +584,7 @@ ZONE4_LESSONS.push(
       'Mono, naive shapes, no filter: the roadmap, not bugs.',
     ],
     inside: [
-      { name: 'First Signal', use: 'v3 complete — the boss asks you to repair exactly this chain' },
+      { name: 'First Signal', use: 'v3 complete — next, the boss puts a whole plugin architecture under review' },
       { name: 'Commercial synths', use: 'strip the GUI and the innermost voice loop reads like this one — plus filters, ×16 voices' },
     ],
     analogyPanel: 'The finished chain is a one-musician studio: oscillator the performer, envelope their touch, LFO their vibrato hand, gain the engineer riding the fader, clamp the protection limiter on the master. Fifteen lessons ago the room was empty.',
