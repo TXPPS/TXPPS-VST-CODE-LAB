@@ -152,6 +152,28 @@ illustrates the intro. Stale glossary "appears" links were retargeted to match
 the new boss content. Zones 1–4 are now production encounters; Zones 5–7 remain
 development encounters (QA-only).
 
+**Version 1.3.4 — Zone 5 Boss: Real-Time Guardian** promotes Zone 5 to a
+production BossKit encounter framed as the performance pass of a release review:
+a commercial synth that sounds perfect on the bench but glitches under
+production load. Its six technically-accurate stages teach real-time audio
+engineering across three phases: **Performance Diagnosis** (a mutex shared with
+the message thread makes the callback's worst case unbounded — real-time is a
+worst-case contract, not an average-case one — and a CPU spike on fading tails
+is denormal floats hitting the microcode slow path, fixed with flush-to-zero /
+`juce::ScopedNoDenormals`), **Real-Time Stabilisation** (an allocating note-on
+becomes a pre-allocated voice pool, and the GUI meter is fed through a
+`std::atomic<float>` the editor polls on its own timer — no locks, no
+allocation, no GUI work on the audio thread), and **Production Load Test**
+(hard-cut voice stealing is a step discontinuity — a click — so production
+synths fade the victim for a few milliseconds first, and the finale orders a
+single-producer/single-consumer ring-buffer handoff: write the slot, publish the
+index with a release-store, consume behind an acquire-load). PATCH mentors as a
+Lead Performance Engineer ("we measure: worst case, not average case"); the
+existing callback-deadline diagram ("worst case IS the spec") illustrates the
+intro. The zone5_clear achievement and all pre-boss lead-ins that promised the
+old synth-repair encounter were retargeted in the same pass. Zones 1–5 are now
+production encounters; Zones 6–7 remain development encounters (QA-only).
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -276,9 +298,9 @@ src/
                              deterministic session mirrors runner results as
                              HP / integrity / phases (v1.2.0 Zone 1 slice; v1.3.0
                              adds auto-phases + QA-only dev_boss definitions; v1.3.1–
-                             v1.3.3 author production boss2/boss3/boss4)
+                             v1.3.4 author production boss2–boss5)
     boss_campaign.js         one registry of all seven zone bosses — production
-                             (Zones 1–4) vs development (Zones 5–7), fields, order (v1.3.0)
+                             (Zones 1–5) vs development (Zones 6–7), fields, order (v1.3.0)
     boss_campaign_service.js campaign authority: lookup, sequencing, availability,
                              progress, idempotent victory, safe session persistence;
                              defers to Access/Progression/Reward policies (v1.3.0)

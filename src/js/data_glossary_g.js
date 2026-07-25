@@ -40,7 +40,7 @@ DICT.push(
     mistake: 'Implementing pedal-down (notes hang — demos great!) and forgetting pedal-up\'s release loop. The wash grows forever. Both halves or neither.',
     remember: 'The pedal defers goodbyes: down = mark instead of release, up = fire every mark.',
     related: ['cc', 'release', 'note-event', 'panic'],
-    appears: [{ z: 5, node: 'n10' }, { z: 5, node: 'nc3' }, { z: 5, node: 'boss5' }],
+    appears: [{ z: 5, node: 'n10' }, { z: 5, node: 'nc3' }],
     aka: ['hold pedal', 'damper pedal', 'cc64'],
     search: ['pedal', 'hold notes', 'notes hang', 'damper'],
   },

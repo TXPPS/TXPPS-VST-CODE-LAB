@@ -112,6 +112,28 @@ const BossKit = (() => {
       },
       viz: { t: 'paramflow' },   // slider → attachment → APVTS → atomic → smoother → audio, with the automation inlet
     },
+    // ---- Zone 5 (v1.3.4) — production encounter. Theme: real-time performance engineering.
+    //      Questions live in the boss5 curriculum node (nodeRef); phases/dialogue/viz
+    //      are authored here. A release candidate failing under production load. ----
+    boss5: {
+      id: 'boss5', zoneId: 'z5', nodeRef: 'boss5',
+      name: 'THE REAL-TIME GUARDIAN',
+      subtitle: 'A release candidate failing under load — locks, spikes, clicking steals',
+      description: 'A commercial synth is one review away from release. It sounds perfect on the bench, but under production workloads the meters spike and the audio clicks: a lock on the audio thread, denormal tails, allocation in the note path, a meter wired through the wrong thread, voices stolen with a bang. Profile it, pin every source of instability, and certify it for release.',
+      phases: [
+        { id: 'diagnose', until: 4, title: 'PHASE 1 — PERFORMANCE DIAGNOSIS', behavior: 'Reproduce, then measure. Read the profiler like a scope: find the lock and the CPU spike before touching any code.' },
+        { id: 'stabilise', until: 2, title: 'PHASE 2 — REAL-TIME STABILISATION', behavior: 'Make the callback deterministic: allocation-free note handling, and thread crossings that never wait — atomics and lock-free queues only.' },
+        { id: 'loadtest', until: -1, title: 'PHASE 3 — PRODUCTION LOAD TEST', behavior: 'Full session, every voice lit. Click-free voice stealing and a watertight producer/consumer handoff — hold the deadline through the worst case.' },
+      ],
+      presentation: { integrityLabel: 'DEADLINE MARGIN', hpLabel: 'INSTABILITY', defeatLineLabel: 'CERTIFY THRESHOLD' },
+      accessibility: { textOnly: 'Diagnose and eliminate real-time instabilities in a release candidate. Each correct stage removes one block of instability; each miss costs one cell of deadline margin. Stabilise enough stages to certify the release.' },
+      dialogue: {
+        briefing: 'Release review, performance pass. It sounds right — that is not the bar. We measure: worst case, not average case. Reproduce the glitch, name the mechanism, then make the fix boring and deterministic. Walk the profiler with me.',
+        victory: 'Certified. The callback is allocation-free, every thread crossing is lock-free, and the worst case fits inside the deadline with margin to spare. Real-time does not mean fast — it means predictable. Ship it.',
+        defeat: 'The load test still catches instabilities, so this candidate is not certified — and better this rig catches them than a stage does. Re-read the real-time contract (worst case, not average), then bring it back for another pass.',
+      },
+      viz: { t: 'callbacktime' },   // one block's budget vs the deadline — "worst case IS the spec"
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -132,7 +154,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 5; z <= 7; z++) {   // Zones 1–4 are production encounters (DEFS.boss1–4); Zones 5–7 remain development
+    for (let z = 6; z <= 7; z++) {   // Zones 1–5 are production encounters (DEFS.boss1–5); Zones 6–7 remain development
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {

@@ -131,7 +131,7 @@ ZONE5_LESSONS.push(
       {
         h: 'Where sustain bugs come from',
         body: 'Every stuck-note story in this territory is one of three misses: the pedal-up loop never runs (notes hang forever), the ≥64 test is inverted (pedal works backwards), or a stolen/reused voice keeps its old `sustained` mark (a NEW note mysteriously refuses to release later). The fix for the third: clear `sustained` in startNote — allocation paperwork, again.',
-        warn: 'Also real: a note pressed *while* the pedal is down, then released — it defers like any other. And a note that\'s re-pressed while sustained should clear its mark and retrigger. Pedal logic is small but it multiplies against every other note path; the boss knows this.',
+        warn: 'Also real: a note pressed *while* the pedal is down, then released — it defers like any other. And a note that\'s re-pressed while sustained should clear its mark and retrigger. Pedal logic is small but it multiplies against every other note path; treat it with release-review care.',
       },
     ],
     checks: [
@@ -177,7 +177,7 @@ ZONE5_LESSONS.push(
       'Clear the sustained mark in startNote — stale marks are stuck notes waiting.',
     ],
     inside: [
-      { name: 'First Signal', use: 'p14 wires the pedal — and the boss un-wires it for you to fix' },
+      { name: 'First Signal', use: 'p14 wires the pedal — then the boss puts the whole rig through a release-review load test' },
       { name: 'Every piano plugin', use: 'plus resonance modeling — but the deferral logic underneath is exactly this' },
     ],
     analogyPanel: 'The pedal is a bartender holding the tab open: every “I\'m leaving” (note-off) goes on the tab instead of being settled. Foot up = last call — every open tab settles in the same instant. And a new customer must never inherit someone\'s old tab.',
@@ -260,7 +260,7 @@ ZONE5_LESSONS.push(
       'Classic bend is per-channel — every voice slides together (per-note = MPE).',
     ],
     inside: [
-      { name: 'First Signal', use: 'p14 installs the wheel; the boss ships one with a broken exponent' },
+      { name: 'First Signal', use: 'p14 installs the wheel — one more real-time path the release review must certify' },
       { name: 'MPE controllers', use: 'per-finger bend — the same math, one bendRatio per note instead of per channel' },
     ],
     analogyPanel: 'The bend wheel is a whammy bar for the whole keyboard: one spring-loaded lever that detunes everything sounding, then physically snaps back to zero. The snap-home IS the ratio returning to exactly 1.0.',
@@ -602,7 +602,7 @@ ZONE5_LESSONS.push(
       'First Signal is now a playable instrument; Zone 6 makes it professional.',
     ],
     inside: [
-      { name: 'First Signal', use: 'v6 complete — the Forgotten Polysynth awaits your repair skills' },
+      { name: 'First Signal', use: 'v6 complete — next, the release review: certify it under real-time load' },
       { name: 'Every DAW', use: 'the MIDI panic menu item sends exactly these messages when things get weird' },
     ],
     analogyPanel: 'The finished synth is a small theater company: the inbox is the stage door, allocation the stage manager, voices the cast, the wheels a director giving live notes, the pedal a hold cue, and panic the house lights — one switch that ends every scene at once, no exceptions.',

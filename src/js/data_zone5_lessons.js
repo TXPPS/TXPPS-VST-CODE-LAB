@@ -666,7 +666,7 @@ const ZONE5_LESSONS = [
       'Policies vary (protect bass, protect newest) — having ONE deliberately is the point.',
     ],
     inside: [
-      { name: 'First Signal', use: 'p13 installs the ladder; the boss breaks it for you to fix' },
+      { name: 'First Signal', use: 'p13 installs the ladder — the release review checks the note path stays allocation-free around it' },
       { name: 'juce::Synthesiser', use: 'setNoteStealingEnabled(true) — its ladder also prefers dying voices' },
     ],
     analogyPanel: 'A maître d\' with a full room and a VIP at the door: he never turns away the arrival. He looks for a table already paying the check (releasing), then the party that\'s lingered longest (oldest) — and he moves them *quietly*. The fade is the quiet.',

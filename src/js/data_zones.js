@@ -109,7 +109,7 @@ const ACHIEVEMENTS = [
   { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
   { id: 'zone4_clear', name: 'ZONE 4 CLEARED', desc: 'Pass the architecture review.' },
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
-  { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Revive the Forgotten Polysynth.' },
+  { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Certify the release candidate.' },
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
   { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },

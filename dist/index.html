@@ -1143,7 +1143,7 @@ const ACHIEVEMENTS = [
   { id: 'first_signal', name: 'FIRST SIGNAL', desc: 'Complete all three Zone 3 missions.' },
   { id: 'zone4_clear', name: 'ZONE 4 CLEARED', desc: 'Pass the architecture review.' },
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
-  { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Revive the Forgotten Polysynth.' },
+  { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Certify the release candidate.' },
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
   { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
@@ -9034,7 +9034,7 @@ const ZONE5_LESSONS = [
       'Policies vary (protect bass, protect newest) — having ONE deliberately is the point.',
     ],
     inside: [
-      { name: 'First Signal', use: 'p13 installs the ladder; the boss breaks it for you to fix' },
+      { name: 'First Signal', use: 'p13 installs the ladder — the release review checks the note path stays allocation-free around it' },
       { name: 'juce::Synthesiser', use: 'setNoteStealingEnabled(true) — its ladder also prefers dying voices' },
     ],
     analogyPanel: 'A maître d\' with a full room and a VIP at the door: he never turns away the arrival. He looks for a table already paying the check (releasing), then the party that\'s lingered longest (oldest) — and he moves them *quietly*. The fade is the quiet.',
@@ -9180,7 +9180,7 @@ ZONE5_LESSONS.push(
       {
         h: 'Where sustain bugs come from',
         body: 'Every stuck-note story in this territory is one of three misses: the pedal-up loop never runs (notes hang forever), the ≥64 test is inverted (pedal works backwards), or a stolen/reused voice keeps its old `sustained` mark (a NEW note mysteriously refuses to release later). The fix for the third: clear `sustained` in startNote — allocation paperwork, again.',
-        warn: 'Also real: a note pressed *while* the pedal is down, then released — it defers like any other. And a note that\'s re-pressed while sustained should clear its mark and retrigger. Pedal logic is small but it multiplies against every other note path; the boss knows this.',
+        warn: 'Also real: a note pressed *while* the pedal is down, then released — it defers like any other. And a note that\'s re-pressed while sustained should clear its mark and retrigger. Pedal logic is small but it multiplies against every other note path; treat it with release-review care.',
       },
     ],
     checks: [
@@ -9226,7 +9226,7 @@ ZONE5_LESSONS.push(
       'Clear the sustained mark in startNote — stale marks are stuck notes waiting.',
     ],
     inside: [
-      { name: 'First Signal', use: 'p14 wires the pedal — and the boss un-wires it for you to fix' },
+      { name: 'First Signal', use: 'p14 wires the pedal — then the boss puts the whole rig through a release-review load test' },
       { name: 'Every piano plugin', use: 'plus resonance modeling — but the deferral logic underneath is exactly this' },
     ],
     analogyPanel: 'The pedal is a bartender holding the tab open: every “I\'m leaving” (note-off) goes on the tab instead of being settled. Foot up = last call — every open tab settles in the same instant. And a new customer must never inherit someone\'s old tab.',
@@ -9309,7 +9309,7 @@ ZONE5_LESSONS.push(
       'Classic bend is per-channel — every voice slides together (per-note = MPE).',
     ],
     inside: [
-      { name: 'First Signal', use: 'p14 installs the wheel; the boss ships one with a broken exponent' },
+      { name: 'First Signal', use: 'p14 installs the wheel — one more real-time path the release review must certify' },
       { name: 'MPE controllers', use: 'per-finger bend — the same math, one bendRatio per note instead of per channel' },
     ],
     analogyPanel: 'The bend wheel is a whammy bar for the whole keyboard: one spring-loaded lever that detunes everything sounding, then physically snaps back to zero. The snap-home IS the ratio returning to exactly 1.0.',
@@ -9651,7 +9651,7 @@ ZONE5_LESSONS.push(
       'First Signal is now a playable instrument; Zone 6 makes it professional.',
     ],
     inside: [
-      { name: 'First Signal', use: 'v6 complete — the Forgotten Polysynth awaits your repair skills' },
+      { name: 'First Signal', use: 'v6 complete — next, the release review: certify it under real-time load' },
       { name: 'Every DAW', use: 'the MIDI panic menu item sends exactly these messages when things get weird' },
     ],
     analogyPanel: 'The finished synth is a small theater company: the inbox is the stage door, allocation the stage manager, voices the cast, the wheels a director giving live notes, the pedal a hold cue, and panic the house lights — one switch that ends every scene at once, no exceptions.',
@@ -10161,7 +10161,7 @@ const ZONE5_CHALLENGES = [
           mistakes: [
             { match: '^127$', msg: 'Integer division: 0 for every value below 127 — a mod wheel that\'s dead until slammed fully up. Divide by 127.0f.' },
           ],
-          explain: 'value / 127.0f → 0..1 into d14\'s depth. The int version is the boss\'s favorite fault: a wheel that only works at maximum.',
+          explain: 'value / 127.0f → 0..1 into d14\'s depth. The int version is a classic shipped bug: a wheel that only works at maximum.',
         },
       },
       {
@@ -10241,7 +10241,7 @@ const ZONE5_CHALLENGES = [
             { t: 'The buffer size', why: 'Block size affects latency, never note lifetimes — lifecycle bugs are state bugs.' },
           ],
           answer: 0,
-          explain: 'The condition (“only after pedal use”) is the fingerprint: stale sustained marks surviving into a voice\'s next life. First Signal is complete — and you just debugged it like a professional. The Forgotten Polysynth is waiting.',
+          explain: 'The condition (“only after pedal use”) is the fingerprint: stale sustained marks surviving into a voice\'s next life. First Signal is complete — and you just debugged it like a professional. One gate remains: the release review, under full production load.',
         },
       },
     ],
@@ -10249,113 +10249,85 @@ const ZONE5_CHALLENGES = [
 
   /* ============ BOSS ============ */
   {
-    id: 'boss5', kind: 'boss', title: 'BOSS: The Forgotten Polysynth', short: 'Zone 5 boss', passNeed: 5,
-    concepts: ['midi-basics', 'allocation', 'performance', 'voices-poly'],
-    brief: 'A legendary 1983 8-voice polysynth, reborn as a plugin — badly. Chords lose notes, half the voice cards are dead, lifting one key kills another, everything plays sharp, the pedal murders what you\'re holding, the mod wheel is dead until slammed, and stolen voices go silent. Seven systems, seven faults. Repair 5 and the legend sings again.',
+    id: 'boss5', kind: 'boss', title: 'BOSS: Real-Time Guardian', short: 'Zone 5 boss', passNeed: 4,
+    concepts: ['locks', 'denormals', 'allocation', 'lock-free', 'voice-stealing', 'ring-buffer'],
+    brief: 'A release candidate passes casual testing but glitches under production load: a mutex inside the callback, a CPU spike as tails fade, an allocating note-on, a meter wired through the wrong thread, voices stolen with a bang. Six instabilities, one retry each — eliminate at least 4 to certify the release.',
     stages: [
       {
-        type: 'bugspot', concept: 'midi-basics',
-        prompt: 'Stage 1 — Play a chord tightly: only ONE note sounds. The inbox is being abandoned. Tap where.',
-        code: [
-          'for (const auto metadata : midiMessages)',
-          '{',
-          '    const auto msg = metadata.getMessage();',
-          '    handleMessage(msg);',
-          '    break;',
-          '}',
+        type: 'mcq', concept: 'locks', qid: 'b5s1',
+        prompt: 'Phase 1 — Performance Diagnosis. The synth is clean on the bench, but in a loaded session it clicks exactly when the editor opens or a preset loads. Diagnose why this line can miss the deadline even though it "works".',
+        code: 'void processBlock(juce::AudioBuffer<float>& buffer,\n                  juce::MidiBuffer& midi)\n{\n    const std::lock_guard<std::mutex> lock(paramLock);   // shared with the message thread\n    render(buffer, midi);\n}',
+        options: [
+          { t: 'The audio thread can block for an unbounded time — if the message thread holds that mutex and gets preempted, the callback waits and the deadline is gone', why: '' },
+          { t: 'std::lock_guard is slower than calling lock() and unlock() by hand', why: 'lock_guard is a zero-cost RAII wrapper — the hazard is the blocking itself, not how the lock is spelled.' },
+          { t: 'Mutexes only misbehave on single-core machines', why: 'Preemption bites on any core count: the message thread can be paused mid-critical-section — holding the lock — on the biggest machine you can buy.' },
+          { t: 'It is fine — the lock is only held briefly', why: '"Briefly" is an average-case claim, and the deadline is a worst-case contract. The OS can preempt the lock holder for many milliseconds while a ~3 ms callback budget burns.' },
         ],
-        buggy: 4,
-        explain: 'break exits after the FIRST event — a tight chord delivers several note-ons in one block, and all but one go unread. Remove the break: the loop must drain the whole inbox, every block.',
-        fix: 'Delete the break — handle every message in the buffer',
+        answer: 0,
+        explain: 'Real-time is a worst-case contract, not an average-case one. A mutex shared with the message thread makes the callback\'s worst case unbounded: preset load takes the lock, the OS preempts it, the audio thread waits, the buffer runs dry — one click. Casual testing rarely lines those events up; a production session does. Cross threads with atomics and lock-free queues instead, and keep every lock out of processBlock.',
       },
       {
-        type: 'bugspot', concept: 'allocation',
-        prompt: 'Stage 2 — It claims 8 voices, but a 5-note chord always steals. Half the rack is unreachable. Tap why.',
+        type: 'predict', concept: 'denormals', qid: 'b5s2',
+        prompt: 'Phase 1 — Performance Diagnosis. The CPU meter is calm while notes play — then SPIKES as the delay tail fades toward silence. Predict the cause.',
+        code: '// feedback delay; input is now silent\nfeedback = feedback * 0.9995f;   // decays toward zero forever\nout[i] = feedback;',
+        options: [
+          { t: 'Denormal floats — below ~1e-38 the CPU drops to a slow assist path; flush-to-zero (juce::ScopedNoDenormals) fixes it', why: '' },
+          { t: 'Multiplication gets more expensive as numbers get smaller', why: 'A normal float multiply costs the same at any magnitude. Only the subnormal range below normal floats triggers the slow path — that cliff is the whole story.' },
+          { t: 'The garbage collector runs when the audio goes quiet', why: 'C++ has no garbage collector — nothing automatic runs at silence. The cost is inside the arithmetic itself.' },
+          { t: 'The spike is a meter misread — tiny numbers cannot cost more', why: 'It is real and reproducible: denormal arithmetic can run tens of times slower, and a decaying feedback loop manufactures denormals by the thousand.' },
+        ],
+        answer: 0,
+        explain: 'Floats below the smallest normal magnitude (about 1.2×10⁻³⁸ for 32-bit) become denormal/subnormal, and many CPUs handle them in microcode — tens of times slower than normal arithmetic. A fading feedback tail decays straight into that range, so the quietest moment becomes the most expensive. Fix: enable flush-to-zero for the callback (juce::ScopedNoDenormals) so tiny values snap to 0. Silence should be the cheapest thing you process.',
+      },
+      {
+        type: 'bugspot', concept: 'allocation', qid: 'b5s3',
+        prompt: 'Phase 2 — Real-Time Stabilisation. Under load, note-ons occasionally stall the callback. Tap the line that breaks the allocation-free rule.',
         code: [
-          'Voice* findFreeVoice()',
-          '{',
-          '    for (int i = 0; i < 4; ++i)',
-          '        if (voices[i].note == -1)',
-          '            return &voices[i];',
-          '    return nullptr;   // voices.size() == 8',
+          'void handleNoteOn(int note, float vel)',
+          '{   // called from inside processBlock',
+          '    voices.push_back(std::make_unique<Voice>());',
+          '    voices.back()->start(note, vel);',
           '}',
         ],
         buggy: 2,
-        explain: 'The hunt stops at 4 — voices 4..7 exist, render, and are NEVER offered work: dead cards by loop bound. Hunt the whole rack: i < 8, or better, range-for over voices so the bound can\'t lie.',
-        fix: 'for (auto& v : voices)  — never hard-code the pool size twice',
+        explain: 'make_unique heap-allocates on the audio thread — an unbounded stall — and push_back can reallocate the whole vector on top of it. The shipping pattern is a fixed voice pool: construct every voice up front in prepareToPlay, and let note-on only CLAIM a free one (the allocation scan from n7, now allocation-free). processBlock touches memory that already exists — at release, that rule has no exceptions.',
+        fix: 'Pre-allocate the pool in prepareToPlay; note-on claims a free voice',
       },
       {
-        type: 'bugspot', concept: 'allocation',
-        prompt: 'Stage 3 — Lift ANY key and the oldest sounding note dies instead; the lifted note rings on. Tap the ignored clipboard.',
-        code: [
-          'void stopNote(int note)',
-          '{',
-          '    for (auto& v : voices)',
-          '        if (v.adsr.isActive())',
-          '        {',
-          '            v.adsr.noteOff();',
-          '            return;',
-          '        }',
-          '}',
-        ],
-        buggy: 3,
-        explain: 'No ownership check: the first active voice pays for every key-up, and the actual owner never releases — wrong victim AND stuck note in one condition. The stamp is the fix: v.note == note && v.adsr.isActive().',
-        fix: 'if (v.note == note && v.adsr.isActive())',
-      },
-      {
-        type: 'fill', concept: 'performance',
-        prompt: 'Stage 4 — Every note plays exactly 2 semitones sharp until the wheel is yanked fully down. Complete the missing decode step.',
-        code: 'int raw = msg.getPitchWheelValue();          // 0..16383, rest = 8192\nfloat centered  = (raw - ___) / 8192.0f;\nfloat semitones = centered * 2.0f;\nbendRatio = std::pow(2.0f, semitones / 12.0f);',
-        accept: ['8192', '8192.0', '8192.0f', '8192.f'],
-        placeholder: 'center',
-        hint: 'Rest position must decode to zero semitones.',
-        explain: 'Uncentered, rest reads 8192/8192 = +1.0 → a permanent +2 st bend — the synth is “broken sharp” with a healthy oscillator. Subtract the midpoint and home means home. (Not a subtle detune — two full semitones. The tuner never lies.)',
-      },
-      {
-        type: 'bugspot', concept: 'performance',
-        prompt: 'Stage 5 — Pedal-up CUTS the notes you\'re still holding and leaves the pedal wash ringing forever. Tap the inverted filter.',
-        code: [
-          'void setPedal(bool down)',
-          '{',
-          '    pedalDown = down;',
-          '    if (down) return;',
-          '    for (auto& v : voices)',
-          '        if (! v.sustained)',
-          '            v.adsr.noteOff();',
-          '}',
-        ],
-        buggy: 5,
-        explain: 'The filter is inverted: it releases every voice EXCEPT the sustained ones — held keys get chopped, deferred notes stay deferred forever. Release the marked voices (if (v.sustained)), clearing each mark as you fire.',
-        fix: 'if (v.sustained) { v.sustained = false; v.adsr.noteOff(); }',
-      },
-      {
-        type: 'mcq', concept: 'performance',
-        prompt: 'Stage 6 — The mod wheel does nothing… until slammed to the top, where vibrato snaps to maximum. Diagnose.',
-        code: 'vibratoDepth = msg.getControllerValue() / 127;',
+        type: 'mcq', concept: 'lock-free', qid: 'b5s4',
+        prompt: 'Phase 2 — Real-Time Stabilisation. The GUI needs a level meter fed from the audio thread. Which wiring passes release review?',
+        code: '// audio thread, once per block:\nfloat rms = computeRms(buffer);\n// ... how should rms reach the meter?',
         options: [
-          { t: 'Integer division: every value below 127 truncates to 0, and 127 gives exactly 1 — dead wheel, then full blast. Divide by 127.0f', why: '' },
-          { t: 'The LFO is broken', why: 'The LFO is fine — at full wheel the vibrato works perfectly. Only the DEPTH arithmetic is wrong, and only below the top.' },
-          { t: 'CC 1 is the wrong controller', why: 'CC 1 IS the mod wheel — and the wheel demonstrably reaches the code. The division is the culprit.' },
-          { t: 'The wheel needs centering like pitch bend', why: 'The mod wheel has no center — it\'s 0..127 one-way. The bug is Zone 1\'s truncation trap, not missing bend math.' },
+          { t: 'Store it into a std::atomic<float>; the editor reads it on its own GUI timer and repaints — nobody waits, nobody allocates', why: '' },
+          { t: 'Call meter.repaint() directly from processBlock', why: 'GUI work belongs to the message thread only — painting from the audio thread is a threading violation, and its cost would land inside the audio deadline.' },
+          { t: 'Guard a shared float with a std::mutex on both threads', why: 'That reintroduces Stage 1: the audio thread can block behind a preempted GUI. A meter must never be able to glitch the sound it measures.' },
+          { t: 'Post a heap-allocated message object to the GUI every block', why: 'An allocation per block on the audio thread, plus hundreds of messages a second to drain — all cost, no benefit over one atomic the GUI samples at frame rate.' },
         ],
         answer: 0,
-        explain: 'int / int truncates: 126/127 = 0. One .0f resurrects the whole wheel — Zone 1\'s very first trap, found alive inside a 1983 legend.',
+        explain: 'One writer, one reader, latest-value-wins: a single std::atomic<float> is the entire solution — the audio thread stores, the GUI timer loads at frame rate and repaints on the message thread. No locks, no allocation, no waiting on either side (m14\'s atomic handoff, shipped). When you need a STREAM of events instead of the latest value, step up to the lock-free ring buffer — the final stage.',
       },
       {
-        type: 'bugspot', concept: 'voices-poly',
-        prompt: 'Stage 7 — Last fault: everything else repaired, yet the synth is STILL totally silent — every claimed voice is a dead card. claimVoice is the only place the envelope gets started. Tap the wrong call.',
-        code: [
-          'void claimVoice(Voice& v, int note, float vel)',
-          '{',
-          '    v.note      = note;',
-          '    v.increment = incrementFor(note);',
-          '    v.velGain   = vel;',
-          '    v.adsr.reset();',
-          '}',
+        type: 'predict', concept: 'voice-stealing', qid: 'b5s5',
+        prompt: 'Phase 3 — Production Load Test. All 8 voices are sounding; a 9th note arrives and the oldest voice is stolen with this code. What does the player hear at that exact moment?',
+        code: 'Voice* v = findOldestVoice();\nv->phase = 0;              // hard reset, mid-waveform\nv->start(newNote, vel);',
+        options: [
+          { t: 'A click — the output jumps discontinuously mid-waveform; production synths fade the stolen voice for a few milliseconds before retriggering', why: '' },
+          { t: 'Nothing — the old note simply becomes the new note', why: 'The stolen voice was mid-swing at some non-zero level; snapping phase to 0 is a step discontinuity, and a step carries energy at every frequency — Zone 3 taught you what that sounds like: a click.' },
+          { t: 'The new note starts out of tune', why: 'Pitch comes from the new phase increment, which is set correctly. The artifact is the discontinuity at the handover, not the frequency after it.' },
+          { t: 'The synth drops the new note instead', why: 'The steal succeeds — the 9th note plays. What ships wrong is HOW it takes over: with a bang instead of a fade.' },
         ],
-        buggy: 5,
-        explain: 'reset() parks the envelope at idle and never starts it — isActive() stays false, the render loop skips the voice, and every claimed note (fresh or stolen) is a silent card. The claim must START a life: v.adsr.noteOn(). (A quick pre-fade before restarting a stolen voice is the polish; the attack is the fix.)',
-        fix: 'v.adsr.noteOn();',
+        answer: 0,
+        explain: 'n8 settled WHO pays (a releasing voice first, else the oldest). Production settles HOW: never hard-cut a sounding voice. The waveform is mid-swing at some level, and resetting phase is a step discontinuity — broadband energy, plainly audible as a click on every steal. Retire the victim with a very fast fade (a few milliseconds) or its fast release, then retrigger. Deterministic, click-free stealing is what makes 8 voices feel like enough.',
+      },
+      {
+        type: 'order', concept: 'ring-buffer', qid: 'b5s6',
+        prompt: 'Phase 3 — Production Load Test. Final certification. The message thread queues events for the audio thread through a lock-free ring buffer (one producer, one consumer). Arrange one event\'s handoff top to bottom so the reader can never see a half-written event.',
+        lines: [
+          'ring[w % SIZE] = event;                                  // write the event into its slot',
+          'writeIndex.store(w + 1, std::memory_order_release);      // THEN publish — data before index, always',
+          'int readable = writeIndex.load(std::memory_order_acquire);   // consumer: acquire, then read up to it',
+        ],
+        explain: 'Data first, publish second, acquire third. The release-store publishes the new index only after the slot is fully written, and the acquire-load guarantees the consumer that sees the index also sees the completed event — swap the first two and the reader can consume half an event: the unreproducible corruption that only shows under load. One producer, one consumer, no locks, no allocation, bounded time — this queue is how MIDI events, GUI commands and scope frames cross threads in shipping plugins. Certification passed: the worst case fits the deadline. Zone 5 is yours.',
       },
     ],
   },
@@ -15802,7 +15774,7 @@ DICT.push(
     mistake: 'Implementing pedal-down (notes hang — demos great!) and forgetting pedal-up\'s release loop. The wash grows forever. Both halves or neither.',
     remember: 'The pedal defers goodbyes: down = mark instead of release, up = fire every mark.',
     related: ['cc', 'release', 'note-event', 'panic'],
-    appears: [{ z: 5, node: 'n10' }, { z: 5, node: 'nc3' }, { z: 5, node: 'boss5' }],
+    appears: [{ z: 5, node: 'n10' }, { z: 5, node: 'nc3' }],
     aka: ['hold pedal', 'damper pedal', 'cc64'],
     search: ['pedal', 'hold notes', 'notes hang', 'damper'],
   },
@@ -19894,6 +19866,28 @@ const BossKit = (() => {
       },
       viz: { t: 'paramflow' },   // slider → attachment → APVTS → atomic → smoother → audio, with the automation inlet
     },
+    // ---- Zone 5 (v1.3.4) — production encounter. Theme: real-time performance engineering.
+    //      Questions live in the boss5 curriculum node (nodeRef); phases/dialogue/viz
+    //      are authored here. A release candidate failing under production load. ----
+    boss5: {
+      id: 'boss5', zoneId: 'z5', nodeRef: 'boss5',
+      name: 'THE REAL-TIME GUARDIAN',
+      subtitle: 'A release candidate failing under load — locks, spikes, clicking steals',
+      description: 'A commercial synth is one review away from release. It sounds perfect on the bench, but under production workloads the meters spike and the audio clicks: a lock on the audio thread, denormal tails, allocation in the note path, a meter wired through the wrong thread, voices stolen with a bang. Profile it, pin every source of instability, and certify it for release.',
+      phases: [
+        { id: 'diagnose', until: 4, title: 'PHASE 1 — PERFORMANCE DIAGNOSIS', behavior: 'Reproduce, then measure. Read the profiler like a scope: find the lock and the CPU spike before touching any code.' },
+        { id: 'stabilise', until: 2, title: 'PHASE 2 — REAL-TIME STABILISATION', behavior: 'Make the callback deterministic: allocation-free note handling, and thread crossings that never wait — atomics and lock-free queues only.' },
+        { id: 'loadtest', until: -1, title: 'PHASE 3 — PRODUCTION LOAD TEST', behavior: 'Full session, every voice lit. Click-free voice stealing and a watertight producer/consumer handoff — hold the deadline through the worst case.' },
+      ],
+      presentation: { integrityLabel: 'DEADLINE MARGIN', hpLabel: 'INSTABILITY', defeatLineLabel: 'CERTIFY THRESHOLD' },
+      accessibility: { textOnly: 'Diagnose and eliminate real-time instabilities in a release candidate. Each correct stage removes one block of instability; each miss costs one cell of deadline margin. Stabilise enough stages to certify the release.' },
+      dialogue: {
+        briefing: 'Release review, performance pass. It sounds right — that is not the bar. We measure: worst case, not average case. Reproduce the glitch, name the mechanism, then make the fix boring and deterministic. Walk the profiler with me.',
+        victory: 'Certified. The callback is allocation-free, every thread crossing is lock-free, and the worst case fits inside the deadline with margin to spare. Real-time does not mean fast — it means predictable. Ship it.',
+        defeat: 'The load test still catches instabilities, so this candidate is not certified — and better this rig catches them than a stage does. Re-read the real-time contract (worst case, not average), then bring it back for another pass.',
+      },
+      viz: { t: 'callbacktime' },   // one block's budget vs the deadline — "worst case IS the spec"
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -19914,7 +19908,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 5; z <= 7; z++) {   // Zones 1–4 are production encounters (DEFS.boss1–4); Zones 5–7 remain development
+    for (let z = 6; z <= 7; z++) {   // Zones 1–5 are production encounters (DEFS.boss1–5); Zones 6–7 remain development
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {
@@ -20091,9 +20085,9 @@ const BossKit = (() => {
    zone bosses. Data only: no policy, no state, no side effects.
 
    IMPORTANT distinction this registry encodes:
-   - Zones 1–4 are PRODUCTION BossKit encounters (definitionId 'bossN') that
+   - Zones 1–5 are PRODUCTION BossKit encounters (definitionId 'bossN') that
      real learners fight via the boss route.
-   - Zones 5–7 register a DEVELOPMENT BossKit encounter (definitionId
+   - Zones 6–7 register a DEVELOPMENT BossKit encounter (definitionId
      'dev_bossN') that is QA-only. Real learners still fight those zone
      bosses through the untouched LEGACY encounter (legacyLearnerEncounter),
      which remains finished content. The development encounters are the
@@ -20105,7 +20099,7 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
-  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true };  // Zones 1–4 are production encounters
+  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true };   // Zones 1–5 are production encounters
   function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
 
   const REGISTRY = {};
@@ -20136,7 +20130,7 @@ const BossCampaign = (() => {
         : ('Zone ' + n + ' boss — development encounter, QA only, not finished content.'),
       qaLaunchable: true,                                    // every boss can be launched from Owner QA
       learnerLaunchable: production,                         // only the production BossKit encounter is learner-facing
-      legacyLearnerEncounter: !production,                   // zones 2–7: learners still fight the legacy boss
+      legacyLearnerEncounter: !production,                   // zones 6–7: learners still fight the legacy boss
     };
   }
   REGISTRY.boss7.rewardId = 'graduate';                      // final boss additionally confers Graduate status
@@ -21538,6 +21532,10 @@ const Views = (() => {
     'smoothing': 'parameter smoothing', 'state': 'state & presets',
     'apvts': 'APVTS', 'attachments': 'attachments', 'processor': 'AudioProcessor',
     'processblock': 'processBlock', 'editor': 'editor',
+    // Zone 5 — real-time performance engineering (v1.3.4)
+    'locks': 'locks & blocking', 'denormals': 'denormals', 'lock-free': 'lock-free communication',
+    'voice-stealing': 'voice stealing', 'ring-buffer': 'ring buffer',
+    'allocation': 'voice allocation', 'voices-poly': 'polyphony', 'midi-basics': 'MIDI',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -22752,12 +22750,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.3'));
+      el('span', { class: 'mono small phos' }, 'v1.3.4'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.3 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–4 (Zone 4: Plugin Architect — JUCE processor/editor architecture, host automation, parameter smoothing, thread safety and state restoration), a seven-zone boss-campaign framework (Zones 5–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.4 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–5 (Zone 5: Real-Time Guardian — locks vs the audio deadline, denormals, allocation-free callbacks, lock-free communication, click-free voice stealing), a seven-zone boss-campaign framework (Zones 6–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.
