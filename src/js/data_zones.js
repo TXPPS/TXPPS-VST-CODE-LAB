@@ -113,7 +113,7 @@ const ACHIEVEMENTS = [
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
   { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Close every finding and sign off.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
-  { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Ship the Release Candidate.' },
+  { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Lead the final release review.' },
   { id: 'product_line', name: 'PRODUCT LINE', desc: 'Ship all eleven Zone 7 products.' },
   { id: 'graduate', name: '★ GRADUATE ★', desc: 'Complete the entire TXPPS VST CODE LAB curriculum.' },
 ];

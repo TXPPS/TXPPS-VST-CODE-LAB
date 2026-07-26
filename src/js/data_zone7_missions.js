@@ -777,7 +777,7 @@ ZONE7_CHALLENGES.push(
             { t: 'Ship it untested but flagged "beta"', why: 'A beta flag on an untested path in a 2.0 is a support queue with a bow on it.' },
           ],
           answer: 0,
-          explain: '▮▮▮ PRODUCT LINE COMPLETE ▮▮▮ TXPPS Signature 2.0: GATED, GREEN, SHIPPED. Eleven products — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, Signature — every one built on the same laws, every one released with its gates green. One session remains: QA\'s final pass on the Release Candidate. Clear it, and you graduate.',
+          explain: '▮▮▮ PRODUCT LINE COMPLETE ▮▮▮ TXPPS Signature 2.0: GATED, GREEN, SHIPPED. Eleven products — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, Signature — every one built on the same laws, every one released with its gates green. One session remains: the final release review of First Signal 1.0 — and you are leading it. Make the call, and you graduate.',
         },
       },
     ],

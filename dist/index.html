@@ -1147,7 +1147,7 @@ const ACHIEVEMENTS = [
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
   { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Close every finding and sign off.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
-  { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Ship the Release Candidate.' },
+  { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Lead the final release review.' },
   { id: 'product_line', name: 'PRODUCT LINE', desc: 'Ship all eleven Zone 7 products.' },
   { id: 'graduate', name: '★ GRADUATE ★', desc: 'Complete the entire TXPPS VST CODE LAB curriculum.' },
 ];
@@ -12846,114 +12846,93 @@ const ZONE7_CHALLENGES = [
     ],
   },
 
-  /* ============ FINAL BOSS ============ */
+  /* ============ BOSS ============ */
   {
-    id: 'boss7', kind: 'boss', title: 'BOSS: The Release Candidate', short: 'Final boss', passNeed: 6,
-    concepts: ['product-eng'],
-    brief: 'The last build of TXPPS Signature — the capstone plugin — sits one approval away from launch. QA\'s final pass found eight defects, and they span EVERYTHING: Zone 1 arithmetic, Zone 4 DSP, Zone 5 voices, Zone 6 discipline, Zone 7 products. No single lesson saves you. All of them do. Clear 6 of 8, sign the release — and graduate.',
+    id: 'boss7', kind: 'boss', title: 'BOSS: Master Signal', short: 'Final boss', passNeed: 4,
+    concepts: ['architecture-review', 'root-cause', 'integration', 'evidence-debugging', 'release-decision', 'ship-signoff'],
+    brief: 'The final release review of First Signal 1.0 — and you are leading it. Six open questions span everything you have learned: ownership, signal integrity, architecture, threading, testing, judgment. No single zone answers any of them; all of them do. Settle at least 4 to make the ship decision. This is not an exam. It is your first review as the engineer in charge.',
     stages: [
       {
-        type: 'bugspot', concept: 'product-eng',
-        prompt: 'QA #1 — "The wet/dry knob does nothing until 100%, then snaps to full wet." A Zone 1 ghost. Tap it.',
+        type: 'bugspot', concept: 'architecture-review', qid: 'b7s1',
+        prompt: 'Phase 1 — Engineering Review. Final architecture sweep of the editor. One line will dangle the moment the host changes sample rate — and it spans three zones\' rules at once. Tap it.',
         code: [
-          'int mixPercent = (int) mixParam->load();   // 0..100',
-          'float mix = mixPercent / 100;',
-          'out = dry * (1.0f - mix) + wet * mix;',
+          'class FirstSignalEditor : public juce::AudioProcessorEditor,',
+          '                          private juce::Timer',
+          '{',
+          '    void timerCallback() override',
+          '    {',
+          '        levelLabel.setText(juce::String(processorRef.currentRms.load()),',
+          '                           juce::dontSendNotification);   // GUI timer reads the atomic',
+          '    }',
+          '    SynthVoice* hotVoice = processorRef.voices.front().get();   // cached for "speed"',
+          '};',
         ],
-        buggy: 1,
-        explain: 'int ÷ int truncates: every value below 100 becomes 0, and 100 becomes exactly 1 — the knob is a switch. Zone 1\'s first trap, alive in a shipping product: divide by 100.0f.',
-        fix: 'float mix = mixPercent / 100.0f;',
+        buggy: 8,
+        explain: 'The timer reading the atomic (lines 6–7) is exactly right — that is Zone 5\'s meter bridge on Zone 4\'s message thread, and it stays. The defect is the cached raw pointer: the PROCESSOR owns its voices (Zone 2 — one owner, visible in the type), and prepareToPlay may rebuild that pool on any rate change (Zone 4 — the lifecycle contract), leaving the editor holding a dangling pointer it never owned. Editors ask the processor when they need something; they never cache into another object\'s ownership. One line, three zones.',
+        fix: 'Remove the cache — query through processorRef when needed',
       },
       {
-        type: 'mcq', concept: 'product-eng',
-        prompt: 'QA #2 — "The saturation stage sounds great low, but bright leads get an inharmonic fizz that moves DOWN as I play UP." Diagnose and pick the release-grade response.',
-        code: '// heavy tanh drive on harmonically rich material',
+        type: 'predict', concept: 'root-cause', qid: 'b7s2',
+        prompt: 'Phase 1 — Engineering Review. QA reports: "bounced mixes crackle." The crackle is present IN the rendered file, and the bounce is offline — not real-time. Predict what the evidence forces you to conclude.',
+        code: '// repro: offline bounce -> crackle audible in the .wav\n// same session, real-time playback: sometimes clean\n// CPU during bounce: irrelevant? (offline renders wait for each block)',
         options: [
-          { t: 'Aliasing (d8): the shaper\'s new harmonics fold past Nyquist. Release-grade: oversample the saturation stage, or ship with the limitation documented (r15) — chosen deliberately', why: '' },
-          { t: 'Lower the output gain', why: 'Level doesn\'t un-fold harmonics — the fizz is spectral (d8\'s fingerprint), not a loudness issue.' },
-          { t: 'Blame the customer\'s converter', why: 'The wrong-way movement is fold-back, generated inside YOUR shaper — d8 signed this ticket.' },
-          { t: 'Filter the input to remove all highs', why: 'That "fix" removes the material the customer bought the plugin to saturate. Raise the ceiling (oversample) or document — don\'t amputate.' },
+          { t: 'It cannot be a missed deadline — offline rendering has no real-time deadline. An artifact baked into the file was written by the signal path: scope the peaks for clipping or a discontinuity.', why: '' },
+          { t: 'CPU overload dropped buffers during the bounce', why: 'An offline render is not racing a deadline — the host simply waits for each block. Heavy CPU makes the bounce slower, never gappier. The evidence eliminates this whole class.' },
+          { t: 'A lock in the callback stalled the audio thread', why: 'Locks cause dropouts when a DEADLINE is missed — Zone 5\'s failure mode. Offline, the host waits politely at every block. A crackle in the file itself is in the samples, not the scheduling.' },
+          { t: 'The listener\'s audio interface is faulty', why: 'The artifact survives in the rendered file — it exists before any playback hardware touches it. Follow the evidence: your plugin wrote those samples.' },
         ],
         answer: 0,
-        explain: 'd8 taught the fingerprint, f2 taught who breeds the harmonics, r15 taught the honest choice. Release engineering is picking a cure ON PURPOSE — including "documented limitation" when that\'s the truthful trade.',
+        explain: 'Root-cause by elimination, the Zone 6 way: the reproduction conditions rule out entire failure classes before you read a line of code. Offline rendering removes the real-time deadline, so Zone 5\'s dropout mechanisms are eliminated; an artifact persisted in the file means the DSP wrote it — so Zone 3\'s instruments (peak trace, scope, null test against a known-good render) localize it. Evidence first, code second: that is the difference between debugging and guessing.',
       },
       {
-        type: 'bugspot', concept: 'product-eng',
-        prompt: 'QA #3 — "Whenever I lift the sustain pedal, notes I\'m still HOLDING get cut off with it." Zone 5\'s bookkeeping. Tap the poisoned claim.',
-        code: [
-          'void claimVoice (Voice& v, int note, float vel)',
-          '{',
-          '    v.note      = note;',
-          '    v.velGain   = vel;',
-          '    v.sustained = true;',
-          '    v.adsr.noteOn();',
-          '}',
-        ],
-        buggy: 4,
-        explain: 'Every new note is born PRE-MARKED as pedal-held — so the next pedal-up sweeps it into the deferred-release loop even though its key is still down: held notes die with the pedal. The claim must start with clean paperwork (v.sustained = false) — n10\'s stale-mark trap, p15\'s field report, shipped.',
-        fix: 'v.sustained = false;   // a new life starts with clean paperwork',
-      },
-      {
-        type: 'bugspot', concept: 'product-eng',
-        prompt: 'QA #4 — "Debug builds crackle under load; Release is clean. Also: WHY is there console spam?" Tap the r10 violation.',
-        code: [
-          'for (int i = 0; i < buffer.getNumSamples(); ++i)',
-          '{',
-          '    out[i] = renderSample();',
-          '    DBG ("out: " + juce::String (out[i]));',
-          '}',
-        ],
-        buggy: 3,
-        explain: 'DBG builds a heap String and prints — per SAMPLE, on the audio thread: allocation (r5) plus I/O, 44,100 times a second. Debug-only doesn\'t mean harmless: it hides races by shifting timing and makes Debug untestable. If you need to see a value from the audio thread, push it into an atomic or FIFO and let the UI narrate it (r10).',
-        fix: 'Delete it — meter via a std::atomic the UI reads',
-      },
-      {
-        type: 'mcq', concept: 'product-eng',
-        prompt: 'QA #5 — "Customers report old sessions sound DISTORTED after the update." The update added a Saturation knob. Diagnose.',
-        code: '// v2.1 added: AudioParameterFloat "saturation", default = 0.5f',
+        type: 'mcq', concept: 'integration', qid: 'b7s3',
+        prompt: 'Phase 2 — Integration Review. The cutoff zippers during host automation — but ONLY while the plugin window is open. Which mechanism explains a GUI-dependent audio artifact?',
+        code: '// closed window: automation sweeps are smooth\n// open window:   the same sweep zippers\n// editor code:  cutoffSlider.onValueChange = [this] { processorRef.setCutoffNow((float) cutoffSlider.getValue()); };',
         options: [
-          { t: 'The new parameter defaults to HALF DRIVE — every old session inherits distortion it never had. New features default NEUTRAL (r9): 0.0, off', why: '' },
-          { t: 'The saturation algorithm is wrong', why: 'The algorithm is fine for those who ASK for it — the crime is volunteering it to two years of finished mixes.' },
-          { t: 'Old sessions are corrupt', why: 'The sessions are pristine — they simply never saved a "saturation" value, so the DEFAULT is what they hear (r9\'s whole lesson).' },
-          { t: 'Ship a preference toggle', why: 'A setting to un-break old sessions is an apology wearing a checkbox. Fix the default; old mixes must load IDENTICAL.' },
+          { t: 'Two write paths, one destination: automation flows through the parameter and its smoother, but the open editor\'s callback writes the raw value straight into the DSP. Route every writer through the parameter.', why: '' },
+          { t: 'Repainting the window steals CPU and drops audio', why: 'Zipper is STEPPED VALUES, not missing buffers — and painting runs on the message thread, outside Zone 5\'s deadline. The artifact tracks the parameter path, not the load.' },
+          { t: 'Guard the cutoff with a mutex so the writers take turns', why: 'Zone 5 closed this door: a lock reachable from the audio path trades zipper for dropouts. The defect is having two paths at all — fix the routing, not the contention.' },
+          { t: 'Host automation is unreliable; document "close the window while automating"', why: 'The host is doing its job — writing the parameter. Your editor is the second, unsmoothed writer, and the GUI-open correlation is the fingerprint that proves it.' },
         ],
         answer: 0,
-        explain: 'r9\'s golden rule met its consequence: the default IS what old sessions hear. Change it to neutral, ship 2.1.1 as a patch, and the archive is sacred again.',
+        explain: 'The GUI-open correlation is the whole diagnosis: opening the window activates a second writer. The attachment moves the slider with automation, the slider\'s callback shoves raw values past the smoother, and the two paths interleave — block-rate steps, audible zipper. The repair is Zone 4\'s contract carried through Zone 5\'s glide: ONE authority (the APVTS parameter), every writer routed through it, the smoother the only thing that touches the DSP. Architecture, automation and real-time reasoning — one artifact.',
       },
       {
-        type: 'bugspot', concept: 'product-eng',
-        prompt: 'QA #6 — "The delay\'s repeats get LOUDER each pass until everything clips." Tap the ceiling that isn\'t one.',
-        code: [
-          'void setFeedback (float fb)',
-          '{',
-          '    feedback = juce::jlimit (0.0f, 1.2f, fb);',
-          '}',
+        type: 'order', concept: 'evidence-debugging', qid: 'b7s4',
+        prompt: 'Phase 2 — Integration Review. An intermittent glitch report just landed. Order the investigation the way a professional runs it — so the fix, when it comes, is aimed and provable.',
+        lines: [
+          'reproduceUnderControlledLoad();     // make it happen on demand — no repro, no mechanism',
+          'captureEvidence();                  // profiler, scope, logs: name the mechanism, not the symptom',
+          'applyMinimalAimedFix();             // change one thing, aimed at the named mechanism',
+          'proveWithRegressionRender();        // golds + load test green — fixed, and it stays fixed',
         ],
-        buggy: 2,
-        explain: 'The clamp exists — with the wrong ceiling: 1.2 lets each repeat come back louder than it went in, so each echo grows by 20% until d10\'s flat-tops arrive. Runaway feedback is exponential; the safe ceiling is below 1.0 (0.95 leaves dub headroom without the meltdown).',
-        fix: 'feedback = juce::jlimit (0.0f, 0.95f, fb);',
+        explain: 'Reproduce → measure → fix → prove. Skip the first step and you are patching a ghost; skip the second and the fix is a guess; skip the last and the bug is merely resting. The loop is zone-agnostic — the mechanism it names might be Zone 3 clipping, a Zone 2 lifetime, a Zone 4 contract breach or a Zone 5 lock — but the discipline is identical, and it is what Zone 6 turned into your reflex. This is how intermittent bugs die: on evidence, in order.',
       },
       {
-        type: 'fill', concept: 'product-eng',
-        prompt: 'QA #7 — "Synced delays are off-grid at every rate except 44.1k." Complete the conversion with the value that is true in EVERY session.',
-        code: 'double secondsPerBeat = 60.0 / hostBpm;\ndelaySamples = (int) (secondsPerBeat * beatRatio * ___);',
-        accept: ['sampleRate', 'getSampleRate()', 'getSampleRate ()'],
-        placeholder: 'factor',
-        hint: 'The number that turns seconds into samples — prepareToPlay hands it to you (r7).',
-        explain: 'Someone hard-coded 44100 and every other rate drifted off-grid. Seconds × sampleRate — the d2 conversion, read from the argument the host provides, recomputed every prepare (r7). The oldest lesson closes the newest ticket.',
-      },
-      {
-        type: 'mcq', concept: 'product-eng',
-        prompt: 'QA #8 — FINAL GATE. All seven fixes are in. The golden render now FAILS — output differs from the blessed 2.0 reference. Your call, engineer.',
-        code: '// compareBuffers(output, golden_2_0): FAIL — max diff 0.31',
+        type: 'mcq', concept: 'release-decision', qid: 'b7s5',
+        prompt: 'Phase 3 — Release Decision. Release day. Three findings remain open. Which one blocks the ship?',
+        code: '// (a) crash when the host recalls a corrupted preset\n// (b) GUI meter repaints at 60 fps where 30 would do\n// (c) typo in the About box ("recieve")',
         options: [
-          { t: 'Expected: the fixes CHANGED the output (bugs removed). Verify each diff traces to a fix, re-bless a new golden in its own commit, restart the checklist, ship', why: '' },
-          { t: 'Loosen the tolerance until it passes', why: 'Negotiating with the ruler (r12) — the test caught real change, which is its job. Blessing is deliberate; fudging is forever.' },
-          { t: 'Revert the fixes to keep the gold green', why: 'Shipping known bugs to satisfy a test inverts the entire point of testing. Golds serve the product, not the other way around.' },
-          { t: 'Delete the golden test', why: 'The test just did EXACTLY what it exists for. Keep it, re-bless it, and it guards version 2.1 the way it guarded 2.0.' },
+          { t: '(a) only — a crash on hostile state bytes hits every session that recalls a bad preset. Validate-before-touch is the contract. The meter rate and the typo are triaged, ticketed, and shipped.', why: '' },
+          { t: 'All three — a release must be flawless', why: 'A release is a risk decision, not a perfection contest. Blocking a green candidate on cosmetics ships nothing, ever. Triage — separating must-fix from noted — IS the engineering judgment being tested.' },
+          { t: 'None — a corrupted preset is the file\'s fault, not ours', why: 'The host will recall whatever bytes exist on disk, and setStateInformation must reject junk without dying — parse, validate, then touch state. That contract belongs to the plugin. Crashing on input is always ours.' },
+          { t: '(b) — performance findings always block release', why: 'A repaint rate is a message-thread cosmetic with zero audio-thread cost — Zone 5\'s separation is exactly why it cannot glitch the sound. Measure it, ticket it, ship.' },
         ],
         answer: 0,
-        explain: 'The last lesson of the curriculum: tests are instruments, not obstacles. Verify, re-bless deliberately, restart the list (r15), ship with your name on it. Release approved — TXPPS Signature 2.1 is GO. And so are you.',
+        explain: 'Severity × likelihood × contract: the crash breaches Zone 4\'s defensive-load contract (validate before touching live state) on an input path the plugin does not control — a data-loss risk in the field, and the fix plus its regression test are a day\'s work. The meter rate and the typo are real findings with real tickets — and zero ship risk. Knowing WHICH open findings block is the judgment call that separates release engineering from list-checking.',
+      },
+      {
+        type: 'mcq', concept: 'ship-signoff', qid: 'b7s6',
+        prompt: 'Phase 3 — Release Decision. The crash is fixed and covered by a new regression test. Suites green, validation passed, known issues documented with owners. You hold the pen on First Signal 1.0. Which sign-off do you write?',
+        code: '// the review dossier is on the table.\n// the team is waiting on your line.',
+        options: [
+          { t: '"Approved. Evidence attached: suites green, host validation passed, the preset-crash fix carries a regression test, known issues ticketed with owners. Ship 1.0."', why: '' },
+          { t: '"Approved — it sounded great when I played it last night."', why: 'A senior reviewer never signs a personal impression. The approval must cite evidence a colleague could re-run tomorrow — that is what makes it an engineering document instead of an opinion.' },
+          { t: '"Approved, but first rewrite the voice pool — I would have designed it differently."', why: 'Taste is not a finding. The pool passes its tests and holds its deadline; blocking a green candidate on style preference is how releases die. Review the evidence, respect the design.' },
+          { t: '"Rejected — some day, somewhere, a bug might surface."', why: 'Every shipped product carries unknown unknowns; that is why the regression net and the triage process exist. Reviews reject on FINDINGS, never on fear — or nothing would ever reach a single listener.' },
+        ],
+        answer: 0,
+        explain: 'The sign-off is the whole curriculum in one sentence: a claim backed by artifacts. Ownership clean since Zone 2. Signal integrity proven since Zone 3. Contracts held since Zone 4. The deadline safe since Zone 5. Evidence over opinion since Zone 6. You did not memorize this decision — you reasoned your way to it, which is the only way it counts. First Signal 1.0: approved. Campaign complete, engineer.',
       },
     ],
   },
@@ -13740,7 +13719,7 @@ ZONE7_CHALLENGES.push(
             { t: 'Ship it untested but flagged "beta"', why: 'A beta flag on an untested path in a 2.0 is a support queue with a bow on it.' },
           ],
           answer: 0,
-          explain: '▮▮▮ PRODUCT LINE COMPLETE ▮▮▮ TXPPS Signature 2.0: GATED, GREEN, SHIPPED. Eleven products — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, Signature — every one built on the same laws, every one released with its gates green. One session remains: QA\'s final pass on the Release Candidate. Clear it, and you graduate.',
+          explain: '▮▮▮ PRODUCT LINE COMPLETE ▮▮▮ TXPPS Signature 2.0: GATED, GREEN, SHIPPED. Eleven products — Gain, Tremolo, Delay, Chorus, Distortion, Filter, Mono, Poly, Sampler, Motion FX, Signature — every one built on the same laws, every one released with its gates green. One session remains: the final release review of First Signal 1.0 — and you are leading it. Make the call, and you graduate.',
         },
       },
     ],
@@ -16073,7 +16052,7 @@ DICT.push(
     mistake: 'Clamping with the wrong ceiling (jlimit to 1.2 "for drama") — above 1.0 the loop gains energy every pass and the meltdown is exponential. Drama lives at 0.95; disaster starts at 1.0.',
     remember: 'Below 1.0: repeats decay. At 1.0: forever. Above: runaway. The clamp IS the product decision.',
     related: ['delay-line', 'resonance', 'gain', 'clipping'],
-    appears: [{ z: 7, node: 'f1' }, { z: 7, node: 'p22' }, { z: 7, node: 'boss7' }],
+    appears: [{ z: 7, node: 'f1' }, { z: 7, node: 'p22' }],
     aka: ['regeneration', 'regen', 'repeats'],
     search: ['repeats', 'echo amount', 'runaway delay', 'self oscillation'],
   },
@@ -16086,7 +16065,7 @@ DICT.push(
     mistake: 'Computing mix with integer division (percent / 100) — the knob becomes a switch that does nothing until 100%. Zone 1\'s truncation trap loves this exact line.',
     remember: 'Two gains, one sum: dry fades out as wet fades in. Smooth it like any continuous knob.',
     related: ['mixing', 'gain', 'parameter-smoothing'],
-    appears: [{ z: 7, node: 'fc1' }, { z: 7, node: 'p22' }, { z: 7, node: 'boss7' }],
+    appears: [{ z: 7, node: 'fc1' }, { z: 7, node: 'p22' }],
     aka: ['mix knob', 'blend', 'parallel processing'],
     search: ['blend', 'mix', 'parallel', 'dry signal'],
   },
@@ -19879,6 +19858,28 @@ const BossKit = (() => {
       },
       viz: { t: 'shipcheck' },   // the First Signal ship list — release checklist with the last box open
     },
+    // ---- Zone 7 (v1.4.0) — the production capstone. Theme: the final release review,
+    //      led by the learner. Questions live in the boss7 curriculum node (nodeRef);
+    //      every stage integrates multiple prior zones. Victory completes the campaign. ----
+    boss7: {
+      id: 'boss7', zoneId: 'z7', nodeRef: 'boss7',
+      name: 'MASTER SIGNAL',
+      subtitle: 'The final release review of First Signal 1.0 — led by you',
+      description: 'Every zone led here. First Signal 1.0 is feature-complete and the team is assembled for the final release review — and this time you are leading it. Read the architecture, follow the evidence across DSP, threading and state, weigh the open findings, and make the call a senior engineer makes: does it ship?',
+      phases: [
+        { id: 'review', until: 4, title: 'PHASE 1 — ENGINEERING REVIEW', behavior: 'Architecture, ownership and signal flow, read together — the questions that remain live between the zones, not inside any one of them.' },
+        { id: 'integration', until: 2, title: 'PHASE 2 — INTEGRATION REVIEW', behavior: 'Real scenarios, multiple systems: follow the evidence across GUI, parameters, threads and renders until the mechanism has a name.' },
+        { id: 'decision', until: -1, title: 'PHASE 3 — RELEASE DECISION', behavior: 'Triage what remains, then make the call — every decision backed by evidence a colleague could re-run.' },
+      ],
+      presentation: { integrityLabel: 'REVIEW STANDING', hpLabel: 'OPEN QUESTIONS', defeatLineLabel: 'DECISION THRESHOLD' },
+      accessibility: { textOnly: 'Lead the final release review. Each correct stage settles one open question; each miss costs one cell of review standing. Settle enough questions to make the ship decision and complete the campaign.' },
+      dialogue: {
+        briefing: 'Last review. I am not walking you through this one — you are leading it, and I am your second. Same rules we have always worked by: name the mechanism, show the evidence, make the call. I am here if you want a second opinion.',
+        victory: 'That is the call I would have made — and you made it on evidence, not on hope. Seven zones ago you asked what a variable was. Today you led a release review. Good work, colleague.',
+        defeat: 'Some questions are still open, and an open question is a reason to pause a release — you know that now, which is rather the point. Take another pass at the evidence; the review reconvenes when you are ready.',
+      },
+      viz: { t: 'fstimeline' },   // First Signal's whole journey — the campaign in one diagram
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -19899,7 +19900,11 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 7; z <= 7; z++) {   // Zones 1–6 are production encounters (DEFS.boss1–6); Zone 7 is the last development encounter
+    // v1.4.0: all seven zones are production encounters (DEFS.boss1–7) — the list
+    // below is empty, but the development pipeline (distinct dev_bossN ids, QA-only
+    // access, auto-phases, reward suppression) remains intact for future content.
+    const DEV_ZONES = [];
+    for (const z of DEV_ZONES) {
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {
@@ -20076,13 +20081,13 @@ const BossKit = (() => {
    zone bosses. Data only: no policy, no state, no side effects.
 
    IMPORTANT distinction this registry encodes:
-   - Zones 1–6 are PRODUCTION BossKit encounters (definitionId 'bossN') that
-     real learners fight via the boss route.
-   - Zone 7 registers a DEVELOPMENT BossKit encounter (definitionId
-     'dev_bossN') that is QA-only. Real learners still fight those zone
-     bosses through the untouched LEGACY encounter (legacyLearnerEncounter),
-     which remains finished content. The development encounters are the
-     future upgrade path and are never presented to learners as complete.
+   - As of v1.4.0 ALL SEVEN zones are PRODUCTION BossKit encounters
+     (definitionId 'bossN') that real learners fight via the boss route —
+     the campaign is complete.
+   - The DEVELOPMENT pathway (definitionId 'dev_bossN', QA-only, legacy
+     learner fallback via legacyLearnerEncounter) remains implemented for
+     future content, but no zone currently registers a development
+     encounter.
    ============================================================ */
 
 const BossCampaign = (() => {
@@ -20090,7 +20095,7 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
-  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };   // Zones 1–6 are production encounters
+  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true };   // v1.4.0: all seven zones are production
   function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
 
   const REGISTRY = {};
@@ -20121,7 +20126,7 @@ const BossCampaign = (() => {
         : ('Zone ' + n + ' boss — development encounter, QA only, not finished content.'),
       qaLaunchable: true,                                    // every boss can be launched from Owner QA
       learnerLaunchable: production,                         // only the production BossKit encounter is learner-facing
-      legacyLearnerEncounter: !production,                   // zone 7: learners still fight the legacy boss
+      legacyLearnerEncounter: !production,                   // v1.4.0: no zone — all seven are production
     };
   }
   REGISTRY.boss7.rewardId = 'graduate';                      // final boss additionally confers Graduate status
@@ -21534,6 +21539,11 @@ const Views = (() => {
     'rt-discipline': 'real-time discipline', 'performance-eng': 'performance engineering',
     'state-eng': 'state engineering', 'lifecycle-eng': 'lifecycle engineering',
     'quality-eng': 'quality engineering', 'shipping': 'shipping', 'automation-eng': 'automation',
+    // Zone 7 — the capstone review (v1.4.0)
+    'architecture-review': 'architecture review', 'root-cause': 'root-cause analysis',
+    'integration': 'systems integration', 'evidence-debugging': 'evidence-based debugging',
+    'release-decision': 'release triage', 'ship-signoff': 'engineering sign-off',
+    'product-eng': 'product engineering',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -21932,6 +21942,39 @@ const Views = (() => {
     }
 
     /* ---- shared victory flow ---- */
+    // v1.4.0: campaign graduation. Rendered inside the victory sheet when every
+    // campaign boss is cleared (genuine runs only — QA/dev victories are simulated
+    // and never reach here with clearedCount === total). Reuses the existing
+    // fstimeline journey diagram; the permanent record is one idempotent
+    // game-setting write, and the ★ GRADUATE ★ achievement remains the badge.
+    function campaignCompleteCard() {
+      try {
+        if (simulated() || typeof BossCampaignService === 'undefined') return null;
+        const prog = BossCampaignService.getCampaignProgress();
+        if (!prog || !prog.total || prog.clearedCount !== prog.total) return null;
+        if (!Store.gameSetting('campaign.completedAt')) {
+          try { Store.setGameSetting('campaign.completedAt', new Date().toISOString()); } catch (e) { /* stat is decorative */ }
+        }
+        const st = Store.state;
+        let attempts = 0, victories = 0;
+        try { BossCampaign.ORDER.forEach((id) => { const s = BossKit.stats(id); attempts += (s.attempts | 0); victories += (s.victories | 0); }); } catch (e) { /* stats optional */ }
+        const chip = (t) => el('span', { class: 'chip' }, t);
+        const when = String(Store.gameSetting('campaign.completedAt') || '').slice(0, 10);
+        return el('div', { class: 'card raised col', style: 'gap:10px' },
+          el('div', { class: 'eyebrow amber', style: 'justify-content:center' }, '★ CAMPAIGN COMPLETE ★'),
+          el('div', { class: 'h-display', style: 'text-align:center' }, 'FIRST SIGNAL CERTIFIED'),
+          el('p', { class: 'small dim', style: 'text-align:center' }, 'You have completed the core TXPPS VST CODE LAB curriculum. You now hold the foundational engineering knowledge required to begin building professional audio plugins — and the evidence habits to keep them shippable.'),
+          el('div', { class: 'row wrap', style: 'justify-content:center' },
+            chip(prog.clearedCount + ' / ' + prog.total + ' bosses cleared'),
+            chip(st.xp + ' XP'),
+            chip((st.achievements || []).length + ' achievements'),
+            chip(attempts + (attempts === 1 ? ' boss attempt · ' : ' boss attempts · ') + victories + (victories === 1 ? ' victory' : ' victories')),
+            when ? chip('completed ' + when) : null),
+          (typeof Viz !== 'undefined') ? Viz.render({ t: 'fstimeline' }) : null,
+          el('p', { class: 'small faint', style: 'text-align:center' }, 'Every encounter stays open for unrestricted replay — cleared bosses re-enter as practice, and this record is permanent on your profile. (A training milestone, honestly earned — not a professional certification.)'));
+      } catch (e) { return null; }
+    }
+
     function victorySheet(result, starCount) {
       const nextId = simulated() ? null : Store.nextNode();
       const acc = result.total ? Math.round((result.correct / result.total) * 100) : 0;
@@ -21948,6 +21991,7 @@ const Views = (() => {
             ? 'QA / development — result simulated. No XP, stars, or completion recorded.'
             : ('Rewards granted: +' + result.earned + ' XP, mastery stars, and Zone ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' cleared.')),
           (!simulated() && nextId) ? el('div', { class: 'small faint' }, 'Unlocked next: ' + (Engine.NODES[nextId] ? Engine.NODES[nextId].title : '')) : null),
+        campaignCompleteCard(),
         el('div', { class: 'col gap-s' },
           (!simulated() && nextId) ? el('button', { class: 'btn primary block', onclick: () => { exitEncounter(); App.openNode(nextId); } }, 'Continue: ' + (Engine.NODES[nextId] ? Engine.NODES[nextId].title : '')) : null,
           el('button', { class: 'btn block', onclick: () => { retry(); } }, 'Retry for practice'),
@@ -22748,12 +22792,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.5'));
+      el('span', { class: 'mono small phos' }, 'v1.4.0'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.5 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–6 (Zone 6: Production Engineer — code review, regression testing, assertions, memory diagnostics and release sign-off), a seven-zone boss-campaign framework (Zone 7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.4.0 — the complete Boss Campaign: production encounters in all seven zones, capped by Zone 7\'s Master Signal (the final release review of First Signal 1.0, integrating every zone) with permanent campaign completion, statistics and unrestricted replay. A single local learner profile stored on this device, PATCH the workshop assistant, and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.

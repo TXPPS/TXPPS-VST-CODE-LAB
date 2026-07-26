@@ -737,6 +737,11 @@ const Views = (() => {
     'rt-discipline': 'real-time discipline', 'performance-eng': 'performance engineering',
     'state-eng': 'state engineering', 'lifecycle-eng': 'lifecycle engineering',
     'quality-eng': 'quality engineering', 'shipping': 'shipping', 'automation-eng': 'automation',
+    // Zone 7 — the capstone review (v1.4.0)
+    'architecture-review': 'architecture review', 'root-cause': 'root-cause analysis',
+    'integration': 'systems integration', 'evidence-debugging': 'evidence-based debugging',
+    'release-decision': 'release triage', 'ship-signoff': 'engineering sign-off',
+    'product-eng': 'product engineering',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -1135,6 +1140,39 @@ const Views = (() => {
     }
 
     /* ---- shared victory flow ---- */
+    // v1.4.0: campaign graduation. Rendered inside the victory sheet when every
+    // campaign boss is cleared (genuine runs only — QA/dev victories are simulated
+    // and never reach here with clearedCount === total). Reuses the existing
+    // fstimeline journey diagram; the permanent record is one idempotent
+    // game-setting write, and the ★ GRADUATE ★ achievement remains the badge.
+    function campaignCompleteCard() {
+      try {
+        if (simulated() || typeof BossCampaignService === 'undefined') return null;
+        const prog = BossCampaignService.getCampaignProgress();
+        if (!prog || !prog.total || prog.clearedCount !== prog.total) return null;
+        if (!Store.gameSetting('campaign.completedAt')) {
+          try { Store.setGameSetting('campaign.completedAt', new Date().toISOString()); } catch (e) { /* stat is decorative */ }
+        }
+        const st = Store.state;
+        let attempts = 0, victories = 0;
+        try { BossCampaign.ORDER.forEach((id) => { const s = BossKit.stats(id); attempts += (s.attempts | 0); victories += (s.victories | 0); }); } catch (e) { /* stats optional */ }
+        const chip = (t) => el('span', { class: 'chip' }, t);
+        const when = String(Store.gameSetting('campaign.completedAt') || '').slice(0, 10);
+        return el('div', { class: 'card raised col', style: 'gap:10px' },
+          el('div', { class: 'eyebrow amber', style: 'justify-content:center' }, '★ CAMPAIGN COMPLETE ★'),
+          el('div', { class: 'h-display', style: 'text-align:center' }, 'FIRST SIGNAL CERTIFIED'),
+          el('p', { class: 'small dim', style: 'text-align:center' }, 'You have completed the core TXPPS VST CODE LAB curriculum. You now hold the foundational engineering knowledge required to begin building professional audio plugins — and the evidence habits to keep them shippable.'),
+          el('div', { class: 'row wrap', style: 'justify-content:center' },
+            chip(prog.clearedCount + ' / ' + prog.total + ' bosses cleared'),
+            chip(st.xp + ' XP'),
+            chip((st.achievements || []).length + ' achievements'),
+            chip(attempts + (attempts === 1 ? ' boss attempt · ' : ' boss attempts · ') + victories + (victories === 1 ? ' victory' : ' victories')),
+            when ? chip('completed ' + when) : null),
+          (typeof Viz !== 'undefined') ? Viz.render({ t: 'fstimeline' }) : null,
+          el('p', { class: 'small faint', style: 'text-align:center' }, 'Every encounter stays open for unrestricted replay — cleared bosses re-enter as practice, and this record is permanent on your profile. (A training milestone, honestly earned — not a professional certification.)'));
+      } catch (e) { return null; }
+    }
+
     function victorySheet(result, starCount) {
       const nextId = simulated() ? null : Store.nextNode();
       const acc = result.total ? Math.round((result.correct / result.total) * 100) : 0;
@@ -1151,6 +1189,7 @@ const Views = (() => {
             ? 'QA / development — result simulated. No XP, stars, or completion recorded.'
             : ('Rewards granted: +' + result.earned + ' XP, mastery stars, and Zone ' + ((Store.zoneOfNode(node.id) || {}).num || 1) + ' cleared.')),
           (!simulated() && nextId) ? el('div', { class: 'small faint' }, 'Unlocked next: ' + (Engine.NODES[nextId] ? Engine.NODES[nextId].title : '')) : null),
+        campaignCompleteCard(),
         el('div', { class: 'col gap-s' },
           (!simulated() && nextId) ? el('button', { class: 'btn primary block', onclick: () => { exitEncounter(); App.openNode(nextId); } }, 'Continue: ' + (Engine.NODES[nextId] ? Engine.NODES[nextId].title : '')) : null,
           el('button', { class: 'btn block', onclick: () => { retry(); } }, 'Retry for practice'),
@@ -1951,12 +1990,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.5'));
+      el('span', { class: 'mono small phos' }, 'v1.4.0'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.5 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–6 (Zone 6: Production Engineer — code review, regression testing, assertions, memory diagnostics and release sign-off), a seven-zone boss-campaign framework (Zone 7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.4.0 — the complete Boss Campaign: production encounters in all seven zones, capped by Zone 7\'s Master Signal (the final release review of First Signal 1.0, integrating every zone) with permanent campaign completion, statistics and unrestricted replay. A single local learner profile stored on this device, PATCH the workshop assistant, and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.

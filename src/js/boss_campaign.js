@@ -3,13 +3,13 @@
    zone bosses. Data only: no policy, no state, no side effects.
 
    IMPORTANT distinction this registry encodes:
-   - Zones 1–6 are PRODUCTION BossKit encounters (definitionId 'bossN') that
-     real learners fight via the boss route.
-   - Zone 7 registers a DEVELOPMENT BossKit encounter (definitionId
-     'dev_bossN') that is QA-only. Real learners still fight those zone
-     bosses through the untouched LEGACY encounter (legacyLearnerEncounter),
-     which remains finished content. The development encounters are the
-     future upgrade path and are never presented to learners as complete.
+   - As of v1.4.0 ALL SEVEN zones are PRODUCTION BossKit encounters
+     (definitionId 'bossN') that real learners fight via the boss route —
+     the campaign is complete.
+   - The DEVELOPMENT pathway (definitionId 'dev_bossN', QA-only, legacy
+     learner fallback via legacyLearnerEncounter) remains implemented for
+     future content, but no zone currently registers a development
+     encounter.
    ============================================================ */
 
 const BossCampaign = (() => {
@@ -17,7 +17,7 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
-  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };   // Zones 1–6 are production encounters
+  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true };   // v1.4.0: all seven zones are production
   function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
 
   const REGISTRY = {};
@@ -48,7 +48,7 @@ const BossCampaign = (() => {
         : ('Zone ' + n + ' boss — development encounter, QA only, not finished content.'),
       qaLaunchable: true,                                    // every boss can be launched from Owner QA
       learnerLaunchable: production,                         // only the production BossKit encounter is learner-facing
-      legacyLearnerEncounter: !production,                   // zone 7: learners still fight the legacy boss
+      legacyLearnerEncounter: !production,                   // v1.4.0: no zone — all seven are production
     };
   }
   REGISTRY.boss7.rewardId = 'graduate';                      // final boss additionally confers Graduate status

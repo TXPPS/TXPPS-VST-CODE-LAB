@@ -193,6 +193,28 @@ you can prove works"). The existing ship-list diagram illustrates the intro,
 and the zone6_clear achievement was retargeted. Zones 1–6 are now production
 encounters; Zone 7 is the last development encounter (QA-only).
 
+**Version 1.4.0 — Zone 7 Boss: Master Signal & Campaign Graduation** completes
+the Boss Campaign: all seven zones are production BossKit encounters. The
+capstone is not another quiz — it is the final release review of First Signal
+1.0, led by the learner, and every stage integrates multiple zones: a cached
+raw pointer in the editor that spans ownership, lifecycle and threading rules
+at once; root-cause elimination proving an offline-bounce artifact cannot be a
+deadline miss; a GUI-dependent zipper traced to two write paths fighting over
+one parameter; the reproduce → measure → fix → prove investigation loop;
+release-day triage (the corrupt-preset crash blocks, the cosmetics ship); and
+the sign-off itself — evidence a colleague could re-run, never opinion. PATCH
+speaks as a trusted peer ("That is the call I would have made — and you made
+it on evidence"). Victory triggers **campaign graduation**: a completion screen
+(★ CAMPAIGN COMPLETE ★ / FIRST SIGNAL CERTIFIED) with honest messaging — a
+training milestone, expressly not a professional certification — campaign
+statistics (bosses cleared, XP, achievements, attempts/victories, completion
+date), a permanent `campaign.completedAt` record alongside the ★ GRADUATE ★
+badge, the existing BOSS_CAMPAIGN_COMPLETED GameBus event, and unrestricted
+replay of every encounter. QA runs remain fully suppressed end to end — a QA
+victory shows no completion screen and records nothing. The development-boss
+pipeline (dev_bossN ids, QA-only access, auto-phases) remains implemented for
+future content, with no zone currently using it.
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -317,9 +339,9 @@ src/
                              deterministic session mirrors runner results as
                              HP / integrity / phases (v1.2.0 Zone 1 slice; v1.3.0
                              adds auto-phases + QA-only dev_boss definitions; v1.3.1–
-                             v1.3.5 author production boss2–boss6)
-    boss_campaign.js         one registry of all seven zone bosses — production
-                             (Zones 1–6) vs development (Zone 7), fields, order (v1.3.0)
+                             v1.4.0 author production boss2–boss7 — campaign complete)
+    boss_campaign.js         one registry of all seven zone bosses — all production
+                             as of v1.4.0 (dev pipeline retained, unused), fields, order
     boss_campaign_service.js campaign authority: lookup, sequencing, availability,
                              progress, idempotent victory, safe session persistence;
                              defers to Access/Progression/Reward policies (v1.3.0)

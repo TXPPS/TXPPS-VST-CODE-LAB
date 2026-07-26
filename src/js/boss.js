@@ -156,6 +156,28 @@ const BossKit = (() => {
       },
       viz: { t: 'shipcheck' },   // the First Signal ship list — release checklist with the last box open
     },
+    // ---- Zone 7 (v1.4.0) — the production capstone. Theme: the final release review,
+    //      led by the learner. Questions live in the boss7 curriculum node (nodeRef);
+    //      every stage integrates multiple prior zones. Victory completes the campaign. ----
+    boss7: {
+      id: 'boss7', zoneId: 'z7', nodeRef: 'boss7',
+      name: 'MASTER SIGNAL',
+      subtitle: 'The final release review of First Signal 1.0 — led by you',
+      description: 'Every zone led here. First Signal 1.0 is feature-complete and the team is assembled for the final release review — and this time you are leading it. Read the architecture, follow the evidence across DSP, threading and state, weigh the open findings, and make the call a senior engineer makes: does it ship?',
+      phases: [
+        { id: 'review', until: 4, title: 'PHASE 1 — ENGINEERING REVIEW', behavior: 'Architecture, ownership and signal flow, read together — the questions that remain live between the zones, not inside any one of them.' },
+        { id: 'integration', until: 2, title: 'PHASE 2 — INTEGRATION REVIEW', behavior: 'Real scenarios, multiple systems: follow the evidence across GUI, parameters, threads and renders until the mechanism has a name.' },
+        { id: 'decision', until: -1, title: 'PHASE 3 — RELEASE DECISION', behavior: 'Triage what remains, then make the call — every decision backed by evidence a colleague could re-run.' },
+      ],
+      presentation: { integrityLabel: 'REVIEW STANDING', hpLabel: 'OPEN QUESTIONS', defeatLineLabel: 'DECISION THRESHOLD' },
+      accessibility: { textOnly: 'Lead the final release review. Each correct stage settles one open question; each miss costs one cell of review standing. Settle enough questions to make the ship decision and complete the campaign.' },
+      dialogue: {
+        briefing: 'Last review. I am not walking you through this one — you are leading it, and I am your second. Same rules we have always worked by: name the mechanism, show the evidence, make the call. I am here if you want a second opinion.',
+        victory: 'That is the call I would have made — and you made it on evidence, not on hope. Seven zones ago you asked what a variable was. Today you led a release review. Good work, colleague.',
+        defeat: 'Some questions are still open, and an open question is a reason to pause a release — you know that now, which is rather the point. Take another pass at the evidence; the review reconvenes when you are ready.',
+      },
+      viz: { t: 'fstimeline' },   // First Signal's whole journey — the campaign in one diagram
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -176,7 +198,11 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 7; z <= 7; z++) {   // Zones 1–6 are production encounters (DEFS.boss1–6); Zone 7 is the last development encounter
+    // v1.4.0: all seven zones are production encounters (DEFS.boss1–7) — the list
+    // below is empty, but the development pipeline (distinct dev_bossN ids, QA-only
+    // access, auto-phases, reward suppression) remains intact for future content.
+    const DEV_ZONES = [];
+    for (const z of DEV_ZONES) {
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {
