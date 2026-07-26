@@ -1145,7 +1145,7 @@ const ACHIEVEMENTS = [
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
   { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Certify the release candidate.' },
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
-  { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
+  { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Close every finding and sign off.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
   { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Ship the Release Candidate.' },
   { id: 'product_line', name: 'PRODUCT LINE', desc: 'Ship all eleven Zone 7 products.' },
@@ -12172,120 +12172,89 @@ const ZONE6_CHALLENGES = [
 
   /* ============ BOSS ============ */
   {
-    id: 'boss6', kind: 'boss', title: 'BOSS: The Shipping Deadline', short: 'Zone 6 boss', passNeed: 6,
-    concepts: ['thread-safety', 'rt-discipline', 'state-eng', 'performance-eng', 'shipping'],
-    brief: 'First Signal 1.0 ships tomorrow at 9 AM. Tonight, QA files eight critical bugs: a random crackle, a once-in-fifty tick, a crash on corrupted presets, a zippering sweep, a validator failure, a screaming startup, a silence-fed CPU climb, and RAM that never comes back. Repair 6 of 8 before dawn and the release goes out with your name on it.',
+    id: 'boss6', kind: 'boss', title: 'BOSS: Production Engineer', short: 'Zone 6 boss', passNeed: 4,
+    concepts: ['code-review', 'defensive-programming', 'regression-testing', 'assertions', 'memory-diagnostics', 'release-readiness'],
+    brief: 'First Signal 1.0-rc1 works — but "works" is not "ships". Six open findings stand between the candidate and sign-off: an ownership smell in review, an unsafe host assumption, an unverified DSP refactor, a missing tripwire, a memory leak, and an unordered verification pipeline. Close at least 4 findings, on evidence, to sign off the release.',
     stages: [
       {
-        type: 'bugspot', concept: 'rt-discipline',
-        prompt: 'QA #1 — Random crackles under load, worse with more voices. Tap the heap purchase on the deadline.',
+        type: 'bugspot', concept: 'code-review', qid: 'b6s1',
+        prompt: 'Phase 1 — Engineering Review. This diff wants to merge into the release branch. One line reintroduces a class of bug Zone 2 retired. Tap it.',
         code: [
-          'void processBlock (juce::AudioBuffer<float>& buffer,',
-          '                   juce::MidiBuffer& midi)',
+          'class PresetManager',
           '{',
-          '    std::vector<float> wet (buffer.getNumSamples());',
-          '    renderInto (wet);',
-          '    mixToOutput (buffer, wet);',
-          '}',
+          'public:',
+          '    void load(const char* path);',
+          'private:',
+          '    Preset* current = new Preset();   // TODO: delete somewhere?',
+          '    std::vector<Preset> history;',
+          '};',
         ],
-        buggy: 3,
-        explain: 'A fresh vector per block: heap allocation 344 times a second at 128/44.1k — usually fast, occasionally unbounded, audibly crackling under load (r5). Scratch space is a member, sized once in prepareToPlay, reused forever.',
-        fix: 'Member buffer sized in prepareToPlay: wetBuffer.setSize (1, samplesPerBlock);',
+        buggy: 5,
+        explain: 'A raw owning `new` with a TODO where the release should be — review rejects this on sight. Zone 2\'s rule, applied at review speed: every resource has one owner, and the owner is visible in the type. Here that means `std::unique_ptr<Preset>` — or better, a plain `Preset` member: it never needed the heap at all. The memory-leak bug the team fixed in rb2 started life as exactly this line.',
+        fix: 'std::unique_ptr<Preset> current;   // or a plain Preset member',
       },
       {
-        type: 'bugspot', concept: 'thread-safety',
-        prompt: 'QA #2 — A one-sample tick in bounces, once in ~fifty renders, never reproducible in the debugger. Tap the race\'s home.',
-        code: [
-          '// PluginProcessor.h — members:',
-          'float uiCutoff = 1200.0f;   // slider writes, audio reads',
-          'std::atomic<float> outputGain { 1.0f };',
-          'juce::ADSR adsr;',
-        ],
-        buggy: 1,
-        explain: 'A plain float crossing the thread boundary: the slider stores, audio loads, and once in fifty bounces they collide — stale, torn, or reordered (r3). "Can\'t reproduce" is the race\'s signature. The neighbor got it right: std::atomic<float>, like outputGain.',
-        fix: 'std::atomic<float> uiCutoff { 1200.0f };',
-      },
-      {
-        type: 'fill', concept: 'state-eng',
-        prompt: 'QA #3 — A corrupted preset file CRASHES the synth mid-session. Complete the guard that keeps a bad file harmless.',
-        code: 'auto xml = getXmlFromBinary (data, sizeInBytes);\nif (xml == nullptr || ! xml->hasTagName (apvts.state.getType()))\n    ___;   // bad data: keep playing the current state\napvts.replaceState (juce::ValueTree::fromXml (*xml));',
-        accept: ['return', 'return;'],
-        placeholder: 'statement',
-        hint: 'A corrupted preset should cost the user NOTHING.',
-        explain: 'Parse, null-check, tag-check, and bail politely — the session keeps its current sound instead of dying (rc3, r14). Defensive loading turns "crash on corrupt file" into "nothing happened."',
-      },
-      {
-        type: 'bugspot', concept: 'automation-eng',
-        prompt: 'QA #4 — Automated CUTOFF sweeps zipper; gain sweeps are silky. Same smoothers, different calls. Tap the snap.',
-        code: [
-          'void processBlock (…)',
-          '{',
-          '    gainSmoothed.setTargetValue (gainParam->load());',
-          '    cutoffSmoothed.setCurrentAndTargetValue (cutoffParam->load());',
-          '    renderBlock (buffer);',
-          '}',
-        ],
-        buggy: 3,
-        explain: 'setCurrentAndTargetValue SNAPS — every automation update lands as a step, and steps are d13\'s clicks. Mid-render the call is setTargetValue (glide); the snap belongs only at world boundaries like prepare and preset loads (r7, r8).',
-        fix: 'cutoffSmoothed.setTargetValue (cutoffParam->load());',
-      },
-      {
-        type: 'bugspot', concept: 'shipping',
-        prompt: 'QA #5 — pluginval crashes it in seconds with small and zero-sample blocks. Tap the assumption.',
-        code: [
-          'void processBlock (juce::AudioBuffer<float>& buffer,',
-          '                   juce::MidiBuffer&)',
-          '{',
-          '    float* out = buffer.getWritePointer (0);',
-          '    for (int i = 0; i < 512; ++i)',
-          '        out[i] = renderSample();',
-          '}',
-        ],
-        buggy: 4,
-        explain: 'A hard-coded 512 writes past the end of every smaller block — including the perfectly legal 0- and 1-sample blocks validators (and paused hosts) send (r13). The bound is always buffer.getNumSamples(): the host sets the terms, every block.',
-        fix: 'for (int i = 0; i < buffer.getNumSamples(); ++i)',
-      },
-      {
-        type: 'bugspot', concept: 'lifecycle-eng',
-        prompt: 'QA #6 — In one host the synth loads DEAD: the output is poisoned with NaNs until any knob is touched. Fine everywhere else. Tap the too-early question.',
-        code: [
-          'FirstSignalProcessor::FirstSignalProcessor()',
-          '{',
-          '    lfoIncrement = juce::MathConstants<double>::twoPi',
-          '                 * 5.0 / getSampleRate();',
-          '}',
-        ],
-        buggy: 3,
-        explain: 'getSampleRate() in the CONSTRUCTOR — before any prepareToPlay it returns 0, so the division yields infinity, sin(∞) yields NaN, and NaN poisons every sample it touches: dead output until something recomputes the increment. Rate-derived math belongs in prepareToPlay, where the rate is real (r7 — and boss3\'s ghost, returned).',
-        fix: 'Compute lfoIncrement in prepareToPlay, from the sampleRate argument',
-      },
-      {
-        type: 'mcq', concept: 'performance-eng',
-        prompt: 'QA #7 — CPU is low while playing, then CLIMBS for ~10 seconds as every release tail fades. Diagnose and fix.',
-        code: '// profile: float math in the voice loop, cost rising as levels fall',
+        type: 'mcq', concept: 'defensive-programming', qid: 'b6s2',
+        prompt: 'Phase 1 — Engineering Review. This passed every bench test, then glitched in one specific DAW. Name the unsafe assumption.',
+        code: 'void prepareToPlay(double sr, int samplesPerBlock)\n{\n    scratch.resize(samplesPerBlock);\n}\nvoid processBlock(juce::AudioBuffer<float>& b, juce::MidiBuffer&)\n{\n    for (int i = 0; i < (int) scratch.size(); ++i)\n        b.getWritePointer(0)[i] += scratch[i];\n}',
         options: [
-          { t: 'Denormals: decaying tails cross ~10⁻³⁸ and hit microcode-slow float handling — add juce::ScopedNoDenormals at the top of processBlock', why: '' },
-          { t: 'Voices failing to free — fix the lifecycle', why: 'Stuck voices cost their NORMAL amount; the fingerprint here is cost RISING as values shrink — that\'s r6\'s brake, not n9\'s flip.' },
-          { t: 'The UI meter polling too fast', why: 'Wrong thread entirely — the climb is inside the voice loop\'s float math, says the profile.' },
-          { t: 'Raise the buffer size', why: 'A longer deadline hides the symptom without touching the cause — the math itself is running 10–100× slow.' },
+          { t: 'It assumes every callback delivers exactly samplesPerBlock samples — that number is a maximum hint, and hosts may send fewer (and varying) samples. Loop over buffer.getNumSamples().', why: '' },
+          { t: 'resize() in prepareToPlay is an allocation violation', why: 'prepareToPlay is exactly where allocation belongs — Zone 5\'s contract. The defect is the loop bound in processBlock, not the setup.' },
+          { t: 'scratch should live on the stack instead', why: 'Its size depends on host settings, so a pre-allocated member is the right home. Where it lives is fine; how far the loop runs is not.' },
+          { t: 'Nothing — hosts always deliver full-size blocks', why: 'Mainstream hosts split blocks at automation points and loop boundaries. That is why processBlock hands you the real count every call — the API is telling you not to assume.' },
         ],
         answer: 0,
-        explain: 'Quiet-but-expensive: the r6 fingerprint, verbatim. One scoped guard flushes the sub-audible values to zero and the whole climb vanishes — the night\'s cheapest fix.',
+        explain: 'prepareToPlay\'s samplesPerBlock is an upper bound, not a promise: the host may deliver fewer samples, and the count can change call to call — splitting at automation points and loop edges is normal. Looping to scratch.size() walks past the buffer\'s valid samples in exactly the hosts your bench never runs. The prepare contract (Zone 4) says: size by the maximum, but process by buffer.getNumSamples(), every block.',
       },
       {
-        type: 'bugspot', concept: 'quality-eng',
-        prompt: 'QA #8 — RAM grows with every preset load and never returns. Ships in 9 hours. Tap the orphan-maker.',
-        code: [
-          'void setStateInformation (const void* data, int sizeInBytes)',
-          '{',
-          '    auto* xml = getXmlFromBinary (data, sizeInBytes).release();',
-          '    if (xml != nullptr)',
-          '        apvts.replaceState (juce::ValueTree::fromXml (*xml));',
-          '}',
+        type: 'mcq', concept: 'regression-testing', qid: 'b6s3',
+        prompt: 'Phase 2 — Verification. A refactor rewrote the filter\'s inner loop and the author says "no audible change". What closes this finding?',
+        code: '// PR #214: "optimised biquad inner loop — no audible change"\n// reviewer: prove it.',
+        options: [
+          { t: 'A golden-render regression test: render fixed input through old and new builds and diff the output sample-by-sample — evidence, not ears', why: '' },
+          { t: 'Listen carefully on good monitors', why: 'Ears adapt, fatigue and forgive; a fraction-of-a-dB drift or a one-sample discontinuity slides straight past monitoring. Zone 3 taught what even tiny steps become: audible artifacts.' },
+          { t: 'Read the diff twice, carefully', why: 'Review catches design problems; it cannot verify numeric equivalence of DSP output. Only rendering both versions and comparing can.' },
+          { t: 'Ship it labelled "beta" and wait for reports', why: 'That outsources your regression testing to paying customers — the most expensive test rig ever invented.' },
         ],
-        buggy: 2,
-        explain: '.release() strips the unique_ptr\'s ownership and hands you a raw pointer nobody ever deletes — one orphaned XmlElement per preset load, forever (Zone 2\'s RAII lesson, on deadline night). Keep the smart pointer: auto xml = getXmlFromBinary(…); use *xml — it frees itself at the brace.',
-        fix: 'auto xml = getXmlFromBinary (data, sizeInBytes);  // no .release() — RAII owns it',
+        answer: 0,
+        explain: 'The golden render (ro1, promoted to a reflex): render a deterministic input through both builds and compare within tolerance. Identical in, identical out — any unexpected delta is a regression, caught in minutes and attached to the PR as evidence. Zone 3\'s signal-integrity lesson is why the tolerance is tight: discontinuities you cannot hear on a meter are still broadband artifacts. Claims about sound are verified by rendering sound.',
+      },
+      {
+        type: 'fill', concept: 'assertions', qid: 'b6s4',
+        prompt: 'Phase 2 — Verification. Document the invariant so development builds trip on it instantly — and release builds pay nothing. Complete the tripwire.',
+        code: 'void setRouting(int numChannels)\n{\n    ___ (numChannels <= maxChannels);   // fires in debug, free in release\n    routing.applyTo(numChannels);\n}',
+        accept: ['jassert'],
+        placeholder: 'macro',
+        hint: 'JUCE\'s debug tripwire — rc4 installed one. Lowercase, starts with j.',
+        mistakes: [
+          { match: '^assert$', msg: 'The C assert exists, but JUCE code uses its portable, debugger-halting cousin — same idea, j-prefixed.' },
+          { match: '^static_assert$', msg: 'static_assert checks facts the COMPILER can know. numChannels arrives at runtime — you need the runtime tripwire.' },
+          { match: '^jassertfalse$', msg: 'jassertfalse fires unconditionally — it marks code that should never RUN. Here you want the conditional form that checks the invariant.' },
+        ],
+        explain: 'jassert documents the invariant where it lives, halts the debugger the instant development code breaks it, and compiles to nothing in release — the tripwire costs zero where Zone 5\'s deadline rules (an assertion that could stall the audio thread in production would be a bug of its own). Assertions catch what you anticipated; pair them with logging and diagnostics for what you did not.',
+      },
+      {
+        type: 'mcq', concept: 'memory-diagnostics', qid: 'b6s5',
+        prompt: 'Phase 3 — Release Candidate. Finding: RAM climbs ~40 MB on every preset load and never comes back; CPU stays flat. Which instrument closes this finding?',
+        code: '// bug tracker #88 — "memory grows with every preset load"\n// CPU: normal.  Audio: clean.  RAM: staircase, up only.',
+        options: [
+          { t: 'A heap diagnostic (leak sanitizer / allocation snapshots): diff allocations across a load→unload cycle — the surviving blocks\' stacks name the owner that never releases', why: '' },
+          { t: 'A CPU profiler', why: 'Profilers measure where TIME goes, and the report says CPU is flat. A staircase in RAM is an ownership question, and ownership needs a memory instrument.' },
+          { t: 'More jasserts around the preset code', why: 'Assertions verify invariants you anticipated; a leak is memory you forgot exists. You cannot assert your way to an allocation you are not tracking — measure instead.' },
+          { t: 'Advise users to restart between sessions', why: 'That hides the evidence and ships the bug. The staircase is data — a diagnostic turns it into a line number.' },
+        ],
+        answer: 0,
+        explain: 'Leak triage is measurement: snapshot the heap, run one load→unload cycle, snapshot again — every surviving allocation is a suspect, and its stack trace names the owner that never released. Then the fix is Zone 2 verbatim: give the resource one owner whose destructor runs (the staircase means someone holds `new` results with no release path — rb2\'s bug, found the professional way). Diagnosis by instrument, repair by ownership.',
+      },
+      {
+        type: 'order', concept: 'release-readiness', qid: 'b6s6',
+        prompt: 'Phase 3 — Release Candidate. Final gate. Order the sign-off pipeline so the cheapest evidence runs first and every gate must pass before the next spends more.',
+        lines: [
+          'if (! runUnitTests())       return KEEP_IN_REVIEW;   // seconds — the pieces, proven in isolation',
+          'if (! runGoldenRenders())   return KEEP_IN_REVIEW;   // minutes — the sound itself, diffed sample-by-sample',
+          'if (! runHostValidation())  return KEEP_IN_REVIEW;   // hours — pluginval + real DAWs prove the whole contract',
+        ],
+        explain: 'Cheapest evidence first: units fail in seconds, golden renders in minutes, host validation in hours — ordering the gates this way is what makes running them EVERY time affordable, and running them every time is what "release candidate" means. The sign-off this pipeline earns rests on every zone you have cleared: ownership clean (Zone 2), renders null (Zone 3), the prepare contract held (Zone 4), the deadline safe under load (Zone 5). Not code that works — code you can prove works. Sign-off granted: Zone 6 is yours.',
       },
     ],
   },
@@ -19888,6 +19857,28 @@ const BossKit = (() => {
       },
       viz: { t: 'callbacktime' },   // one block's budget vs the deadline — "worst case IS the spec"
     },
+    // ---- Zone 6 (v1.3.5) — production encounter. Theme: professional release engineering.
+    //      Questions live in the boss6 curriculum node (nodeRef); phases/dialogue/viz
+    //      are authored here. The final review of a release candidate. ----
+    boss6: {
+      id: 'boss6', zoneId: 'z6', nodeRef: 'boss6',
+      name: 'THE PRODUCTION ENGINEER',
+      subtitle: 'A release candidate under final review — does the evidence say ship?',
+      description: 'First Signal 1.0-rc1 is feature-complete, and it works — on the bench. Whether it ships is an engineering question: review the diffs like a second pair of eyes, verify claims with tests and diagnostics instead of opinion, and sign off only on evidence. Six findings are open against the candidate. Close them.',
+      phases: [
+        { id: 'review', until: 4, title: 'PHASE 1 — ENGINEERING REVIEW', behavior: 'Read the diffs like a reviewer: unsafe assumptions, ownership smells, contract violations. Find what the author missed.' },
+        { id: 'verification', until: 2, title: 'PHASE 2 — VERIFICATION', behavior: 'Opinion ends here. Choose the instrument that produces evidence: the right regression test, the right assertion, the right diagnostic.' },
+        { id: 'candidate', until: -1, title: 'PHASE 3 — RELEASE CANDIDATE', behavior: 'The final gates. Triage the last findings and order the verification pipeline — the ship decision rests on evidence from every zone.' },
+      ],
+      presentation: { integrityLabel: 'REVIEW CONFIDENCE', hpLabel: 'OPEN FINDINGS', defeatLineLabel: 'SIGN-OFF THRESHOLD' },
+      accessibility: { textOnly: 'Review a release candidate and close its open findings. Each correct stage closes one finding; each miss costs one cell of review confidence. Close enough findings to sign off the release.' },
+      dialogue: {
+        briefing: 'Final review — I will treat you as the second reviewer, not a student. The candidate works; now we prove it ships. Claims need evidence, evidence comes from tests and diagnostics, and the checklist is the contract. Read the findings with me.',
+        victory: 'Sign-off. Every finding closed with evidence — ownership clean, renders null, contracts held, the deadline safe. That is what a release is: not code that works, code you can prove works. Well reviewed, engineer.',
+        defeat: 'Findings are still open, so the candidate stays in review — that is the process working, not you failing. Re-read the evidence trail: the review notes, the test results, the diagnostics. We sign off on the next pass.',
+      },
+      viz: { t: 'shipcheck' },   // the First Signal ship list — release checklist with the last box open
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -19908,7 +19899,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 6; z <= 7; z++) {   // Zones 1–5 are production encounters (DEFS.boss1–5); Zones 6–7 remain development
+    for (let z = 7; z <= 7; z++) {   // Zones 1–6 are production encounters (DEFS.boss1–6); Zone 7 is the last development encounter
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {
@@ -20085,9 +20076,9 @@ const BossKit = (() => {
    zone bosses. Data only: no policy, no state, no side effects.
 
    IMPORTANT distinction this registry encodes:
-   - Zones 1–5 are PRODUCTION BossKit encounters (definitionId 'bossN') that
+   - Zones 1–6 are PRODUCTION BossKit encounters (definitionId 'bossN') that
      real learners fight via the boss route.
-   - Zones 6–7 register a DEVELOPMENT BossKit encounter (definitionId
+   - Zone 7 registers a DEVELOPMENT BossKit encounter (definitionId
      'dev_bossN') that is QA-only. Real learners still fight those zone
      bosses through the untouched LEGACY encounter (legacyLearnerEncounter),
      which remains finished content. The development encounters are the
@@ -20099,7 +20090,7 @@ const BossCampaign = (() => {
   function zoneTitle(n) { const z = zone(n); return z ? z.title : ('Zone ' + n); }
 
   // Base, zone-agnostic shape assembled per zone below.
-  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true };   // Zones 1–5 are production encounters
+  const PRODUCTION = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };   // Zones 1–6 are production encounters
   function bkdef(id) { try { return (typeof BossKit !== 'undefined') ? BossKit.def(id) : null; } catch (e) { return null; } }
 
   const REGISTRY = {};
@@ -20130,7 +20121,7 @@ const BossCampaign = (() => {
         : ('Zone ' + n + ' boss — development encounter, QA only, not finished content.'),
       qaLaunchable: true,                                    // every boss can be launched from Owner QA
       learnerLaunchable: production,                         // only the production BossKit encounter is learner-facing
-      legacyLearnerEncounter: !production,                   // zones 6–7: learners still fight the legacy boss
+      legacyLearnerEncounter: !production,                   // zone 7: learners still fight the legacy boss
     };
   }
   REGISTRY.boss7.rewardId = 'graduate';                      // final boss additionally confers Graduate status
@@ -21536,6 +21527,13 @@ const Views = (() => {
     'locks': 'locks & blocking', 'denormals': 'denormals', 'lock-free': 'lock-free communication',
     'voice-stealing': 'voice stealing', 'ring-buffer': 'ring buffer',
     'allocation': 'voice allocation', 'voices-poly': 'polyphony', 'midi-basics': 'MIDI',
+    // Zone 6 — release engineering (v1.3.5)
+    'code-review': 'code review', 'defensive-programming': 'defensive programming',
+    'regression-testing': 'regression testing', 'assertions': 'assertions',
+    'memory-diagnostics': 'memory diagnostics', 'release-readiness': 'release readiness',
+    'rt-discipline': 'real-time discipline', 'performance-eng': 'performance engineering',
+    'state-eng': 'state engineering', 'lifecycle-eng': 'lifecycle engineering',
+    'quality-eng': 'quality engineering', 'shipping': 'shipping', 'automation-eng': 'automation',
   };
   function conceptLabel(c) { return CONCEPT_LABELS[c] || c; }
 
@@ -22750,12 +22748,12 @@ const Views = (() => {
 
     const versionRow = el('div', { class: 'set-row qa-version-row' },
       el('div', null, el('div', { class: 'set-name' }, 'Version'), el('div', { class: 'set-desc' }, 'TXPPS VST CODE LAB')),
-      el('span', { class: 'mono small phos' }, 'v1.3.4'));
+      el('span', { class: 'mono small phos' }, 'v1.3.5'));
     try { if (typeof QaUi !== 'undefined') QaUi.attachOwnerEntry(versionRow); } catch (e) { /* QA layer optional */ }
     main.appendChild(el('div', { class: 'card col', style: 'gap:8px' },
       el('div', { class: 'eyebrow' }, 'ABOUT'),
       versionRow,
-      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.4 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–5 (Zone 5: Real-Time Guardian — locks vs the audio deadline, denormals, allocation-free callbacks, lock-free communication, click-free voice stealing), a seven-zone boss-campaign framework (Zones 6–7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
+      el('p', { class: 'small dim' }, 'TXPPS VST CODE LAB — an interactive training ground for JUCE / VST3 development in modern C++. All seven zones are playable, carrying you from your first C++ signal to a commercial VST3 and Graduate status. This is Version 1.3.5 — a single local learner profile stored on this device, PATCH the workshop assistant, production boss encounters in Zones 1–6 (Zone 6: Production Engineer — code review, regression testing, assertions, memory diagnostics and release sign-off), a seven-zone boss-campaign framework (Zone 7 in development, owner-QA only), and a hidden local owner QA layer for testing.'),
       el('p', { class: 'small faint' }, 'Honesty note: this app runs entirely in your browser with no C++ compiler. All compiler output is deterministic and clearly labeled "Simulated Compiler Feedback". Code samples are educational excerpts, simplified on purpose — not production-ready plugin code.')));
 
     // v1.2.1: the authorized Owner QA panel appears only after the owner unlocks.

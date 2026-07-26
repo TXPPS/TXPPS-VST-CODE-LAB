@@ -174,6 +174,25 @@ intro. The zone5_clear achievement and all pre-boss lead-ins that promised the
 old synth-repair encounter were retargeted in the same pass. Zones 1–5 are now
 production encounters; Zones 6–7 remain development encounters (QA-only).
 
+**Version 1.3.5 — Zone 6 Boss: Production Engineer** promotes Zone 6 to a
+production BossKit encounter framed as the final review of First Signal 1.0-rc1:
+the plugin works — whether it *ships* is an engineering question answered with
+evidence, not opinion. Its six stages teach professional release engineering
+across three phases — **Engineering Review** (a raw owning `new` caught in a
+diff, and the unsafe assumption that every callback delivers `samplesPerBlock`
+samples when that number is only a maximum hint), **Verification** (a golden-
+render regression test as the answer to "no audible change", and `jassert` as
+the invariant tripwire that costs nothing in release builds), and **Release
+Candidate** (leak triage with heap diagnostics, and the finale ordering the
+sign-off pipeline cheapest-evidence-first: unit tests → golden renders →
+pluginval/host validation). The encounter deliberately reinforces every prior
+zone — ownership (Zone 2), signal integrity (Zone 3), the prepare contract
+(Zone 4) and the real-time deadline (Zone 5) — and PATCH reviews as a Lead
+Release Engineer treating the learner as a peer ("not code that works — code
+you can prove works"). The existing ship-list diagram illustrates the intro,
+and the zone6_clear achievement was retargeted. Zones 1–6 are now production
+encounters; Zone 7 is the last development encounter (QA-only).
+
 Every lesson is written producer-first: it opens with a familiar studio situation
 (the hook), explains what happens behind the panel, introduces the C++ with a
 piece-by-piece breakdown of every token, shows an inline SVG diagram (knob→memory,
@@ -298,9 +317,9 @@ src/
                              deterministic session mirrors runner results as
                              HP / integrity / phases (v1.2.0 Zone 1 slice; v1.3.0
                              adds auto-phases + QA-only dev_boss definitions; v1.3.1–
-                             v1.3.4 author production boss2–boss5)
+                             v1.3.5 author production boss2–boss6)
     boss_campaign.js         one registry of all seven zone bosses — production
-                             (Zones 1–5) vs development (Zones 6–7), fields, order (v1.3.0)
+                             (Zones 1–6) vs development (Zone 7), fields, order (v1.3.0)
     boss_campaign_service.js campaign authority: lookup, sequencing, availability,
                              progress, idempotent victory, safe session persistence;
                              defers to Access/Progression/Reward policies (v1.3.0)

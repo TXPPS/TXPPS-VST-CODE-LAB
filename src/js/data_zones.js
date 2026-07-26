@@ -111,7 +111,7 @@ const ACHIEVEMENTS = [
   { id: 'first_sound', name: 'FIRST SOUND', desc: 'Complete all three Zone 4 missions.' },
   { id: 'zone5_clear', name: 'ZONE 5 CLEARED', desc: 'Certify the release candidate.' },
   { id: 'playable_synth', name: 'FULLY PLAYABLE', desc: 'Complete all four Zone 5 missions.' },
-  { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Beat the Shipping Deadline.' },
+  { id: 'zone6_clear', name: 'ZONE 6 CLEARED', desc: 'Close every finding and sign off.' },
   { id: 'release_ready', name: 'RELEASE APPROVED', desc: 'Complete all four Zone 6 missions.' },
   { id: 'zone7_clear', name: 'ZONE 7 CLEARED', desc: 'Ship the Release Candidate.' },
   { id: 'product_line', name: 'PRODUCT LINE', desc: 'Ship all eleven Zone 7 products.' },

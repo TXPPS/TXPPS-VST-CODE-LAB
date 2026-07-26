@@ -134,6 +134,28 @@ const BossKit = (() => {
       },
       viz: { t: 'callbacktime' },   // one block's budget vs the deadline — "worst case IS the spec"
     },
+    // ---- Zone 6 (v1.3.5) — production encounter. Theme: professional release engineering.
+    //      Questions live in the boss6 curriculum node (nodeRef); phases/dialogue/viz
+    //      are authored here. The final review of a release candidate. ----
+    boss6: {
+      id: 'boss6', zoneId: 'z6', nodeRef: 'boss6',
+      name: 'THE PRODUCTION ENGINEER',
+      subtitle: 'A release candidate under final review — does the evidence say ship?',
+      description: 'First Signal 1.0-rc1 is feature-complete, and it works — on the bench. Whether it ships is an engineering question: review the diffs like a second pair of eyes, verify claims with tests and diagnostics instead of opinion, and sign off only on evidence. Six findings are open against the candidate. Close them.',
+      phases: [
+        { id: 'review', until: 4, title: 'PHASE 1 — ENGINEERING REVIEW', behavior: 'Read the diffs like a reviewer: unsafe assumptions, ownership smells, contract violations. Find what the author missed.' },
+        { id: 'verification', until: 2, title: 'PHASE 2 — VERIFICATION', behavior: 'Opinion ends here. Choose the instrument that produces evidence: the right regression test, the right assertion, the right diagnostic.' },
+        { id: 'candidate', until: -1, title: 'PHASE 3 — RELEASE CANDIDATE', behavior: 'The final gates. Triage the last findings and order the verification pipeline — the ship decision rests on evidence from every zone.' },
+      ],
+      presentation: { integrityLabel: 'REVIEW CONFIDENCE', hpLabel: 'OPEN FINDINGS', defeatLineLabel: 'SIGN-OFF THRESHOLD' },
+      accessibility: { textOnly: 'Review a release candidate and close its open findings. Each correct stage closes one finding; each miss costs one cell of review confidence. Close enough findings to sign off the release.' },
+      dialogue: {
+        briefing: 'Final review — I will treat you as the second reviewer, not a student. The candidate works; now we prove it ships. Claims need evidence, evidence comes from tests and diagnostics, and the checklist is the contract. Read the findings with me.',
+        victory: 'Sign-off. Every finding closed with evidence — ownership clean, renders null, contracts held, the deadline safe. That is what a release is: not code that works, code you can prove works. Well reviewed, engineer.',
+        defeat: 'Findings are still open, so the candidate stays in review — that is the process working, not you failing. Re-read the evidence trail: the review notes, the test results, the diagnostics. We sign off on the next pass.',
+      },
+      viz: { t: 'shipcheck' },   // the First Signal ship list — release checklist with the last box open
+    },
   };
 
   /* ---- v1.3.0: generic 3-phase generator, so a definition need not hand-tune
@@ -154,7 +176,7 @@ const BossKit = (() => {
      and the learner boss2–7 legacy encounters are completely untouched. They are
      `development: true` and never launchable by normal learners. ---- */
   (function registerDevelopmentBosses() {
-    for (let z = 6; z <= 7; z++) {   // Zones 1–5 are production encounters (DEFS.boss1–5); Zones 6–7 remain development
+    for (let z = 7; z <= 7; z++) {   // Zones 1–6 are production encounters (DEFS.boss1–6); Zone 7 is the last development encounter
       const nodeId = 'boss' + z;
       let stages = 6, passNeed = 4;
       try {
